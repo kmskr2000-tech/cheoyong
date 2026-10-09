@@ -142,6 +142,26 @@ KING_P = pal(h='#07070c', i='#101018', j='#1e1e2a', J='#34344a',
              d='#2a060a', e='#4a0e14', f='#6a161c', g='#8e2026', G='#b0302e',
              r='#1a3a30', R='#2a5a4a', q='#4a8a72', Q='#7ab89a', y='#6a4a1c', Y='#b88a32', Z='#f0cc6a')
 
+# 용왕: the elder's long white beard, a gold crown tipped with coral, sea-green robe gone grey with sickness
+DRAGONKING = list(ELDER)
+for y, x, t in ((0, 13, 'Z.Z.Z'), (1, 12, 'ZYZYZYZ'), (2, 12, 'YZZZZZY')):
+    put(DRAGONKING, y, x, t)
+DRAGONKING_P = pal(h='#8a8a90', i='#a8a8b0', j='#c8c8d0', J='#e8e8f0',
+                   d='#0a1a18', e='#12302a', f='#1c463c', g='#2a5e50', G='#3e7a68',
+                   r='#3a0e14', R='#6a1a22', q='#a83a3a', Q='#d86a5a', y='#6a4a1c', Y='#b88a32', Z='#f0cc6a',
+                   **{'1': '#3a3a40', '2': '#6a6670', '3': '#948e98', '4': '#b4aeb6'})
+
+# 맏형: stern, steel-dark robe, hair bound high
+BROTHER1 = list(PLAIN)
+BROTHER1_P = pal(h='#06060a', i='#101018', j='#1c1c2a', J='#2e2e44',
+                 d='#0a0e16', e='#141c2a', f='#1e2a3e', g='#2a3a54', G='#3a4e6e',
+                 r='#2a2a3a', R='#40405a', q='#5e5e80', Q='#8080a8', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
+# 둘째: deep teal robe
+BROTHER2 = list(PLAIN)
+BROTHER2_P = pal(h='#08080c', i='#12121a', j='#20202e', J='#323246',
+                 d='#061614', e='#0c2622', f='#123a34', g='#1a5048', G='#246a5e',
+                 r='#1a2a28', R='#2a423e', q='#3e625a', Q='#5a8a7e', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
+
 # One sheet per character (each has its own palette).
 SHEETS = {
     'npc_elder': (ELDER_P, {'idle': ELDER}),
@@ -156,4 +176,7 @@ SHEETS = {
     'npc_fisher': (FISHER_P, {'idle': FISHER}),
     'npc_child': (CHILD_P, {'idle': CHILD}),
     'npc_king': (KING_P, {'idle': KING}),
+    'npc_dragonking': (DRAGONKING_P, {'idle': DRAGONKING}),
+    'npc_brother1': (BROTHER1_P, {'idle': BROTHER1}),
+    'npc_brother2': (BROTHER2_P, {'idle': BROTHER2}),
 }

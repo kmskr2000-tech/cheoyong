@@ -5,6 +5,7 @@ extends Node
 signal toast(text: String, color: Color)
 
 const SAVE_PATH := "user://save.json"
+const SETTINGS_PATH := "user://settings.json"
 const SHOP := [
 	{"id": "insam", "name": "인삼정기탕", "desc": "기력(체력) 60 회복", "price": 30},
 	{"id": "gugija", "name": "구기자환", "desc": "소리(기력) 50 회복", "price": 25},
@@ -14,12 +15,14 @@ const SHOP := [
 var flags := {}
 var money := 50
 var items := {"insam": 2, "gugija": 1, "jeonghwa": 0}
-var checkpoint := "village"
+var checkpoint := "beach"
 var level_id := "beach"
 var spawn_name := "start"
 var _fade: ColorRect
 var _busy := false
 var _card: VBoxContainer
+var replaying := false   # 회상: the intro was opened from the title and returns there
+var _settings := {}
 
 
 func _ready() -> void:
@@ -102,10 +105,26 @@ func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 ## back to the title screen (after the chapter ends, or from the menu)
 func to_title() -> void:
 	await fade(1.0, 0.8)
-	if ResourceLoader.exists("res://scenes/title.tscn"):
-		get_tree().change_scene_to_file("res://scenes/title.tscn")
+	get_tree().change_scene_to_file("res://scenes/title.tscn")
+	await get_tree().process_frame
 	await get_tree().process_frame
 	await fade(0.0, 0.8)
+
+
+# ---------------------------------------------------------------- settings (persist across saves)
+func setting(k: String):
+	if _settings.is_empty() and FileAccess.file_exists(SETTINGS_PATH):
+		var d = JSON.parse_string(FileAccess.get_file_as_string(SETTINGS_PATH))
+		_settings = d if typeof(d) == TYPE_DICTIONARY else {}
+	return _settings.get(k, null)
+
+
+func set_setting(k: String, v) -> void:
+	setting(k)
+	_settings[k] = v
+	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(_settings))
 
 
 # ---------------------------------------------------------------- save / load
@@ -129,7 +148,7 @@ func load_save() -> bool:
 	flags = data.get("flags", {})
 	money = int(data.get("money", 50))
 	items = data.get("items", items)
-	checkpoint = data.get("checkpoint", "village")
+	checkpoint = data.get("checkpoint", "beach")
 	return true
 
 
@@ -137,9 +156,13 @@ func new_game() -> void:
 	flags = {}
 	money = 50
 	items = {"insam": 2, "gugija": 1, "jeonghwa": 0}
-	checkpoint = "village"
+	checkpoint = "beach"
+	level_id = "beach"
+	spawn_name = "start"
 
 
 ## where a fresh start / continue / death puts you
 func checkpoint_spawn() -> Array:
-	return ["dungeon1", "entrance"] if checkpoint == "dungeon" else ["beach", "start"] if not flag("arrived") else ["gyeongju", "start"]
+	if checkpoint == "gyeongju" or flag("arrived"):
+		return ["gyeongju", "home" if flag("night") else "start"]
+	return ["beach", "start"]

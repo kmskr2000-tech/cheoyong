@@ -89,6 +89,7 @@ func _ready() -> void:
 		if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the defeat sequence
 			boss.hp = 20.0
 	Story.on_enter(self)
+	_make_guide()
 
 
 # ---------------------------------------------------------------- interaction ("다가가면 버튼이 빛난다")
@@ -246,6 +247,74 @@ func _exit(ex: Array) -> void:
 		if b == $Player and not $Player.locked:
 			Game.change_level(ex[1], ex[2]))
 	add_child.call_deferred(a)
+
+
+# ---------------------------------------------------------------- 용패 guide + wet feet
+var _guide: Sprite2D
+var _guide_t := 0.0
+var _splash_cd := 0.0
+
+
+func _make_guide() -> void:
+	_guide = Sprite2D.new()
+	var img := Image.create(5, 5, false, Image.FORMAT_RGBA8)
+	for y in 5:
+		for x in 5:
+			var d := Vector2(x - 2, y - 2).length()
+			if d < 2.6:
+				img.set_pixel(x, y, Color(0.8, 0.95, 1.0, 1.0 if d < 1.2 else 0.45))
+	_guide.texture = ImageTexture.create_from_image(img)
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	add.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	_guide.material = add
+	_guide.z_index = 45
+	_guide.z_as_relative = false
+	_guide.visible = false
+	add_child(_guide)
+
+
+func _update_guide(d: float) -> void:
+	_guide_t += d
+	var p: Node2D = $Player
+	var goal = Story.objective(self)
+	if goal == null or p.locked:
+		_guide.visible = false
+		return
+	var to: Vector2 = lift(goal) - p.global_position
+	if to.length() < 40.0:
+		_guide.visible = false
+		return
+	_guide.visible = true
+	# a mote that drifts out from the 용패 at his chest toward where the 탁기 is thick, then fades
+	var k := fmod(_guide_t, 1.6) / 1.6
+	_guide.global_position = p.global_position + Vector2(0, -22) + to.normalized() * (10.0 + k * 22.0)
+	_guide.modulate.a = sin(k * PI) * 0.8
+
+
+func _wet_feet(d: float) -> void:
+	_splash_cd -= d
+	var p: CharacterBody2D = $Player
+	if _splash_cd > 0.0 or p.velocity.length() < 10.0 or not is_water(p.global_position + Vector2(0, 30)):  # screen → roughly the footprint just ahead
+		return
+	_splash_cd = 0.22
+	var sp := CPUParticles2D.new()
+	sp.one_shot = true
+	sp.amount = 6
+	sp.lifetime = 0.45
+	sp.explosiveness = 0.9
+	sp.direction = Vector2(0, -1)
+	sp.spread = 70.0
+	sp.gravity = Vector2(0, 160)
+	sp.initial_velocity_min = 20.0
+	sp.initial_velocity_max = 40.0
+	sp.color = Color(0.6, 0.75, 0.95, 0.8)
+	sp.global_position = p.global_position
+	sp.z_index = 40
+	sp.z_as_relative = false
+	add_child(sp)
+	sp.emitting = true
+	sp.finished.connect(sp.queue_free)
 
 
 ## run a dialogue with the hero frozen
@@ -433,6 +502,9 @@ func _blob(parent: Node2D, half_w: float) -> void:
 
 
 func _process(d: float) -> void:
+	if _guide:
+		_update_guide(d)
+		_wet_feet(d)
 	var pp: Vector2 = $Player.global_position + Vector2(0, -16)
 	for fp in fade_props:
 		var body: Node2D = fp[0]

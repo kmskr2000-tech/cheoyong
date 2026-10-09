@@ -22,6 +22,7 @@ func _ready() -> void:
 	if out == "":
 		set_process(false)
 	else:
+		Engine.max_fps = 60  # frame counts ≈ seconds × 60 regardless of how light the scene is
 		if hold != "":
 			Input.action_press(hold)
 		if at != "":
@@ -48,7 +49,7 @@ func _process(_delta: float) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out)
-	print("captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
+	print("t=", Time.get_ticks_msec(), "ms  captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	var pl = get_tree().current_scene.get_node_or_null("Player")
 	var bs = get_tree().current_scene.get_node_or_null("Boss")
 	if pl: print("player ", pl.position, " ", pl.state, " hp ", pl.hp, " vis ", pl.sprite.modulate)

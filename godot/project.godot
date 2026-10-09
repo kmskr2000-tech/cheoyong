@@ -3,7 +3,7 @@ config_version=5
 
 [application]
 config/name="신 처용가"
-run/main_scene="res://scenes/level.tscn"
+run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
 [autoload]

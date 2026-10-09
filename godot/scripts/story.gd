@@ -85,7 +85,11 @@ func _beach_wake(level: Node) -> void:
 	level.hud.visible = false
 	p.sprite.rotation = -PI / 2
 	p.sprite.modulate = Color(0.75, 0.8, 0.95)
-	await level.get_tree().create_timer(2.2).timeout
+	await level.get_tree().create_timer(3.0).timeout   # 인트로 샷 5: 무음 3초
+	if not Game.flag("logo_shown"):
+		# 샷 6: 타이틀 로고와 복선 — '돌아오겠다'는 말은 하지 않는다
+		Game.set_flag("logo_shown")
+		await Game.card("신 처용가", "노래가 완성되면 —", 2.6)
 	var tw := p.create_tween().set_parallel()
 	tw.tween_property(p.sprite, "rotation", 0.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_property(p.sprite, "modulate", Color.WHITE, 0.7)
@@ -624,3 +628,31 @@ func _farewell(level: Node) -> void:
 	Game.set_flag("chapter1_done")
 	Game.save()
 	Game.to_title()
+
+
+# ================================================================ 용패 길잡이 (바이블 2-5)
+## where the 용패 faintly pulls (footprint coords), or null when there's nothing to follow
+func objective(level: Node):
+	var f := func(k): return Game.flag(k)
+	match Game.level_id:
+		"beach":
+			if not f.call("flute"): return Vector2(184, 270)
+			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return Vector2(334, 110)
+		"gyeongju":
+			if f.call("appointed"): return null
+			if f.call("rumor"): return null if f.call("king_call") else Vector2(96, 130)
+			if not f.call("met_nanyeong"): return Vector2(456, 214)
+			if not f.call("sang_child"): return Vector2(330, 350)
+			if not f.call("night"): return Vector2(96, 130)
+			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 185)
+			if f.call("summoned") and not f.call("briefed"): return Vector2(636, 185)
+		"gwana":
+			return Vector2(320, 196) if not f.call("briefed") else Vector2(4, 235)
+		"pyega1":
+			return Vector2(320, 40)
+		"pyega2":
+			var b = level.get_node_or_null("Boss")
+			if b and b.state == "wait": return Vector2(560, 200)
+		"palace":
+			return Vector2(256, 196)
+	return null

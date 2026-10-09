@@ -13,6 +13,9 @@
 
 ## 엔진·구조
 - Godot 4.4, GL Compatibility, 480x270 정수 배율 픽셀 퍼펙트. 프로젝트는 `godot/`.
+- 흐름: `title.tscn` → `intro.tscn`(인트로 샷 1~4) → `level.tscn`(모든 레벨 공용, `Levels.DATA[Game.level_id]`).
+- 스토리 비트는 전부 `scripts/story.gd`(오토로드 Story): `on_enter` / `interact` / `trigger` / `objective`(용패 길잡이). 진행은 `Game.flags`.
+- 레벨 데이터 `scripts/levels.gd`: props(5번째 칸 = 표시 조건 플래그), npcs(6번째 칸 "hidden"), interact, triggers, vents, exits, ambient.
 - 이전 웹판(`index.html`, `src/`)은 참고용 원본이다. 새 작업은 Godot에서 한다.
 
 ## 아트 파이프라인 (전부 코드로 생성, 외부 에셋 없음)
@@ -25,4 +28,8 @@
 
 ## 검증
 - 화면 확인: `xvfb-run` + `godot -- --capture=out.png --frames=N [--at=x,y] [--hold=action] [--seq=action:frame,...]`
+  - 캡처 중엔 60fps 고정(프레임 ≈ 초×60). `--seq`는 실제 입력 이벤트를 보내므로 대화(confirm)도 넘길 수 있다.
+  - 바로 진입: `--level=<id> [--spawn=<name>] [--flags=a,b]`, 타이틀 `--title`, 인트로 `--intro`.
+  - 테스트 훅: `--test-enemies`, `--beach-fight`(SC1-05), `--boss`, `--boss-weak`, `--boss-kneel`(SC1-19부터).
+  - 결과 줄에 남은 적·쓰러진 적·레벨·플래그·플레이어/보스 상태가 찍힌다.
 - 캡처 결과(남은 적 수 등)를 근거로 동작을 확인한 뒤에만 완료라고 보고한다.
