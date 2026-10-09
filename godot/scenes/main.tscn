@@ -1,15 +1,11 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1"]
 [ext_resource type="Script" path="res://scripts/village_test.gd" id="2"]
-[ext_resource type="Script" path="res://scripts/terrain.gd" id="3"]
 
 [node name="Main" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("2")
 
-[node name="Terrain" type="Node2D" parent="."]
-script = ExtResource("3")
-
 [node name="Player" parent="." instance=ExtResource("1")]
-position = Vector2(330, 196)
+position = Vector2(330, 172)

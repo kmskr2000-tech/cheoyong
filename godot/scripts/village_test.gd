@@ -1,48 +1,24 @@
 extends Node2D
-## Test corner of the village: terrain, props, moonlit lighting, fog and drifting ash.
+## Test corner of the village: baked tiered ground (art/ground3d.py), voxel and hand-drawn props,
+## blood-moon lighting, fog, embers, ghost-fires and the HD-2D finishing pass.
 
-const MAP := [
-	",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,..,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,....,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,....,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,.....,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,....,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,.....,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,..#####,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,.#######.,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,..#######...............",
-	",,,,,,,,,,,,,,,,...#######...............",
-	",,,,,,,,,,,,,,......#####....,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,.....,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,~~~~,,,....,,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,~~~~~~~~,...,,,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,~~~~~~~~~~,..,,,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,~~~~~~~~~~~,..,,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,~~~~~~~~~~,,..,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,~~~~~~~~,,,..,,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,~~~~,,,,,,..,,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,..,,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,,..,,,,,,,,,,,,,,,,,,,,",
-	",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",
-]
+const LEVEL := "village"
 
-
-## [prop, x, y, light] — x,y = ground contact point; light = [offset_y, colour, energy, scale] or null
+## [prop, x, y, light] — x,y = ground contact point in *footprint* coordinates (before the tier lift); light = [offset_y, colour, energy, scale] or null
 const PROPS := [
-	["house", 120, 108, [-6, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
-	["house", 540, 140, [-6, Color(1.0, 0.62, 0.3), 1.0, 0.9]],
-	["lantern", 284, 150, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
-	["lantern", 436, 196, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
-	["jangseung_m", 590, 150, null], ["jangseung_f", 590, 200, null],
-	["dodam", 470, 236, null], ["dodam", 540, 236, null], ["dodam", 90, 290, null],
-	["geumjul", 296, 300, null],
-	["seonang", 470, 300, [-60, Color(0.75, 0.35, 1.0), 0.7, 1.5]],
-	["cairn", 432, 312, null],
-	["sotdae", 252, 52, null], ["sotdae_s", 264, 58, null], ["sotdae", 276, 50, null],
-	["pine", 210, 64, null], ["pine", 86, 330, null], ["pine", 612, 334, null], ["pine", 620, 70, null],
-	["pine", 390, 44, null], ["pine", 20, 230, null], ["pine", 360, 350, null],
+	["house", 72, 108, [-6, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
+	["lantern", 160, 100, [-34, Color(1.0, 0.7, 0.38), 1.0, 1.0]],
+	["house", 560, 300, [-6, Color(1.0, 0.62, 0.3), 1.0, 0.9]],
+	["lantern", 282, 138, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
+	["lantern", 440, 214, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
+	["jangseung_m", 606, 154, null], ["jangseung_f", 606, 200, null],
+	["dodam", 470, 250, null], ["dodam", 400, 250, null],
+	["geumjul", 320, 330, null],
+	["seonang", 470, 330, [-60, Color(0.75, 0.35, 1.0), 0.7, 1.5]],
+	["cairn", 432, 344, null],
+	["sotdae", 580, 40, null], ["sotdae_s", 594, 36, null], ["sotdae", 608, 42, null],
+	["pine", 18, 60, null], ["pine", 236, 30, null], ["pine", 630, 60, null], ["pine", 520, 26, null],
+	["pine", 60, 340, null], ["pine", 630, 350, null], ["pine", 380, 356, null], ["pine", 220, 300, null],
 ]
 ## occluder half-width / height for props that cast lantern shadows
 const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
@@ -50,25 +26,67 @@ const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Ve
 var light_tex: Texture2D
 
 
+var meta := {}
+
+
 func _ready() -> void:
-	$Terrain.build(PackedStringArray(MAP))
-	var water: TileMapLayer = $Terrain.layers["water"]
-	var wm := ShaderMaterial.new()
-	wm.shader = load("res://shaders/water.gdshader")
-	water.material = wm
+	meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/levels/%s.json" % LEVEL))
 	light_tex = _radial(256)
+	_ground()
 	for p in PROPS:
-		_prop(p[0], Vector2(p[1], p[2]), p[3])
-	_terrace()
+		_prop(p[0], lift(Vector2(p[1], p[2])), p[3])
 	_atmosphere()
+	var size: Array = meta["size"]
+	var tier: float = meta["tier"]
 	var cam: Camera2D = $Player/Camera
 	cam.limit_left = 0
-	cam.limit_top = 0
-	cam.limit_right = (MAP[0].length() - 1) * 16
-	cam.limit_bottom = (MAP.size() - 1) * 16
+	cam.limit_top = int(-tier * 2)
+	cam.limit_right = int(size[0])
+	cam.limit_bottom = int(size[1] - tier)
 	for i in 4:
-		_wisp(Vector2(470, 260) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
+		_wisp(lift(Vector2(470, 290)) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
 	_blob($Player, 10)
+
+
+## footprint → screen: ground on tier k is drawn k*TIER px higher (oblique camera)
+func lift(p: Vector2) -> Vector2:
+	var rows: Array = meta["heights"]
+	var cy := clampi(int(p.y / meta["ts"]), 0, rows.size() - 1)
+	var cx := clampi(int(p.x / meta["ts"]), 0, String(rows[0]).length() - 1)
+	var c := String(rows[cy])[cx]
+	var t := 1.0 if not c.is_valid_int() else float(c)
+	return Vector2(p.x, p.y - t * meta["tier"])
+
+
+## the baked ground: one lit sprite with geometric normals, an animated water overlay, cliff collision
+func _ground() -> void:
+	var off: float = meta["offset"]
+	var g := Sprite2D.new()
+	g.texture = Tex.lit("res://assets/levels/%s.png" % LEVEL)
+	g.centered = false
+	g.position = Vector2(0, -off)
+	g.z_index = -20
+	g.z_as_relative = false
+	add_child(g)
+	var w := Sprite2D.new()
+	w.texture = load("res://assets/levels/%s_water.png" % LEVEL)
+	w.centered = false
+	w.position = g.position
+	w.z_index = -19
+	w.z_as_relative = false
+	var wm := ShaderMaterial.new()
+	wm.shader = load("res://shaders/water_overlay.gdshader")
+	w.material = wm
+	add_child(w)
+	var body := StaticBody2D.new()
+	add_child(body)
+	for r in meta["collision"]:
+		var col := CollisionShape2D.new()
+		var sh := RectangleShape2D.new()
+		sh.size = Vector2(r[2], r[3])
+		col.shape = sh
+		col.position = Vector2(r[0] + r[2] / 2.0, r[1] + r[3] / 2.0)
+		body.add_child(col)
 
 
 func _prop(name: String, at: Vector2, light) -> void:
@@ -124,57 +142,6 @@ func _prop(name: String, at: Vector2, light) -> void:
 
 
 var flicker: Array[PointLight2D] = []
-
-
-## 석축 terrace: the north-west corner sits a storey higher, held up by a dry-stone wall with steps.
-const TERRACE_FOOT := 150.0 # y where the wall meets the lower ground
-const STAIR := Vector2(152, 184)
-
-
-func _terrace() -> void:
-	# one voxel-rendered piece (art/vox.py terrace): front wall, stair, east wall running back
-	var wall_tex := Tex.lit("res://assets/props/terrace.png")
-	var body := StaticBody2D.new()
-	body.position = Vector2(0, TERRACE_FOOT)
-	add_child(body)
-	var spr := Sprite2D.new()
-	spr.texture = wall_tex
-	spr.centered = false
-	spr.offset = Vector2(0, -wall_tex.get_height() + 2)
-	body.add_child(spr)
-	# walls block everywhere except the stair gap; the east wall blocks the terrace's side
-	for r in [Rect2(0, -44, STAIR.x, 42), Rect2(STAIR.y, -44, 248 - STAIR.y, 42), Rect2(240, -TERRACE_FOOT, 8, TERRACE_FOOT - 2)]:
-		var col := CollisionShape2D.new()
-		var sh := RectangleShape2D.new()
-		sh.size = r.size
-		col.shape = sh
-		col.position = r.position + r.size / 2.0
-		body.add_child(col)
-	# the raised top catches more moonlight than the ground below: a soft rectangular light over it
-	var top := PointLight2D.new()
-	var gi := Image.create(64, 64, false, Image.FORMAT_RGBA8)
-	for y in 64:
-		for x in 64:
-			var e := minf(minf(x, 63 - x), minf(y, 63 - y)) / 10.0
-			gi.set_pixel(x, y, Color(1, 1, 1, clampf(e, 0, 1)))
-	top.texture = ImageTexture.create_from_image(gi)
-	top.position = Vector2(124, -TERRACE_FOOT / 2.0 - 18)
-	top.scale = Vector2(250 / 64.0, (TERRACE_FOOT - 20) / 64.0)
-	top.color = Color(1.0, 0.5, 0.55)
-	top.energy = 0.2
-	top.height = 40.0
-	body.add_child(top)
-	# the lower ground at the wall foot sits in the terrace's shadow
-	var ao := Sprite2D.new()
-	var img := Image.create(250, 10, false, Image.FORMAT_RGBA8)
-	for y in 10:
-		for x in 250:
-			img.set_pixel(x, y, Color(0, 0, 0.02, 0.55 * (1.0 - y / 10.0)))
-	ao.texture = ImageTexture.create_from_image(img)
-	ao.centered = false
-	ao.z_index = -6
-	ao.z_as_relative = false
-	body.add_child(ao)
 
 
 var wisps: Array[Node2D] = []
@@ -279,9 +246,10 @@ func _atmosphere() -> void:
 	$Player.add_child(pl)
 	# fog over the ground, lit by the lanterns it drifts through
 	var fog := ColorRect.new()
-	var w := (MAP[0].length() - 1) * 16.0
-	var h := (MAP.size() - 1) * 16.0
+	var w: float = meta["size"][0]
+	var h: float = meta["size"][1] + meta["offset"]
 	fog.size = Vector2(w, h)
+	fog.position = Vector2(0, -meta["offset"])
 	fog.z_index = 50
 	fog.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var fm := ShaderMaterial.new()

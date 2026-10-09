@@ -6,13 +6,13 @@ pattern only repeats every 128px). A cell's tile is picked from its four corner 
 Hand-dotted stamps (tufts, pebbles, cracks) are scattered over a two-tone base so ground reads
 as clusters, not noise. Edges: grass lips cast a shadow, banks get a wet dark rim and foam.
 
-Usage: python3 art/tiles.py  ->  godot/assets/tiles/*.png (+ art/out/tiles_preview.png)
+Usage: python3 art/tiles.py -> art/out/tiles/*.png. ground3d.py imports the textures and palettes.
 """
 import math, pathlib, random
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).parent
-OUT = ROOT.parent / 'godot' / 'assets' / 'tiles'
+OUT = ROOT / 'out' / 'tiles'  # atlases for reference; levels bake ground via ground3d.py
 TS, TEX = 16, 128
 WIN = TEX // TS  # texture windows per side
 
