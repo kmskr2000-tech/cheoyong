@@ -76,6 +76,10 @@ func _ready() -> void:
 			enemies = []
 			var ks := a.get_slice("=", 1).split(",")
 			var at: Vector2 = def["spawns"].get(Game.spawn_name, def["spawns"].values()[0])
+			for b in OS.get_cmdline_user_args():  # with --at, line them up in front of that spot instead
+				if b.begins_with("--at="):
+					var xy := b.get_slice("=", 1).split(",")
+					at = Vector2(float(xy[0]), float(xy[1]) - 70)
 			for i in ks.size():
 				enemies.append([ks[i], at.x - (ks.size() - 1) * 30 + i * 60, at.y + 70])
 	for e in enemies:

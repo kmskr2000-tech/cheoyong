@@ -61,12 +61,12 @@ func _process(_delta: float) -> void:
 	if pl: print("player ", pl.position, " ", pl.state, " hp ", pl.hp, " stun ", snappedf(pl.stun_t, 0.1), " slow ", snappedf(pl.slow_t, 0.1), " pull ", snappedf(pl.pull_t, 0.1))
 	for e in get_tree().get_nodes_in_group("enemy") + get_tree().get_nodes_in_group("downed"):
 		if e is Enemy:
-			print("  ", e.kind, (" clone" if e.is_clone else ""), " ", e.state, " hp ", e.hp, " a ", snappedf(e.alpha, 0.01), " grow ", snappedf(e.grow, 0.01))
+			print("  ", e.kind, (" clone" if e.is_clone else ""), " ", e.position.round(), " ", e.state, " hp ", e.hp, " a ", snappedf(e.alpha, 0.01), " grow ", snappedf(e.grow, 0.01))
 	var ap := 0
 	for c in Audio.get_children():
 		if c is AudioStreamPlayer and c.playing: ap += 1
 	print("  audio track ", Audio._track, " amb ", Audio._amb.playing, " playing ", ap, " stream ", Audio._music[Audio._cur].stream)
-	print("  growth Lv.", Game.lv, " deok ", Game.deok, " jeonggi ", Game.jeonggi, " money ", Game.money, " dogam ", Game.dogam, " mats ", Game.mats, " tal ", Game.tal)
+	print("  growth items ", Game.items, " Lv.", Game.lv, " deok ", Game.deok, " jeonggi ", Game.jeonggi, " money ", Game.money, " dogam ", Game.dogam, " mats ", Game.mats, " tal ", Game.tal)
 	var lv = get_tree().current_scene
 	if lv.get("_dark") and lv._dark: print("  darkness ", snappedf(lv._dark.color.a, 0.01))
 	print("  hazards/projectiles ", get_tree().current_scene.get_children().filter(func(n): return n is Hazard or n is Projectile or n is Shockwave).size())

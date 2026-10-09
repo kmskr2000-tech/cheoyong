@@ -10,10 +10,15 @@ var _sub: Label
 var _skip: Label
 var _shot: Node2D
 var _done := false
+var overlay := false   # 회상 from the 행낭: plays over the paused level and hands back to it
+signal finished
 
 
 func _ready() -> void:
-	Audio.music("title")
+	if overlay:
+		Audio.override("title")
+	else:
+		Audio.music("title")
 	Audio.ambience("waves")
 	dialog = DialogBox.new()
 	add_child(dialog)
@@ -263,6 +268,10 @@ func _finish() -> void:
 	_done = true
 	Game.set_setting("intro_seen", true)
 	dialog.queue_free()
+	if overlay:
+		await Game.fade(1.0, 0.6)
+		finished.emit()
+		return
 	# the autoload does the hand-off (this node is freed with the scene)
 	if Game.replaying:
 		Game.replaying = false
