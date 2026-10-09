@@ -10,6 +10,7 @@ extends CharacterBody2D
 signal hp_changed(hp: float, max_hp: float)
 signal defeated
 signal knelt
+signal phase_two
 
 const CELL := Vector2i(56, 76)
 const MAX_HP := 600.0
@@ -99,7 +100,7 @@ func _physics_process(delta: float) -> void:
 	flash = maxf(0.0, flash - delta)
 	knock = knock.move_toward(Vector2.ZERO, 500.0 * delta)
 	sprite.modulate = Color(2.4, 2.4, 2.4) if flash > 0.0 else Color.WHITE
-	if state == "dead" or state == "kneel" or target == null:
+	if state == "dead" or state == "kneel" or state == "wait" or target == null:
 		return
 	var to := target.global_position - global_position
 	var d := to.length()
@@ -161,6 +162,18 @@ func _physics_process(delta: float) -> void:
 	velocity = v + knock
 	move_and_slide()
 	sprite.flip_h = to.x < 0
+
+
+## SC1-15: sits in human guise (state "wait") until the story wakes it
+func disguise() -> void:
+	state = "wait"
+	sprite.play("human")
+
+
+func awaken() -> void:
+	_ring(position, 70.0, Color(0.6, 1.0, 0.5))
+	sprite.play("idle")
+	_begin("idle")
 
 
 func _begin(s: String) -> void:
@@ -294,7 +307,7 @@ func _clear_tells() -> void:
 
 # ---------------------------------------------------------------- taking hits
 func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
-	if state == "dead" or state == "kneel":
+	if state == "dead" or state == "kneel" or state == "wait":
 		return
 	hp -= dmg
 	flash = 0.08
@@ -304,6 +317,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 		phase = 2
 		_ring(position, 90.0, Color(0.7, 1.0, 0.5))
 		sprite.self_modulate = Color(1.1, 1.25, 1.0)
+		phase_two.emit()
 	if hp <= 0.0:
 		_kneel()
 

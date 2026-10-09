@@ -456,10 +456,106 @@ def netrack():
     v.render('netrack', contrast=3.0)
 
 
+GIWA = Mat(['#07080c', '#0e1016', '#161a22', '#20252f', '#2c323e', '#3c4352', '#4e5668'])
+DANCHEONG = Mat(['#0a1a1a', '#123030', '#1c4a46', '#2a6660', '#3e8a7e'])
+
+
+def hall():
+    """관아 정청: a tall stone 기단, red pillars, lattice doors, 단청 beams and a curving 기와 hip roof."""
+    X, Y, Z = 176, 76, 104
+    v = Vox(X, Y, Z)
+    st, red, wd, paper, glow, tile, dan = (v.mat(m) for m in (STONE, REDWOOD, WOOD, PAPER, GLOW, GIWA, DANCHEONG))
+    gx, gy, gz = v.grid()
+    cx = X / 2
+    v.box(14, 24, 0, X - 14, Y - 4, 9, st)                             # 기단
+    v.tone[14:X - 14, 24:Y - 4, 0:9] = noise3((X - 28, Y - 28, 9), 3, 3) * 0.3 + np.where((np.arange(X - 28) % 16 == 0)[:, None, None], -0.7, 0.2)
+    c0, c1 = int(cx - 16), int(cx + 16)
+    v.box(c0, Y - 4, 0, c1, Y, 9, st)                                   # front steps
+    v.tone[c0:c1, Y - 4:Y, 0:9] = np.where((np.arange(9) % 3 == 2)[None, None, :], 0.6, -0.2)
+    yw = 34                                                             # wall line (set back)
+    v.box(22, yw, 9, X - 22, yw + 4, 58, wd)
+    for x0 in range(30, X - 30, 22):                                    # 창호 lattice doors, dimly lit within
+        for x in range(x0, x0 + 18):
+            for z in range(12, 52):
+                lat = (x - x0) % 3 == 0 or (z - 12) % 4 == 0 or x in (x0, x0 + 17)
+                v.m[x, yw + 4, z] = wd if lat else glow
+                v.tone[x, yw + 4, z] = 0 if lat else -1.4
+    for px in range(20, X - 16, 34):                                    # red pillars on the front edge
+        v.box(px, Y - 14, 9, px + 5, Y - 9, 60, red)
+    v.box(18, Y - 15, 56, X - 18, Y - 8, 64, dan)                        # 단청 beam
+    v.tone[18:X - 18, Y - 15:Y - 8, 56:64] = np.where((np.arange(X - 36) // 6 % 3 == 0)[:, None, None], 0.9, -0.2)
+    # roof: hip roof whose eaves lift at the corners (처마 곡선)
+    u = (gx + 0.5 - cx) / (X / 2 - 2)
+    ridge_y = 36.0
+    dy = np.abs(gy + 0.5 - ridge_y) / (ridge_y + 2)
+    eave = 60 + 9 * np.abs(u) ** 4
+    top = eave + (100 - eave) * np.clip(1 - np.maximum(dy, (np.abs(u) - 0.55) / 0.45), 0, 1) ** 0.9
+    inside = (np.abs(u) <= 1) & (gy >= 0) & (gy < Y - 2) & (gz >= eave - 3) & (gz <= top)
+    shell = inside & (gz >= top - 4)
+    stripes = np.where((gx // 4) % 2 == 0, 0.35, -0.35)
+    v.fill(shell, tile, stripes)
+    v.fill(inside & (np.abs(gy + 0.5 - ridge_y) < 2.5) & (gz >= top - 2) & (np.abs(u) < 0.62), st, 0.8)  # 용마루
+    v.render('hall', contrast=3.2)
+
+
+def jars():
+    """옹기 항아리 셋: dark glazed pots, one broken open with black water inside."""
+    X, Y, Z = 40, 24, 24
+    v = Vox(X, Y, Z)
+    pot, ink = v.mat(Mat(['#060506', '#0e0b0c', '#181214', '#241a1a', '#322420', '#44302a'])), v.mat(Mat(['#05050a', '#0a0a14', '#14142a']))
+    gx, gy, gz = v.grid()
+    for (cx, cy, r, h, broken) in ((10, 12, 7.5, 20, False), (25, 10, 6.0, 15, True), (32, 17, 4.5, 11, False)):
+        rr = r * (1 - ((gz - h * 0.55) / (h * 0.75)) ** 2) + 1.2
+        d = np.sqrt((gx + 0.5 - cx) ** 2 + (gy + 0.5 - cy) ** 2)
+        body = (d < rr) & (gz < h)
+        if broken:
+            body &= ~((gz > h * 0.55) & (gx > cx - 1) & (gy > cy - 3))
+        v.fill(body, pot, np.where((gz % 5) == 0, -0.3, 0.2))
+        v.fill((d < r * 0.5) & (gz >= h - 1) & (gz < h + 1) & ~body, pot, 0.5)
+        if broken:
+            v.fill((d < rr - 1.5) & (gz == int(h * 0.5)), ink)
+    v.render('jars', contrast=3.0)
+
+
+def beam():
+    """무너진 들보: two rafters fallen across each other with a scrap of torn 창호지."""
+    X, Y, Z = 64, 26, 26
+    v = Vox(X, Y, Z)
+    wd, paper = v.mat(WOOD), v.mat(PAPER)
+    gx, gy, gz = v.grid()
+    for (x0, y0, z0, x1, y1, z1) in ((2, 20, 0, 60, 6, 18), (6, 4, 0, 58, 22, 6)):
+        t = np.clip(((gx - x0) * (x1 - x0) + (gy - y0) * (y1 - y0) + (gz - z0) * (z1 - z0)) / ((x1 - x0) ** 2 + (y1 - y0) ** 2 + (z1 - z0) ** 2), 0, 1)
+        px, py, pz = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, z0 + (z1 - z0) * t
+        d = np.sqrt((gx + 0.5 - px) ** 2 + (gy + 0.5 - py) ** 2 + (gz + 0.5 - pz) ** 2)
+        v.fill(d < 2.6, wd, np.where((gx % 9) == 0, -0.8, 0.1))
+    v.box(30, 12, 6, 38, 13, 16, paper)
+    v.tone[30:38, 12, 6:16] = np.where((np.arange(10) % 3 == 0)[None, :], -1.0, 0.0)
+    v.render('beam', contrast=3.0)
+
+
+def altar():
+    """사당 제단: a low black lacquer table, bowls, a 위패 and two tall candles burning cold."""
+    X, Y, Z = 48, 22, 40
+    v = Vox(X, Y, Z)
+    lac, wd, paper = v.mat(Mat(['#06050a', '#0e0c14', '#1a1622', '#2a2434', '#3c3448'])), v.mat(WOOD), v.mat(PAPER)
+    flame = v.mat(Mat(['#3a2a6a', '#6a4ab8', '#a88aff', '#e0d4ff', '#ffffff'], glow=True))
+    v.box(4, 6, 10, 44, 18, 13, lac)
+    for (px, py) in ((5, 7), (41, 7), (5, 15), (41, 15)):
+        v.box(px, py, 0, px + 2, py + 2, 10, lac)
+    v.box(20, 9, 13, 28, 11, 30, wd); v.box(21, 10, 14, 27, 11, 28, paper)        # 위패
+    for cx in (12, 36):
+        v.box(cx, 11, 13, cx + 2, 13, 24, paper)
+        v.box(cx, 11, 24, cx + 2, 13, 28, flame)
+        v.tone[cx:cx + 2, 11:13, 24:28] = np.array([2, 2, 1, 0])[None, None, :]
+    for bx in (16, 30):
+        v.box(bx, 12, 13, bx + 4, 15, 15, wd)
+    v.render('altar', contrast=3.0)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     house(); terrace(); lantern(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
-    dodam('dodam', 64); board(); stall(); boat(); netrack()
+    dodam('dodam', 64); board(); stall(); boat(); netrack(); hall(); jars(); beam(); altar()
 
 
 if __name__ == '__main__':

@@ -142,6 +142,15 @@ func reveal(time := 0.8) -> void:
 			c.create_tween().tween_property(c, "modulate:a", 1.0, time)
 
 
+## the 용패 emblem flushes a colour and settles (it "rings")
+func pulse_emblem(col: Color) -> void:
+	var em: CanvasItem = get_child(0).get_child(0)
+	var tw := create_tween()
+	for i in 3:
+		tw.tween_property(em, "modulate", col, 0.08)
+		tw.tween_property(em, "modulate", Color.WHITE, 0.22)
+
+
 func show_toast(text: String, color: Color) -> void:
 	_toast.text = text
 	_toast.add_theme_color_override("font_color", color)

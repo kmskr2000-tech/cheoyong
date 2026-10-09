@@ -28,6 +28,7 @@ PAL = {  # dark → light; night-time, cold, desaturated, with violet shadows
     'dirt':  [hx(c) for c in ('#120d10', '#1c1519', '#281e21', '#352829', '#46362f', '#5a4636')],
     'stone': [hx(c) for c in ('#0d0e15', '#171a25', '#222636', '#2f3448', '#41475e', '#59607a')],
     'water': [hx(c) for c in ('#04070e', '#070d18', '#0b1526', '#112036', '#1a2f4c', '#2a4668')],
+    'wood':  [hx(c) for c in ('#151012', '#211819', '#2e2222', '#3c2e2a', '#4c3a32', '#5e4a3e')],
     'sand':  [hx(c) for c in ('#1a1b24', '#272832', '#363642', '#474652', '#5a5862', '#706c74')],
     'moss':  [hx(c) for c in ('#0c1610', '#132418', '#1d3422', '#2a4a2c')],
     'foam':  hx('#7d93ad'),
@@ -160,6 +161,16 @@ def tone_texture(kind, seed):
                 v = 0.6 + big(x, y) * 0.8 + mid(x, y) * 0.4
             elif kind == 'dirt':
                 v = 1.7 + big(x, y) * 1.2 + mid(x, y) * 0.9
+            elif kind == 'wood':  # 마루 planks: 6px boards with staggered butt joints, grain, rot
+                board = y // 6
+                v = 2.6 + math.sin(board * 2.7) * 0.35 + mid(x, y) * 0.5
+                if y % 6 == 0:
+                    v = -9
+                elif (x + board * 37) % 64 == 0:
+                    v = -9
+                elif y % 6 == 1:
+                    v += 0.8
+                v += math.sin(x * 0.7 + board) * 0.18 + big(x, y) * 0.5
             elif kind == 'sand':  # wind ripples
                 v = 2.3 + big(x, y) * 0.9 + math.sin((y + mid(x, y) * 10) * 0.9) * 0.45
             elif kind == 'water':

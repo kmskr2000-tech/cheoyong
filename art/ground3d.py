@@ -22,6 +22,13 @@ INK = np.array(tiles.INK, np.uint8)
 L = np.array([-0.68, -0.38, 0.62]); L /= np.linalg.norm(L)
 
 ROCK = np.array([tiles.hx(c) for c in ('#0e0b10', '#1a1519', '#282024', '#382c2e', '#4a3c3a', '#5e4e48')], np.uint8)
+PLASTER = np.array([tiles.hx(c) for c in ('#0a090d', '#14131a', '#201e26', '#2c2a32', '#3a3740', '#4a464e')], np.uint8)
+
+
+def tiles_arr(name):
+    return np.array(tiles.PAL[name], np.uint8)
+
+
 MASON = np.array([tiles.hx(c) for c in ('#0f0f16', '#1a1b25', '#262836', '#353849', '#474b5e', '#5e6378')], np.uint8)
 
 
@@ -49,10 +56,10 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     jy = ((vnoise((Hf, W), 9, 2) - 0.5) * 14 + (vnoise((Hf, W), 3, 4) - 0.5) * 4).astype(int)
     straight = cells[yy // TS, xx // TS]
     jit = cells[np.clip((yy + jy) // TS, 0, rows - 1), np.clip((xx + jx) // TS, 0, cols - 1)]
-    keep = np.isin(straight, list('2S' + ''.join(stairs))) | np.isin(jit, list('2S' + ''.join(stairs)))
+    keep = np.isin(straight, list('2SW' + ''.join(stairs))) | np.isin(jit, list('2SW' + ''.join(stairs)))
     ch = np.where(keep, straight, jit)
     tier = np.zeros((Hf, W), np.float32)
-    for c, t in (('0', 0), ('1', 1), ('2', 2), ('3', 3)):
+    for c, t in (('0', 0), ('1', 1), ('2', 2), ('3', 3), ('W', 3)):
         tier[ch == c] = t
     h = tier * TIER
     is_stair = np.zeros((Hf, W), bool)
@@ -92,10 +99,11 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
         f = (cv[i0, j0] * (1 - fu) * (1 - fv) + cv[i0, j0 + 1] * fu * (1 - fv) + cv[i0 + 1, j0] * (1 - fu) * fv + cv[i0 + 1, j0 + 1] * fu * fv)
         return f + (vnoise((Hf, W), 4, 9) - 0.5) * 0.36 >= 0.5
     grass = layer(','); stone = layer('#'); sand = layer('~')
-    mat = np.where(stone, 2, np.where(grass, 1, np.where(sand, 3, 0)))  # 0 dirt, 1 grass, 2 stone, 3 sand
-    texs = {k: np.array(tiles.tone_texture(k, s), np.float32) for k, s in (('dirt', 11), ('grass', 31), ('stone', 23), ('water', 5), ('sand', 41))}
-    pals = {k: np.array(tiles.PAL[k], np.uint8) for k in ('dirt', 'grass', 'stone', 'water', 'sand')}
-    MATS = ((0, 'dirt'), (1, 'grass'), (2, 'stone'), (3, 'sand'))
+    woodf = np.isin(vm, ['='])[np.clip(yy // TS, 0, rows - 1), np.clip(xx // TS, 0, cols - 1)]  # planks: hard cell edges
+    mat = np.where(woodf, 4, np.where(stone, 2, np.where(grass, 1, np.where(sand, 3, 0))))  # 0 dirt 1 grass 2 stone 3 sand 4 wood
+    texs = {k: np.array(tiles.tone_texture(k, s), np.float32) for k, s in (('dirt', 11), ('grass', 31), ('stone', 23), ('water', 5), ('sand', 41), ('wood', 51))}
+    pals = {k: np.array(tiles.PAL[k], np.uint8) for k in ('dirt', 'grass', 'stone', 'water', 'sand', 'wood')}
+    MATS = ((0, 'dirt'), (1, 'grass'), (2, 'stone'), (3, 'sand'), (4, 'wood'))
 
     # geometric normals of the top surface from the smoothed height field
     hb = h.astype(np.float32)
@@ -137,12 +145,16 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
         t = np.clip(np.round(tone[s] + light[s] - foot[s] + lip[s]), 0, len(pals[name]) - 1).astype(int)
         joint = tone[s] == -9
         c = pals[name][t]
-        c[joint] = tiles.PAL['moss'][1] if name == 'stone' else c[joint]
+        c[joint] = tiles.PAL['moss'][1] if name == 'stone' else (tiles.PAL['wood'][0] if name == 'wood' else c[joint])
         cols[s] = c
     if stair.any():  # stair treads: dressed stone, lit
         s = stair
         t = np.clip(np.round(3.2 + light[s] - foot[s] * 0.5), 0, 5).astype(int)
         cols[s] = MASON[t]
+    roof = ch[ty_, tx_] == 'W'
+    if roof.any():  # wall tops: dark 기와 courses
+        rt = 1.2 + ((ty_[roof] % 5) == 0) * -0.8 + ((ty_[roof] % 5) == 1) * 0.9 + ((tx_[roof] % 7) == 0) * -0.4
+        cols[roof] = MASON[np.clip(np.round(rt), 0, 5).astype(int)]
     img[T, :3] = cols
     # grass edge: ink rim where grass meets bare ground, and the shadow it casts downward
     g = (kind == 1) & (mat[wy, wx] == 1)
@@ -167,6 +179,17 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     ftone = np.where(mason, 3.0 + bsh[bid] - mjoint * 1.8 + ((fz % 7) == 6) * 0.6, 2.7 + strata - crack * 1.4)
     ftone += rel * 0.9 - 0.4  # darker at the foot, catching light near the top
     fcol = np.where(mason[:, None], MASON[np.clip(np.round(ftone), 0, 5).astype(int)], ROCK[np.clip(np.round(ftone), 0, 5).astype(int)])
+    wall = ch[fy, fx] == 'W'
+    if wall.any():  # 흙벽: cold plaster between dark timber posts and beams, stained and cracked
+        wx_, wz_, wh_ = fx[wall], fz[wall], fh[wall]
+        post = (wx_ % 40) < 4
+        beam = (wz_ >= wh_ - 6) | (wz_ < 5) | ((wz_ >= 28) & (wz_ < 31))
+        stain = vnoise((Hs, W), 7, 31)[wz_ % Hs, wx_] * 1.6 + vnoise((Hs, W), 3, 32)[wz_ % Hs, wx_] * 0.6
+        hole = (vnoise((Hs, W), 4, 33)[(wz_ * 3 + fy[wall]) % Hs, wx_] + vnoise((Hs, W), 11, 34)[wz_ % Hs, wx_] * 0.6) > 1.25
+        panel = np.random.default_rng(7).random(4096)[(wx_ // 40 + fy[wall] * 13) % 4096]
+        pt = np.where(post | beam, 1.2 + (wx_ % 40 == 0) * 0.8 - (wz_ < 5) * 0.6, 3.0 - stain + (wz_ / np.maximum(wh_, 1)) * 0.8 + panel * 0.8 - 0.4)
+        pt = np.where(hole & ~(post | beam), 0.4, pt)
+        fcol[wall] = np.where((post | beam)[:, None], tiles_arr('wood')[np.clip(np.round(pt), 0, 5).astype(int)], PLASTER[np.clip(np.round(pt), 0, 5).astype(int)])
     # grass hanging over the lip of grassy tops
     hang = (mat[np.clip(fy, 0, Hf - 1), fx] == 1) & (fh - fz <= 1 + (vnoise((Hs, W), 2, 16)[fy % Hs, fx] * 4).astype(int)) & ~fstair
     fcol[hang] = np.array(tiles.PAL['grass'])[np.clip(3 - (fh - fz)[hang], 1, 4)]
@@ -217,6 +240,12 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
 
     # ---- collision: cliff faces (not stairs) and water, merged into rectangles on a 4px grid
     blocked = ((kind == 2) & ~is_stair[wy, wx]) | (kind == 3)
+    # walls (W) stand on the floor: their footprint, seen at floor height, is solid too — otherwise a
+    # thin wall only blocks its south face and can be walked through behind its top
+    floor_t = 1
+    for (cy, cx) in zip(*np.where(cells == 'W')):
+        r0 = cy * TS - floor_t * TIER + OFF
+        blocked[max(0, r0):max(0, r0 + TS), cx * TS:(cx + 1) * TS] = True
     G = 4
     gh, gw = Hs // G, W // G
     bg = blocked[:gh * G, :gw * G].reshape(gh, G, gw, G).mean((1, 3)) > 0.5
@@ -334,7 +363,93 @@ def beach_vmap(hm):
     return [''.join(r) for r in vm]
 
 
+# ---------------------------------------------------------------- 경주 관아 (SC1-12)
+def gwana():
+    rows = []
+    for y in range(24):
+        r = ''
+        for x in range(40):
+            if y <= 1:
+                c = '3'
+            elif y <= 8:
+                c = '2'
+            elif y <= 10 and x in (19, 20):
+                c = 'S'
+            else:
+                c = '1'
+            r += c
+        rows.append(r)
+    vm = [[','] * 41 for _ in range(25)]
+    def paint(x0, y0, x1, y1, c):
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                vm[y][x] = c
+    paint(6, 2, 34, 9, '#')       # 월대 paving in front of the hall
+    paint(4, 10, 36, 21, '#')     # 마당 박석
+    paint(0, 13, 4, 16, '.')      # road in from the west
+    paint(18, 21, 22, 24, '.')
+    bake('gwana', rows, [''.join(r) for r in vm], {'S': (1, 2, 9 * TS, 11 * TS)})
+
+
+# ---------------------------------------------------------------- 서쪽 폐가 — 마당 (SC1-13)
+def pyega1():
+    import math
+    rows = []
+    for y in range(26):
+        r = ''
+        for x in range(40):
+            if y <= 1:
+                c = '3'
+            elif y <= 7 and 8 <= x <= 31:
+                c = '2'                                  # 안채 기단 (raised floor of the main house)
+            elif y <= 9 and x in (19, 20) and y >= 8:
+                c = 'S'
+            elif (x in (0, 39) or y == 25) and not (x == 0 and 12 <= y <= 15):
+                c = 'W'                                  # ruined outer wall
+            elif y == 14 and (3 <= x <= 12 or 27 <= x <= 36) and (x * 7) % 5 != 0:
+                c = 'W'                                  # 사랑채 담: broken with gaps
+            elif (x - 30) ** 2 + (y - 19) ** 2 < 5:
+                c = '0'                                  # 우물 / stagnant pool
+            else:
+                c = '1'
+            r += c
+        rows.append(r)
+    vm = [[','] * 41 for _ in range(27)]
+    def paint(x0, y0, x1, y1, c):
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                vm[y][x] = c
+    paint(8, 2, 32, 8, '=')       # 대청마루 on the raised floor
+    paint(0, 12, 22, 16, '.')     # trodden path from the broken gate
+    paint(17, 9, 22, 24, '.')
+    paint(14, 17, 26, 22, '#')    # cracked yard stones
+    bake('pyega1', rows, [''.join(r) for r in vm], {'S': (1, 2, 8 * TS, 10 * TS)})
+
+
+# ---------------------------------------------------------------- 서쪽 폐가 — 다락과 최심부 (SC1-14~20)
+def pyega2():
+    rows = []
+    for y in range(24):
+        r = ''
+        for x in range(48):
+            if y <= 2:
+                c = 'W'
+            elif x in (12, 24) and not (13 <= y <= 15):
+                c = 'W'                                  # partitions with a doorway each
+            elif x == 31 and not (10 <= y <= 13):
+                c = 'W'                                  # the inner room's wall
+            elif y >= 21 and x < 31:
+                c = 'W'
+            else:
+                c = '1'
+            r += c
+        rows.append(r)
+    vm = [['='] * 49 for _ in range(25)]
+    bake('pyega2', rows, [''.join(r) for r in vm], {})
+
+
 def main():
+    gwana(); pyega1(); pyega2()
     hb = beach_hmap()
     bake('beach', hb, beach_vmap(hb), {'S': (1, 2, 8 * TS, 10 * TS)}, water_z=TIER - 3, foam=True)
     bake('village', VILLAGE_H, village_vmap(),

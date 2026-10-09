@@ -316,6 +316,12 @@ func can_sing() -> bool:
 	return false
 
 
+## play 처용가 on cue (cutscenes)
+func sing() -> void:
+	if state == "move":
+		_start_song()
+
+
 func _start_song() -> void:
 	_end_attack()
 	state = "song"

@@ -4,7 +4,7 @@ extends Node2D
 ## Story beats hook in through Story (story.gd).
 
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
+const OCCLUDE := {"hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
 
 var light_tex: Texture2D
 
@@ -59,6 +59,11 @@ func _ready() -> void:
 		var crab := Crab.new()
 		crab.position = lift(c)
 		add_child(crab)
+	for vp in def.get("vents", []):
+		var vent := MiasmaVent.new()
+		vent.position = lift(vp)
+		vent.phase_off = fmod(vp.x * 0.013 + vp.y * 0.007, 4.4)
+		add_child(vent)
 	for tr in def.get("triggers", []):
 		add_trigger(tr[0], tr[1])
 	var enemies: Array = def.get("enemies", [])
@@ -130,6 +135,33 @@ func npc(id: String) -> Npc:
 		if n.id == id:
 			return n
 	return null
+
+
+## an invisible wall (plus a curtain of 탁기) — used to seal the boss room
+func add_barrier(r: Rect2) -> Node2D:
+	var b := StaticBody2D.new()
+	b.position = lift(r.get_center())
+	var col := CollisionShape2D.new()
+	var sh := RectangleShape2D.new()
+	sh.size = r.size
+	col.shape = sh
+	b.add_child(col)
+	var p := CPUParticles2D.new()
+	p.amount = 30
+	p.lifetime = 1.4
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = r.size / 2.0
+	p.direction = Vector2(0, -1)
+	p.gravity = Vector2(0, -10)
+	p.initial_velocity_min = 4.0
+	p.initial_velocity_max = 10.0
+	p.scale_amount_min = 3.0
+	p.scale_amount_max = 5.0
+	p.color = Color(0.3, 0.1, 0.4, 0.7)
+	p.z_index = 30
+	b.add_child(p)
+	add_child(b)
+	return b
 
 
 func remove_interact(id: String) -> void:
@@ -253,6 +285,17 @@ func _ground() -> void:
 	add_child(w)
 	var body := StaticBody2D.new()
 	add_child(body)
+	# the world's edge (exits are areas just inside it)
+	var sz: Array = meta["size"]
+	var top: float = -float(meta["offset"])
+	for r in [Rect2(-16, top - 16, sz[0] + 32, 16), Rect2(-16, sz[1] - meta["tier"], sz[0] + 32, 16),
+			Rect2(-16, top, 16, sz[1] - top), Rect2(sz[0], top, 16, sz[1] - top)]:
+		var ec := CollisionShape2D.new()
+		var es := RectangleShape2D.new()
+		es.size = r.size
+		ec.shape = es
+		ec.position = r.get_center()
+		body.add_child(ec)
 	for r in meta["collision"]:
 		var col := CollisionShape2D.new()
 		var sh := RectangleShape2D.new()
@@ -409,7 +452,8 @@ func _atmosphere() -> void:
 	# 해질녘 (dusk) for daily life in 경주; full night otherwise
 	var dusk: bool = def.get("time", "night") == "dusk" and not Game.flag("night")
 	var cm := CanvasModulate.new()
-	cm.color = Color(0.34, 0.37, 0.52) if dusk else Color(0.2, 0.26, 0.42)
+	var night_col := Color(0.27, 0.3, 0.47) if Game.flag("rescued") else Color(0.2, 0.26, 0.42)  # 새벽 after the rescue
+	cm.color = def.get("ambient", Color(0.34, 0.37, 0.52) if dusk else night_col)
 	add_child(cm)
 	# the moon: a cold key light from the upper left that rakes across every normal map and casts
 	# long diagonal shadows from houses and trees

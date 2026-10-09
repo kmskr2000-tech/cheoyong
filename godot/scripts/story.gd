@@ -19,14 +19,18 @@ const TALK := {
 
 
 func on_enter(level: Node) -> void:
+	if Game.level_id != "beach":
+		Game.set_flag("flute")   # 백사장 이후에는 언제나 피리를 지니고 있다 (테스트 진입 대비)
 	match Game.level_id:
 		"beach":
 			if "--beach-fight" in OS.get_cmdline_user_args():  # test hook: straight to SC1-05
 				_test_fight(level)
 			elif not Game.flag("beach_done"):
 				_beach_wake(level)
+		"pyega2":
+			if not Game.flag("boss_done"):
+				_pyega2_enter(level)
 		"gyeongju":
-			Game.set_flag("flute")   # 백사장을 지나왔다면 이미 가지고 있다 (테스트 진입 대비)
 			Game.set_flag("arrived")
 			_gyeongju_enter(level)
 
@@ -40,6 +44,9 @@ func interact(level: Node, id: String) -> void:
 		"child":
 			await level.talk([{"name": "아이", "text": "형, 어젯밤에 이상한 노래가 들렸어!"}] if Game.flag("night")
 				else [{"name": "아이", "text": "…몸이 따뜻해졌어. 바닷소리가 났어."}])
+		"gwanri": _briefing(level)
+		"guardA", "guardB":
+			await level.talk([{"name": "포졸", "text": "밤마다 서쪽에서 개 짖는 소리가 나오. …사람 소리 같기도 하고."}])
 		"villagerC":
 			await level.talk([{"name": "기침하는 사내", "text": "콜록, 콜록… 관아 쪽으로 사람들이 몰려가오…"}] if Game.flag("night")
 				else TALK["villagerC"])
@@ -48,8 +55,10 @@ func interact(level: Node, id: String) -> void:
 
 
 func trigger(level: Node, id: String) -> void:
-	if id == "fight":
-		_fight(level)
+	match id:
+		"fight": _fight(level)
+		"close": _close(level)
+		"inner": _inner_room(level)
 
 
 # ================================================================ 1장 1-1 백사장 (SC1-01~04)
@@ -190,10 +199,18 @@ func _gyeongju_enter(level: Node) -> void:
 	if Game.flag("night"):
 		for id in DAY_PEOPLE:
 			level.npc(id).set_present(false)   # 밤: 다들 문을 걸어 잠갔다
-		if not Game.flag("summoned"):
+		if not Game.flag("nanyeong_fallen") or Game.flag("rescued"):
+			var nan: Npc = level.npc("nanyeong")   # 이제 처용의 아내: 집 앞에 있다
+			nan.set_present(true)
+			nan.position = level.lift(Vector2(196, 166))
+		if Game.flag("rescued") and not Game.flag("nanyeong_woke"):
+			_nanyeong_wakes(level)
+		elif not Game.flag("summoned"):
 			_night_summons(level)
 		else:
 			_open_road_to_gwana(level)
+		if Game.flag("briefed") and not Game.flag("rescued"):
+			level._exit([Rect2(0, 150, 6, 70), "pyega1", "start"])
 
 
 ## SC1-08: 약방 앞. 난영 첫 등장.
@@ -207,6 +224,8 @@ func _talk_nanyeong(level: Node) -> void:
 		])
 		Game.set_flag("met_nanyeong")
 		_show_sick_child(level)
+	elif Game.flag("night") and not Game.flag("rescued"):
+		await level.talk([{"name": "난영", "text": "다녀오시오. …바람에서 탁한 냄새가 나오."}])
 	elif not Game.flag("sang_child"):
 		await level.talk([{"name": "난영", "text": "탁한 기운이 그 집 마당에 고여 있소. 약으로 될 일이 아닌 것 같소."}])
 	else:
@@ -282,6 +301,13 @@ func _rest(level: Node) -> void:
 	p.stats_changed.emit(p.hp, p.max_hp, p.ki, p.max_ki)
 	Game.checkpoint = "gyeongju"
 	if Game.flag("sang_child") and not Game.flag("night"):
+		# 바이블 장면 5: 혼례까지는 길게 그리지 않는다 — 몇 개의 일상 컷
+		await Game.fade(1.0, 1.2)
+		for line in ["봄. 약방 마당에 도라지꽃이 피었다.",
+				"여름. 쉰 목에 난영이 길경차를 내왔다.\n처용은 묻지 않았고, 난영도 묻지 않았다.",
+				"가을. 두 사람은 조촐한 혼례를 올렸다."]:
+			await Game.card("", line, 2.2)
+		Game.set_flag("married")
 		Game.set_flag("night")
 		Game.save()
 		Game.change_level("gyeongju", "home", "그날 밤", "")
@@ -319,3 +345,151 @@ func _night_summons(level: Node) -> void:
 func _open_road_to_gwana(level: Node) -> void:
 	if Levels.DATA.has("gwana"):
 		level._exit([Rect2(632, 150, 8, 70), "gwana", "start"])
+
+
+# ================================================================ 1장 1-4 역병 조사와 폐가 (SC1-12~15)
+## SC1-12: 관아. 관리가 의뢰. 그리고 — 난영이 쓰러졌다는 소식.
+func _briefing(level: Node) -> void:
+	if Game.flag("briefed"):
+		await level.talk([{"name": "형방 박문", "text": "서쪽 폐가요. 해 뜨기 전에 다녀오시오."}])
+		return
+	var p: Node2D = level.get_node("Player")
+	await level.talk([
+		{"name": "형방 박문", "text": "급간 처용이오? 개운포 수령 영감의 천거로 왔다는…"},
+		{"name": "형방 박문", "text": "서쪽 폐가에서 역병이 시작됐다는 소문이오. 들어가 본 자가 없소."},
+		{"name": "처용", "text": "…가겠소."},
+	])
+	p.locked = true
+	var run: Npc = level.npc("runner")
+	run.set_present(true)
+	run.talkable = false
+	await run.walk_to(p.position + Vector2(-30, 6), 110.0)
+	await level.talk([
+		{"name": "약방 일꾼", "text": "급간 나리! 아씨가… 난영 아씨가 쓰러졌소!"},
+		{"name": "약방 일꾼", "text": "숨은 붙어 있는데, 아무리 불러도 깨어나질 않소!"},
+	])
+	p.locked = true
+	await level.get_tree().create_timer(0.8).timeout   # 처용은 말이 없다
+	Game.set_flag("briefed")
+	Game.set_flag("nanyeong_fallen")
+	Game.save()
+	p.locked = false
+
+
+## SC1-14: 탁기가 진해진다. 용패가 검게 울린다.
+func _close(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	var cam: Camera2D = p.get_node("Camera")
+	var tw := level.create_tween()
+	for i in 8:
+		tw.tween_property(cam, "offset", Vector2(randf_range(-2, 2), randf_range(-2, 2)), 0.04)
+	tw.tween_property(cam, "offset", Vector2.ZERO, 0.05)
+	level.hud.pulse_emblem(Color(0.1, 0.05, 0.15))
+	await tw.finished
+	await level.talk([{"name": "처용", "text": "…가깝다."}])
+
+
+func _pyega2_enter(level: Node) -> void:
+	var soul: Npc = level.npc("soul")
+	soul.talkable = false
+	soul.sprite.rotation = -PI / 2
+	soul.modulate = Color(0.6, 0.78, 1.4, 0.7)
+	var boss := PlagueGod.new()
+	boss.name = "Boss"
+	boss.position = level.lift(Vector2(650, 150))
+	level.add_child(boss)
+	boss.disguise()
+
+
+## SC1-15~17: 최심부. 사람 모습의 역신이 난영의 넋 곁에 앉아 있다.
+func _inner_room(level: Node) -> void:
+	var boss: PlagueGod = level.get_node_or_null("Boss")
+	if boss == null:
+		return
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	level.add_barrier(Rect2(492, 156, 22, 72))
+	var cam: Camera2D = p.get_node("Camera")
+	var tw := cam.create_tween()
+	tw.tween_property(cam, "offset", (boss.global_position - p.global_position) * 0.6, 1.0).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	await level.talk([
+		{"name": "역신", "text": "용의 아들이로구나. 냄새가 났다."},
+		{"name": "역신", "text": "네 아내의 넋은 달콤하더구나. 노래하는 자여, 네 노래가 병을 이기더냐?"},
+	])
+	p.locked = true
+	tw = cam.create_tween()
+	tw.tween_property(cam, "offset", Vector2.ZERO, 0.6).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	# SC1-17: 대답 없이 피리를 든다
+	p.locked = false
+	p.sing()
+	await level.get_tree().create_timer(1.2).timeout
+	boss.awaken()
+	if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the ending sequence
+		boss.hp = 20.0
+	level.hud.show_boss(boss, "역신(疫神)")
+	# falling here means trying the room again from the stair (the door is sealed behind him)
+	p.died.connect(func(): Game.change_level("pyega2", "start"), CONNECT_ONE_SHOT)
+	if "--boss-kneel" in OS.get_cmdline_user_args():  # test hook: skip straight to SC1-19
+		await level.get_tree().create_timer(1.0).timeout
+		boss.take_hit(9999, Vector2.ZERO)
+	boss.phase_two.connect(_boss_phase_two.bind(level, boss), CONNECT_ONE_SHOT)
+	boss.knelt.connect(_boss_knelt.bind(level), CONNECT_ONE_SHOT)
+	boss.defeated.connect(_boss_defeated.bind(level), CONNECT_ONE_SHOT)
+
+
+## SC1-18
+func _boss_phase_two(level: Node, boss: PlagueGod) -> void:
+	boss.state = "wait"
+	await level.talk([{"name": "역신", "text": "이럴 수가…! 노래가… 탁기를 걷어내다니!"}])
+	boss._begin("idle")
+
+
+## SC1-19: 무릎 꿇은 역신의 유언
+func _boss_knelt(level: Node) -> void:
+	await level.get_tree().create_timer(0.8).timeout
+	await level.talk([{"name": "역신", "text": "왕이… 오신다."}])
+	level.hud.guide("song")
+
+
+## SC1-20: 난영의 넋이 몸으로 돌아간다
+func _boss_defeated(level: Node) -> void:
+	level.hud.guide("")
+	var pl: Node = level.get_node("Player")
+	for c in pl.died.get_connections():
+		pl.died.disconnect(c["callable"])
+	Game.set_flag("boss_done")
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().create_timer(2.6).timeout
+	var soul: Npc = level.npc("soul")
+	var tw := soul.create_tween().set_parallel()
+	tw.tween_property(soul.sprite, "rotation", 0.0, 1.0)
+	tw.tween_property(soul, "position:y", soul.position.y - 18, 2.0).set_trans(Tween.TRANS_SINE)
+	tw.chain().tween_property(soul, "modulate", Color(0.9, 1.0, 1.6, 0.0), 1.2)
+	await tw.finished
+	Game.set_flag("rescued")
+	Game.checkpoint = "gyeongju"
+	Game.save()
+	Game.change_level("gyeongju", "home", "새벽", "")
+
+
+func _nanyeong_wakes(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	var nan: Npc = level.npc("nanyeong")
+	nan.talkable = false
+	nan.sprite.rotation = -PI / 2
+	nan.sprite.modulate = Color(0.75, 0.75, 0.8)
+	p.locked = true
+	p.position = nan.position + Vector2(-26, 4)
+	await level.get_tree().create_timer(1.6).timeout
+	var tw := nan.create_tween().set_parallel()
+	tw.tween_property(nan.sprite, "rotation", 0.0, 0.9).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(nan.sprite, "modulate", Color.WHITE, 0.9)
+	await tw.finished
+	await level.talk([{"name": "난영", "text": "…노래가 들렸소."}])
+	nan.talkable = true
+	Game.set_flag("nanyeong_woke")
+	p.locked = false
