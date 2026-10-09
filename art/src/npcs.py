@@ -162,6 +162,18 @@ BROTHER2_P = pal(h='#08080c', i='#12121a', j='#20202e', J='#323246',
                  d='#061614', e='#0c2622', f='#123a34', g='#1a5048', G='#246a5e',
                  r='#1a2a28', R='#2a423e', q='#3e625a', Q='#5a8a7e', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
 
+# 산신령: 산의 주인. 긴 흰 수염과 흰 눈썹, 바랜 흰 도포, 옹이진 지팡이 끝에 호리병.
+SANSIN = list(ELDER)
+for y, x, t in ((9, 12, 'J'), (9, 19, 'J'), (17, 14, 'ww'), (18, 15, 'w')):
+    put(SANSIN, y, x, t)
+for y in range(4, 45):
+    put(SANSIN, y, 25, 'y' if y > 8 else ('Y' if y > 5 else 'Q'))
+for y, x, t in ((2, 25, 'Z'), (3, 24, 'ZJZ'), (4, 24, 'YZY'), (5, 25, 'Y')):
+    put(SANSIN, y, x, t)
+SANSIN_P = pal(h='#8a8a96', i='#b4b4be', j='#d8d8e0', J='#f2f2f6',
+               d='#3a3e4a', e='#5a5e6c', f='#7e8292', g='#a4a8b6', G='#c8ccd6',
+               r='#3a5a2a', R='#5a8a3a', q='#8ab85a', Q='#b8e080', y='#3a2414', Y='#6a4422', Z='#9a6a3a')
+
 # One sheet per character (each has its own palette).
 SHEETS = {
     'npc_elder': (ELDER_P, {'idle': ELDER}),
@@ -176,6 +188,7 @@ SHEETS = {
     'npc_fisher': (FISHER_P, {'idle': FISHER}),
     'npc_child': (CHILD_P, {'idle': CHILD}),
     'npc_king': (KING_P, {'idle': KING}),
+    'npc_sansin': (SANSIN_P, {'idle': SANSIN}),
     'npc_dragonking': (DRAGONKING_P, {'idle': DRAGONKING}),
     'npc_brother1': (BROTHER1_P, {'idle': BROTHER1}),
     'npc_brother2': (BROTHER2_P, {'idle': BROTHER2}),

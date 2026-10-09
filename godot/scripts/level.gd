@@ -69,8 +69,15 @@ func _ready() -> void:
 	for tr in def.get("triggers", []):
 		add_trigger(tr[0], tr[1])
 	var enemies: Array = def.get("enemies", [])
-	if "--test-enemies" in OS.get_cmdline_user_args():
-		enemies = [["dog", 260, 270], ["ghoul", 330, 300]]
+	for a in OS.get_cmdline_user_args():
+		if a == "--test-enemies":
+			enemies = [["dog", 260, 270], ["ghoul", 330, 300]]
+		elif a.begins_with("--test-enemies="):  # e.g. --test-enemies=mama,egg_ghost (lined up in front of the spawn)
+			enemies = []
+			var ks := a.get_slice("=", 1).split(",")
+			var at: Vector2 = def["spawns"].get(Game.spawn_name, def["spawns"].values()[0])
+			for i in ks.size():
+				enemies.append([ks[i], at.x - (ks.size() - 1) * 30 + i * 60, at.y + 70])
 	for e in enemies:
 		spawn_enemy(e[0], Vector2(e[1], e[2]))
 	for ex in def.get("exits", []):
