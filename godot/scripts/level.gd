@@ -1,25 +1,8 @@
 extends Node2D
-## Test corner of the village: baked tiered ground (art/ground3d.py), voxel and hand-drawn props,
-## cold moonlit night, fog, spirit motes, ghost-fires and the HD-2D finishing pass.
+## A playable level built from Levels.DATA[Game.level_id]: baked tiered ground (art/ground3d.py),
+## voxel and hand-drawn props, NPCs, enemies, exits, lighting and the HD-2D finishing pass.
+## Story beats hook in through Story (story.gd).
 
-const LEVEL := "village"
-
-## [prop, x, y, light] — x,y = ground contact point in *footprint* coordinates (before the tier lift); light = [offset_y, colour, energy, scale] or null
-const PROPS := [
-	["house", 72, 108, [-6, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
-	["lantern", 160, 100, [-34, Color(1.0, 0.52, 0.18), 1.2, 1.0]],
-	["house", 560, 300, [-6, Color(1.0, 0.62, 0.3), 1.0, 0.9]],
-	["lantern", 282, 138, [-34, Color(1.0, 0.52, 0.18), 1.3, 1.1]],
-	["lantern", 440, 214, [-34, Color(1.0, 0.52, 0.18), 1.3, 1.1]],
-	["jangseung_m", 606, 154, null], ["jangseung_f", 606, 200, null],
-	["dodam", 470, 250, null], ["dodam", 400, 250, null],
-	["geumjul", 320, 330, null],
-	["seonang", 470, 330, [-60, Color(0.75, 0.35, 1.0), 0.7, 1.5]],
-	["cairn", 432, 344, null],
-	["sotdae", 580, 40, null], ["sotdae_s", 594, 36, null], ["sotdae", 608, 42, null],
-	["pine", 18, 60, null], ["pine", 236, 30, null], ["pine", 630, 60, null], ["pine", 520, 26, null],
-	["pine", 60, 340, null], ["pine", 630, 350, null], ["pine", 380, 356, null], ["pine", 220, 300, null],
-]
 ## occluder half-width / height for props that cast lantern shadows
 const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
 
@@ -27,58 +10,123 @@ var light_tex: Texture2D
 
 
 var meta := {}
+var def := {}
+var dialog: DialogBox
+var hud: Hud
+var npcs: Array[Npc] = []
+var interact_points: Array = [] # [{pos, id, label}]
 
 
 func _ready() -> void:
-	meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/levels/%s.json" % LEVEL))
+	def = Levels.DATA[Game.level_id]
+	meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/levels/%s.json" % def["ground"]))
 	light_tex = _radial(256)
 	_ground()
-	for p in PROPS:
+	for p in def.get("props", []):
 		_prop(p[0], lift(Vector2(p[1], p[2])), p[3])
 	_atmosphere()
 	var size: Array = meta["size"]
 	var tier: float = meta["tier"]
+	var player: Node2D = $Player
+	var sp: Vector2 = def["spawns"].get(Game.spawn_name, def["spawns"].values()[0])
+	player.position = lift(sp)
+	player.spawn = player.position
 	var cam: Camera2D = $Player/Camera
 	cam.limit_left = 0
 	cam.limit_top = int(-tier * 2)
 	cam.limit_right = int(size[0])
 	cam.limit_bottom = int(size[1] - tier)
-	for i in 4:
-		_wisp(lift(Vector2(470, 290)) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
-	_blob($Player, 10)
-	var boss_fight := "--boss" in OS.get_cmdline_user_args()
-	for e in ([] if boss_fight else [["dog", Vector2(260, 270)], ["dog", Vector2(540, 250)], ["ghoul", Vector2(330, 300)], ["ghoul", Vector2(150, 230)]]):
+	cam.reset_smoothing()
+	if def.has("wisps"):
+		for i in 4:
+			_wisp(lift(def["wisps"]) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
+	_blob(player, 10)
+	for n in def.get("npcs", []):
+		var npc := Npc.new()
+		npc.setup(n[0], n[1], n[4])
+		npc.position = lift(Vector2(n[2], n[3]))
+		add_child(npc)
+		npcs.append(npc)
+		_blob(npc, 9)
+	for it in def.get("interact", []):
+		interact_points.append({"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]})
+	var enemies: Array = def.get("enemies", [])
+	if "--test-enemies" in OS.get_cmdline_user_args():
+		enemies = [["dog", 260, 270], ["ghoul", 330, 300]]
+	for e in enemies:
 		var en := Enemy.new()
 		en.kind = e[0]
-		en.position = lift(e[1])
+		en.position = lift(Vector2(e[1], e[2]))
 		add_child(en)
+	for ex in def.get("exits", []):
+		_exit(ex)
 	hud = Hud.new()
 	add_child(hud)
-	hud.bind($Player)
+	hud.bind(player)
 	dialog = DialogBox.new()
 	add_child(dialog)
-	if boss_fight:
+	player.interact = _try_interact
+	if "--boss" in OS.get_cmdline_user_args():
 		var boss := PlagueGod.new()
 		boss.position = lift(Vector2(370, 190))
 		add_child(boss)
 		hud.show_boss(boss, "역신(疫神)")
 		if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the defeat sequence
 			boss.hp = 20.0
-	if "--dialog" in OS.get_cmdline_user_args():
-		_demo_dialog.call_deferred()
+	Story.on_enter(self)
 
 
-var dialog: DialogBox
-var hud: Hud
+# ---------------------------------------------------------------- interaction ("다가가면 버튼이 빛난다")
+const TALK_RANGE := 26.0
 
 
-func _demo_dialog() -> void:
+func nearest_interactable() -> Dictionary:
+	var p: Vector2 = $Player.global_position
+	var best := {}
+	var bd := TALK_RANGE
+	for n in npcs:
+		if n.visible and n.global_position.distance_to(p) < bd:
+			bd = n.global_position.distance_to(p)
+			best = {"id": n.id, "label": n.display_name, "node": n}
+	for it in interact_points:
+		if it["pos"].distance_to(p) < bd:
+			bd = it["pos"].distance_to(p)
+			best = it
+	return best
+
+
+func _physics_process(_d: float) -> void:
+	var target := nearest_interactable()
+	hud.set_talk(not target.is_empty() and not $Player.locked)
+
+
+func _try_interact() -> bool:
+	var target := nearest_interactable()
+	if target.is_empty():
+		return false
+	Story.interact(self, target["id"])
+	return true
+
+
+func _exit(ex: Array) -> void:
+	var r: Rect2 = ex[0]
+	var a := Area2D.new()
+	var col := CollisionShape2D.new()
+	var sh := RectangleShape2D.new()
+	sh.size = r.size
+	col.shape = sh
+	a.position = lift(r.get_center())
+	a.add_child(col)
+	a.body_entered.connect(func(b):
+		if b == $Player and not $Player.locked:
+			Game.change_level(ex[1], ex[2]))
+	add_child.call_deferred(a)
+
+
+## run a dialogue with the hero frozen
+func talk(lines: Array) -> void:
 	$Player.locked = true
-	await dialog.say([
-		{"name": "처용", "text": "바람에 비린내가 섞였다. 역병이 지나간 자리는 언제나 이렇게 조용하지."},
-		{"name": "촌주 박노인", "text": "나리, 동쪽 폐가에서 밤마다 아이 우는 소리가 납니다. 장승도 그 뒤로 눈을 감지 못합니다."},
-		"멀리서 보랏빛 귀화가 서낭나무 가지 사이를 맴돈다.",
-	])
+	await dialog.say(lines)
 	$Player.locked = false
 
 
@@ -96,14 +144,14 @@ func lift(p: Vector2) -> Vector2:
 func _ground() -> void:
 	var off: float = meta["offset"]
 	var g := Sprite2D.new()
-	g.texture = Tex.lit("res://assets/levels/%s.png" % LEVEL)
+	g.texture = Tex.lit("res://assets/levels/%s.png" % def["ground"])
 	g.centered = false
 	g.position = Vector2(0, -off)
 	g.z_index = -20
 	g.z_as_relative = false
 	add_child(g)
 	var w := Sprite2D.new()
-	w.texture = load("res://assets/levels/%s_water.png" % LEVEL)
+	w.texture = load("res://assets/levels/%s_water.png" % def["ground"])
 	w.centered = false
 	w.position = g.position
 	w.z_index = -19

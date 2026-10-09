@@ -44,7 +44,17 @@ func _ready() -> void:
 	_touch_root.add_child(_knob)
 	# buttons: [texture, action, centre, touch radius]
 	for b in [["attack", "attack", Vector2(430, 222), 30.0], ["roll", "roll", Vector2(384, 244), 22.0],
-			["talisman", "talisman", Vector2(400, 192), 22.0], ["menu", "pause", Vector2(462, 16), 16.0]]:
+			["talisman", "talisman", Vector2(394, 196), 22.0], ["song", "song", Vector2(438, 172), 22.0],
+			["menu", "pause", Vector2(462, 16), 16.0]]:
+		var ring := Sprite2D.new()  # glow behind the button, shown when it is the one to press
+		ring.texture = load("res://assets/ui/glow_ring.png")
+		ring.position = b[2]
+		ring.visible = false
+		var rm := CanvasItemMaterial.new()
+		rm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		ring.material = rm
+		_touch_root.add_child(ring)
+		_rings[b[0]] = ring
 		var tb := TouchScreenButton.new()
 		var tex: Texture2D = load("res://assets/ui/btn_%s.png" % b[0])
 		tb.texture_normal = tex
@@ -56,6 +66,24 @@ func _ready() -> void:
 		tb.position = b[2] - tex.get_size() / 2.0
 		tb.passby_press = true
 		_touch_root.add_child(tb)
+		_buttons[b[0]] = tb
+	# the 말하기 face laid over the attack button while something can be talked to
+	_talk = Sprite2D.new()
+	_talk.texture = load("res://assets/ui/btn_talk.png")
+	_talk.position = Vector2(430, 222)
+	_talk.visible = false
+	_touch_root.add_child(_talk)
+	_toast = Label.new()
+	_toast.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
+	_toast.add_theme_font_size_override("font_size", 12)
+	_toast.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06))
+	_toast.add_theme_constant_override("outline_size", 4)
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.position = Vector2(0, 54)
+	_toast.size = Vector2(480, 20)
+	_toast.modulate.a = 0.0
+	root.add_child(_toast)
+	Game.toast.connect(show_toast)
 	_pause_panel = _make_pause()
 	add_child(_pause_panel)
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -65,6 +93,57 @@ func _ready() -> void:
 
 
 var _pause_panel: Control
+var _buttons := {}
+var _rings := {}
+var _talk: Sprite2D
+var _talk_on := false
+var _guide := ""
+var _toast: Label
+var _toast_tw: Tween
+
+
+# ---------------------------------------------------------------- button guidance (BotW: 빛나는 버튼 하나)
+## light up one button and dim the rest ("" clears); the tutorial's only voice
+func guide(name: String) -> void:
+	_guide = name
+
+
+## something talkable is near: the attack button turns into 말하기 and glows
+func set_talk(on: bool) -> void:
+	_talk_on = on
+
+
+func _process(_d: float) -> void:
+	if not _touch_root.visible or _buttons.is_empty():
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	var lit := _guide
+	if lit == "" and _talk_on:
+		lit = "attack"
+	elif lit == "" and player and player.has_method("can_sing") and player.can_sing():
+		lit = "song"
+	_talk.visible = _talk_on
+	_buttons["attack"].modulate.a = 0.0 if _talk_on else 1.0
+	for k in _buttons:
+		var on: bool = k == lit
+		_rings[k].visible = on
+		if on:
+			var s := 1.0 + sin(t * 5.0) * 0.08
+			_rings[k].scale = Vector2(s, s) * (1.0 if k == "attack" else 0.8)
+			_rings[k].modulate.a = 0.65 + sin(t * 5.0) * 0.3
+		if k != "attack" or not _talk_on:
+			_buttons[k].modulate.a = 1.0 if (_guide == "" or on or k == "menu") else 0.35
+
+
+func show_toast(text: String, color: Color) -> void:
+	_toast.text = text
+	_toast.add_theme_color_override("font_color", color)
+	if _toast_tw:
+		_toast_tw.kill()
+	_toast_tw = create_tween()
+	_toast_tw.tween_property(_toast, "modulate:a", 1.0, 0.2)
+	_toast_tw.tween_interval(1.8)
+	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.5)
 
 
 func _make_pause() -> Control:

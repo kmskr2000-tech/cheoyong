@@ -15,7 +15,7 @@ var flags := {}
 var money := 50
 var items := {"insam": 2, "gugija": 1, "jeonghwa": 0}
 var checkpoint := "village"
-var level_id := "village"
+var level_id := "gyeongju"
 var spawn_name := "start"
 var _fade: ColorRect
 var _busy := false
@@ -100,4 +100,4 @@ func new_game() -> void:
 
 ## where a fresh start / continue / death puts you
 func checkpoint_spawn() -> Array:
-	return ["dungeon1", "entrance"] if checkpoint == "dungeon" else ["village", "start"]
+	return ["dungeon1", "entrance"] if checkpoint == "dungeon" else ["gyeongju", "start"]

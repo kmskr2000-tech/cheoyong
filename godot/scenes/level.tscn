@@ -1,9 +1,9 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/player.tscn" id="1"]
-[ext_resource type="Script" path="res://scripts/village_test.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/level.gd" id="2"]
 
-[node name="Main" type="Node2D"]
+[node name="Level" type="Node2D"]
 y_sort_enabled = true
 script = ExtResource("2")
 

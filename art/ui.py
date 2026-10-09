@@ -299,6 +299,62 @@ ICON_MENU = [
 ]
 
 
+ICON_SONG = [  # 처용가: the 대금 at the lips, notes rising
+    '..........c.....',
+    '.........cC..c..',
+    '.........c..cC..',
+    '.......ccc..c...',
+    '.......CCc.cc...',
+    '...........CC...',
+    '................',
+    '..oooooooooooo..',
+    '.oGyGyGyGyGyGyo.',
+    '.oGGGGGGGGGGGGo.',
+    '..oooooooooooo..',
+    '................',
+    '..r.r.r.r.r.r...',
+    '................',
+    '................',
+    '................',
+]
+ICON_TALK = [  # speech bubble with three dots
+    '................',
+    '...oooooooooo...',
+    '..oPPPPPPPPPPo..',
+    '.oPPPPPPPPPPPPo.',
+    '.oPPoPPoPPoPPPo.',
+    '.oPPPPPPPPPPPPo.',
+    '..oPPPPPPPPPPo..',
+    '...oooPPoooo....',
+    '.....oPo........',
+    '.....oo.........',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+]
+
+
+def glow_ring(size=56):
+    """Pulsing pearl halo drawn behind the one button the player should press now."""
+    im = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    p = im.load()
+    c = (size - 1) / 2
+    for y in range(size):
+        for x in range(size):
+            d = ((x - c) ** 2 + (y - c) ** 2) ** 0.5
+            band = abs(d - (c - 3))
+            if band < 1.0:
+                p[x, y] = PEARL[2]
+            elif band < 2.2:
+                p[x, y] = PEARL[3][:3] + (170,)
+            elif band < 3.6:
+                p[x, y] = PEARL[0][:3] + (70,)
+    im.save(OUT / 'glow_ring.png')
+
+
 def stick():
     """Virtual joystick: brass ring base (translucent lacquer) and a pearl knob."""
     S = 56
@@ -340,6 +396,9 @@ def hud():
     button('roll', ICON_ROLL, ICON_PAL, 34)
     button('talisman', ICON_TALISMAN, ICON_PAL, 34)
     button('menu', ICON_MENU, ICON_PAL, 24)
+    button('song', ICON_SONG, ICON_PAL, 34)
+    button('talk', ICON_TALK, ICON_PAL, 44)
+    glow_ring()
 
 
 if __name__ == '__main__':

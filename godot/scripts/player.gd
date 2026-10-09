@@ -5,6 +5,7 @@ extends CharacterBody2D
 signal hit_landed(target: Node2D)
 signal stats_changed(hp: float, max_hp: float, ki: float, max_ki: float)
 signal died
+signal sang(purified: int)
 
 const SPEED := 72.0
 const FRAME := Vector2i(32, 48)
@@ -51,6 +52,10 @@ var ki := 100.0
 const KI_REGEN := 6.0 # per second
 const TALISMAN_COST := 35.0
 var spawn := Vector2.ZERO
+var interact: Callable          # level hook: returns true if something was talked to / examined
+var gentle_hits := 0            # tutorial: the next N hits only knock back (no damage)
+const SONG_TIME := 1.1
+const SONG_RANGE := 90.0
 
 
 func _ready() -> void:
@@ -96,18 +101,23 @@ func _physics_process(delta: float) -> void:
 		return
 	if not locked and Input.is_action_just_pressed("talisman") and state == "move":
 		_talisman()
+	if not locked and Input.is_action_just_pressed("song") and state == "move":
+		_start_song()
 	if not locked and Input.is_action_just_pressed("roll") and state != "roll":
 		_start_roll(dir)
 	elif not locked and Input.is_action_just_pressed("attack"):
 		if state == "attack":
 			queued = true
 		elif state == "move":
+			if interact.is_valid() and interact.call():
+				return
 			combo = 0
 			_start_attack()
 	match state:
 		"move": _move(dir)
 		"attack": _attack(delta)
 		"roll": _roll(delta)
+		"song": _song(delta)
 
 
 func _move(dir: Vector2) -> void:
@@ -248,6 +258,9 @@ func hurt(dmg: int, dir: Vector2) -> void:
 	if invuln or hurt_t > 0.0 or state == "dead":
 		return
 	hurt_t = 0.6
+	if gentle_hits > 0:
+		gentle_hits -= 1  # 벌 없이 배운다: early hits only push him back
+		dmg = 0
 	hp = maxf(0.0, hp - dmg)
 	stats_changed.emit(hp, max_hp, ki, max_ki)
 	if hp <= 0.0:
@@ -290,6 +303,94 @@ func _respawn() -> void:
 	state = "move"
 	hurt_t = 1.0
 	stats_changed.emit(hp, max_hp, ki, max_ki)
+
+
+# ---------------------------------------------------------------- 처용가 (the purifying song)
+## true when something nearby lies in 탁기 waiting to be sung clean
+func can_sing() -> bool:
+	for d in get_tree().get_nodes_in_group("downed"):
+		if d.global_position.distance_to(global_position) < SONG_RANGE:
+			return true
+	return false
+
+
+func _start_song() -> void:
+	_end_attack()
+	state = "song"
+	t = 0.0
+	velocity = Vector2.ZERO
+	var row := "right" if facing == "left" else facing
+	sprite.play(row + "_attack")
+	# the 대금 held level at the lips
+	arm.visible = true
+	arm.position = (SHOULDER[facing][0] as Vector2) + Vector2(0, -4)
+	arm.rotation = 0.0 if facing != "left" else PI
+	arm.flip_v = facing == "left"
+	arm.z_index = SHOULDER[facing][1]
+	_song_t = 0.0
+
+
+var _song_t := 0.0
+const OBANG := [Color(0.35, 0.55, 1.0), Color(1.0, 0.3, 0.25), Color(1.0, 0.85, 0.3), Color(0.95, 0.95, 1.0), Color(0.3, 0.9, 0.6)]
+
+
+func _song(delta: float) -> void:
+	_song_t -= delta
+	if _song_t <= 0.0:
+		_song_t = 0.2
+		_note()
+	if t >= SONG_TIME:
+		# 오방색 ripples spread out and every 탁기-wreathed body nearby is sung clean
+		for i in 5:
+			_ripple(OBANG[i], i * 0.08)
+		var n := 0
+		for d in get_tree().get_nodes_in_group("downed"):
+			if d.global_position.distance_to(global_position) < SONG_RANGE:
+				d.purify()
+				n += 1
+		arm.visible = false
+		state = "move"
+		sang.emit(n)
+
+
+func _note() -> void:
+	var nt := Sprite2D.new()
+	nt.texture = load("res://assets/fx/spark.png")
+	nt.hframes = 3
+	nt.frame = 0
+	nt.material = slash.material
+	nt.modulate = OBANG[randi() % 5]
+	nt.position = position + Vector2(randf_range(-8, 8) + (10 if facing == "right" else -10 if facing == "left" else 0), -30)
+	nt.z_index = 41
+	nt.z_as_relative = false
+	get_parent().add_child(nt)
+	var tw := nt.create_tween().set_parallel()
+	tw.tween_property(nt, "position", nt.position + Vector2(randf_range(-10, 10), -28), 0.9)
+	tw.tween_property(nt, "modulate:a", 0.0, 0.9)
+	tw.chain().tween_callback(nt.queue_free)
+
+
+func _ripple(col: Color, delay: float) -> void:
+	var ring := Line2D.new()
+	ring.width = 2.0
+	ring.default_color = col
+	ring.material = slash.material
+	ring.z_index = 40
+	ring.z_as_relative = false
+	ring.position = Vector2(0, -4)
+	add_child(ring)
+	# grow the radius, not the node scale (scale would fatten the line into a disc)
+	var grow := func(r: float) -> void:
+		var pts := PackedVector2Array()
+		for i in 33:
+			pts.append(Vector2.from_angle(i * TAU / 32) * Vector2(r, r * 0.55))
+		ring.points = pts
+	grow.call(4.0)
+	var tw := ring.create_tween()
+	tw.tween_interval(delay)
+	tw.tween_method(grow, 4.0, SONG_RANGE, 0.7).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(ring, "modulate:a", 0.0, 0.75)
+	tw.tween_callback(ring.queue_free)
 
 
 # ---------------------------------------------------------------- 정화부 (talisman burst)

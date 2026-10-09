@@ -9,6 +9,7 @@ extends CharacterBody2D
 
 signal hp_changed(hp: float, max_hp: float)
 signal defeated
+signal knelt
 
 const CELL := Vector2i(56, 76)
 const MAX_HP := 600.0
@@ -98,7 +99,7 @@ func _physics_process(delta: float) -> void:
 	flash = maxf(0.0, flash - delta)
 	knock = knock.move_toward(Vector2.ZERO, 500.0 * delta)
 	sprite.modulate = Color(2.4, 2.4, 2.4) if flash > 0.0 else Color.WHITE
-	if state == "dead" or target == null:
+	if state == "dead" or state == "kneel" or target == null:
 		return
 	var to := target.global_position - global_position
 	var d := to.length()
@@ -293,7 +294,7 @@ func _clear_tells() -> void:
 
 # ---------------------------------------------------------------- taking hits
 func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
-	if state == "dead":
+	if state == "dead" or state == "kneel":
 		return
 	hp -= dmg
 	flash = 0.08
@@ -304,6 +305,25 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 		_ring(position, 90.0, Color(0.7, 1.0, 0.5))
 		sprite.self_modulate = Color(1.1, 1.25, 1.0)
 	if hp <= 0.0:
+		_kneel()
+
+
+## 무릎 꿇는 자: at 0 HP the god sinks to its knees; only the song ends it (purify()).
+func _kneel() -> void:
+	state = "kneel"
+	_clear_tells()
+	remove_from_group("enemy")
+	add_to_group("downed")
+	for e in get_tree().get_nodes_in_group("enemy"):
+		e.take_hit(999, Vector2.ZERO)
+	sprite.play("hurt")
+	sprite.position.y = 8.0
+	knelt.emit()
+
+
+func purify() -> void:
+	if state == "kneel":
+		remove_from_group("downed")
 		_defeat()
 
 
@@ -311,8 +331,8 @@ func _defeat() -> void:
 	state = "dead"
 	_clear_tells()
 	remove_from_group("enemy")
-	for e in get_tree().get_nodes_in_group("enemy"):
-		e.take_hit(999, Vector2.ZERO)
+	for e in get_tree().get_nodes_in_group("downed"):
+		e.purify()
 	defeated.emit()
 	sprite.play("hurt")
 	var tw := create_tween()

@@ -47,5 +47,5 @@ func _process(_delta: float) -> void:
 		return
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out)
-	print("captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size())
+	print("captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size())
 	get_tree().quit()
