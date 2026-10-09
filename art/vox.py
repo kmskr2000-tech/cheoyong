@@ -21,7 +21,7 @@ def hx(h):
 
 
 INK = hx('#07060b')
-L = np.array([-0.55, -0.35, 0.76]); L = L / np.linalg.norm(L)  # key light: upper left, high
+L = np.array([-0.68, -0.38, 0.62]); L = L / np.linalg.norm(L)  # key light: upper left, high
 
 
 class Mat:
@@ -52,97 +52,108 @@ class Vox:
     def box(self, x0, y0, z0, x1, y1, z1, mi):
         self.m[x0:x1, y0:y1, z0:z1] = mi
 
-    def render(self, name, anchor_y=None):
+    def render(self, name, contrast=3.6):
+        """Vectorised: march every screen pixel's diagonal ray one z-slice at a time."""
         X, Y, Z = self.X, self.Y, self.Z
         f = self.m > 0
         top_vis = f & ~np.concatenate([f[:, :, 1:], np.zeros((X, Y, 1), bool)], axis=2)
         front_vis = f & ~np.concatenate([f[:, 1:, :], np.zeros((X, 1, Z), bool)], axis=1)
-        # smooth normals from blurred occupancy
+        # smooth occupancy for wall / side normals
         occ = f.astype(np.float32)
-        for _ in range(5):
-            o = occ.copy()
+        for _ in range(4):
+            o = occ * 2
             for ax in range(3):
-                o = (np.roll(o, 1, ax) + o * 2 + np.roll(o, -1, ax)) / 4
-            occ = o
+                o = o + np.roll(occ, 1, ax) + np.roll(occ, -1, ax)
+            occ = o / 8
         gx = np.roll(occ, -1, 0) - np.roll(occ, 1, 0)
         gy = np.roll(occ, -1, 1) - np.roll(occ, 1, 1)
         gz = np.roll(occ, -1, 2) - np.roll(occ, 1, 2)
-        # top surfaces: clean normals from the (smoothed) height field of each column
+        # top surfaces: clean normals from the smoothed height field of each column
         hm = np.where(f.any(axis=2), Z - np.argmax(f[:, :, ::-1], axis=2), 0).astype(np.float32)
-        for _ in range(2):
+        for _ in range(5):
             hm = (np.roll(hm, 1, 0) + np.roll(hm, -1, 0) + np.roll(hm, 1, 1) + np.roll(hm, -1, 1) + hm * 4) / 8
         hdx = (np.roll(hm, -1, 0) - np.roll(hm, 1, 0)) * 0.5
         hdy = (np.roll(hm, -1, 1) - np.roll(hm, 1, 1)) * 0.5
+
         H = Y + Z
+        R = np.arange(H)[:, None] - Z           # world row r = y - z for each screen row
+        XX = np.broadcast_to(np.arange(X)[None, :], (H, X))
+        hx_ = np.full((H, X), -1); hy_ = np.full((H, X), -1); hz_ = np.full((H, X), -1)
+        face = np.zeros((H, X), np.int8)
+        done = np.zeros((H, X), bool)
+        for z in range(Z - 1, -1, -1):
+            for fc, yy, vis in ((0, R + z + 1, top_vis), (1, R + z, front_vis)):
+                yy = np.broadcast_to(yy, (H, X))
+                ok = (~done) & (yy >= 0) & (yy < Y)
+                hitm = np.zeros((H, X), bool)
+                hitm[ok] = vis[XX[ok], yy[ok], z]
+                hx_[hitm] = XX[hitm]; hy_[hitm] = yy[hitm]; hz_[hitm] = z; face[hitm] = fc
+                done |= hitm
+        sel = done
+        vx, vy, vz = hx_[sel], hy_[sel], hz_[sel]
+        fc = face[sel]
+        # normals
+        nt = np.stack([-hdx[vx, vy], -hdy[vx, vy], np.ones_like(vx, np.float32)], 1)
+        nf = -np.stack([gx[vx, vy, vz], gy[vx, vy, vz], gz[vx, vy, vz]], 1)
+        nf = nf / (np.linalg.norm(nf, axis=1, keepdims=True) + 1e-6) * 0.6 + np.array([0, 0.4, 0])
+        n = np.where(fc[:, None] == 0, nt, nf)
+        n = n / np.linalg.norm(n, axis=1, keepdims=True)
+        lam = n @ L
+        # ambient occlusion from voxels just above / in front
+        ao = np.zeros(len(vx), np.float32)
+        for dx, dy, dz in ((0, 0, 1), (0, 1, 0), (0, 0, 2), (0, 2, 0), (0, 0, 3)):
+            ax_, ay_, az_ = vx + dx, vy + dy, vz + dz
+            ok = (ax_ < X) & (ay_ < Y) & (az_ < Z)
+            v = np.zeros(len(vx), bool)
+            v[ok] = f[ax_[ok], ay_[ok], az_[ok]]
+            ao += v
+        mi = self.m[vx, vy, vz]
+        base = np.array([0.0] + [m.base for m in self.mats[1:]], np.float32)[mi]
+        tone = 1.6 + lam * contrast - ao * 0.4 + np.where(fc == 1, 1.0, 0.0) + self.tone[vx, vy, vz] + base + (vz / Z) * 0.7
         img = np.zeros((H, X, 4), np.uint8)
         nimg = np.zeros((H, X, 4), np.uint8)
         gimg = np.zeros((H, X, 4), np.uint8)
+        cols = np.zeros((len(vx), 4), np.uint8); cols[:, 3] = 255
+        glows = np.zeros((len(vx), 4), np.uint8)
+        for k, m in enumerate(self.mats):
+            if m is None:
+                continue
+            idx = mi == k
+            if not idx.any():
+                continue
+            ramp = np.array(m.ramp, np.uint8)
+            t = np.clip(np.round(tone[idx]), 0, len(ramp) - 1).astype(int)
+            if m.glow:
+                t = np.clip(2 + self.tone[vx[idx], vy[idx], vz[idx]].astype(int), 0, len(ramp) - 1)
+                glows[idx, :3] = ramp[t]; glows[idx, 3] = 255
+            cols[idx, :3] = ramp[t]
+        img[sel] = cols
+        gimg[sel] = glows
+        # screen-space normal: right = +X, up = (0,-1,1)/sqrt2, out = (0,1,1)/sqrt2
+        sn = np.stack([n[:, 0], (n[:, 2] - n[:, 1]) * 0.7071, (n[:, 1] + n[:, 2]) * 0.7071], 1)
+        sn = sn / np.linalg.norm(sn, axis=1, keepdims=True)
+        nimg[sel, :3] = ((sn * 0.5 + 0.5) * 255).astype(np.uint8); nimg[sel, 3] = 255
+        # ink: silhouette, and the far side of every depth jump (eaves, posts, steps)
         close = np.full((H, X), -1, np.int32)
-        hit = [[None] * X for _ in range(H)]
-        for r in range(-Z, Y):
-            row = r + Z  # screen row
-            for x in range(X):
-                for z in range(Z - 1, -1, -1):
-                    yt = r + z + 1
-                    if 0 <= yt < Y and top_vis[x, yt, z]:
-                        hit[row][x] = (x, yt, z, 0); close[row, x] = yt + z; break
-                    yf = r + z
-                    if 0 <= yf < Y and front_vis[x, yf, z]:
-                        hit[row][x] = (x, yf, z, 1); close[row, x] = yf + z; break
-        for row in range(H):
-            for x in range(X):
-                h = hit[row][x]
-                if h is None:
-                    continue
-                vx, vy, vz, face = h
-                mat = self.mats[self.m[vx, vy, vz]]
-                if face == 0:
-                    n = np.array([-hdx[vx, vy], -hdy[vx, vy], 1.0])
-                else:
-                    n = -np.array([gx[vx, vy, vz], gy[vx, vy, vz], gz[vx, vy, vz]])
-                    n = n / (np.linalg.norm(n) + 1e-6) * 0.6 + np.array([0, 0.4, 0])
-                n = n / np.linalg.norm(n)
-                lam = float(np.dot(n, L))
-                # ambient occlusion: crowded neighbourhood above / in front darkens
-                ao = 0.0
-                for dx, dy, dz in ((0, 0, 1), (0, 1, 0), (0, 0, 2), (0, 2, 0)):
-                    ax_, ay_, az_ = vx + dx, vy + dy, vz + dz
-                    if 0 <= ax_ < X and 0 <= ay_ < Y and 0 <= az_ < Z and f[ax_, ay_, az_]:
-                        ao += 1
-                tone = 1.9 + lam * 3.4 - ao * 0.45 + (1.1 if face == 1 else 0) + self.tone[vx, vy, vz] + mat.base
-                tone += (vz / Z) * 0.6  # higher parts catch more moonlight
-                col = mat.ramp[max(0, min(len(mat.ramp) - 1, int(round(tone))))]
-                img[row, x] = col + [255]
-                # screen-space normal: right = +X, up = (0,-1,1)/√2, out = (0,1,1)/√2
-                sn = np.array([n[0], (n[2] - n[1]) * 0.7071, (n[1] + n[2]) * 0.7071])
-                sn = sn / np.linalg.norm(sn)
-                nimg[row, x] = [int((sn[0] * 0.5 + 0.5) * 255), int((sn[1] * 0.5 + 0.5) * 255), int((sn[2] * 0.5 + 0.5) * 255), 255]
-                if mat.glow:
-                    gimg[row, x] = mat.ramp[min(len(mat.ramp) - 1, 2 + int(self.tone[vx, vy, vz]))] + [255]
-                    img[row, x] = gimg[row, x]
-        # ink: silhouette, and the far side of every depth jump (separates eaves, posts, steps)
+        close[sel] = vy + vz
         out = img.copy()
-        for row in range(H):
-            for x in range(X):
-                c = close[row, x]
-                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                    rr, cc = row + dr, x + dc
-                    if not (0 <= rr < H and 0 <= cc < X):
-                        continue
-                    c2 = close[rr, cc]
-                    if c < 0 and c2 >= 0:
-                        out[row, x] = INK + [255]; break
-                    if c >= 0 and c2 >= 0 and c2 - c > 4 and not np.any(gimg[row, x]):
-                        out[row, x] = INK + [255]; break
-        # trim empty rows at the top
+        ink = np.zeros((H, X), bool)
+        for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            nb = np.full((H, X), -1, np.int32)
+            ys = slice(max(0, dr), H + min(0, dr)); yd = slice(max(0, -dr), H + min(0, -dr))
+            xs = slice(max(0, dc), X + min(0, dc)); xd = slice(max(0, -dc), X + min(0, -dc))
+            nb[yd, xd] = close[ys, xs]
+            ink |= (close < 0) & (nb >= 0)
+            ink |= (close >= 0) & (nb >= 0) & (nb - close > 4) & (gimg[:, :, 3] == 0)
+        out[ink] = INK + [255]
         rows = np.where(out[:, :, 3].max(axis=1) > 0)[0]
-        r0 = rows.min()
-        r1 = anchor_y if anchor_y is not None else rows.max() + 1
+        r0, r1 = rows.min(), rows.max() + 1
         Image.fromarray(out[r0:r1]).save(OUT / f'{name}.png')
         Image.fromarray(nimg[r0:r1]).save(OUT / f'{name}_n.png')
         if gimg[:, :, 3].any():
             Image.fromarray(gimg[r0:r1]).save(OUT / f'{name}_glow.png')
         print(f'{name}: {X}x{r1 - r0}')
+        return r1 - r0
 
 
 def noise3(shape, seed, scale):
@@ -207,7 +218,7 @@ def house():
     rx, ry = 52, 30
     rcy = (y0 + y1) / 2 + 1
     r = (np.abs((gx + 0.5 - cx) / rx) ** 3 + np.abs((gy + 0.5 - rcy) / ry) ** 3) ** (1 / 3)
-    top = 40 + 32 * np.clip(1 - r ** 2.6, 0, 1) ** 0.7
+    top = 40 + 34 * np.clip(1 - r ** 1.7, 0, 1) ** 0.85
     bottom = np.where(r > 0.8, 37 + (r - 0.8) * 6, 41)
     roof = (r <= 1) & (gz >= bottom) & (gz <= top)
     straw = noise3((X, Y, Z), 11, 3) * 0.9 - 0.45
@@ -223,9 +234,144 @@ def house():
     v.render('house')
 
 
+GRASS = Mat(['#0b1416', '#112022', '#18302e', '#22423a', '#355a46', '#4f7656'])
+PINEM = Mat(['#08100e', '#0e1a16', '#152620', '#1e352a', '#2a4836', '#3c5e44'])
+REDWOOD = Mat(['#2a0a0e', '#4e1218', '#7a1e20', '#a32e28', '#c8483a', '#e0644a'])
+
+
+def courses(v, mask, mi, seed, block=(14, 8), relief=True):
+    """Dress a solid mask as dry-stone courses: staggered blocks, dark joints, per-block shade,
+    and a few blocks pushed out a voxel so the wall face has real relief."""
+    rng = np.random.default_rng(seed)
+    gx, gy, gz = v.grid()
+    row = gz // block[1]
+    off = (row * 7) % block[0]
+    col = (gx + off) // block[0] + (gy // block[0]) * 101
+    bid = row * 1000 + col
+    shade = rng.random(int(bid.max()) + 1) * 1.3 - 0.65
+    joint = ((gz % block[1]) == 0) | (((gx + off) % block[0]) == 0)
+    v.fill(mask, mi)
+    v.tone[mask] = shade[bid[mask]] + np.where(joint[mask], -1.8, 0)
+    v.tone[mask & ((gz % block[1]) == 1)] += 0.7  # lit upper lip of each course
+    return bid
+
+
+def terrace():
+    """석축 terrace: front wall with a stair cut into it, plus the east wall running back."""
+    FOOT, W, HGT, T = 150, 250, 36, 8
+    X, Y, Z = W, FOOT + 2, HGT + 6
+    v = Vox(X, Y, Z)
+    st, gr = v.mat(STONE), v.mat(GRASS)
+    gx, gy, gz = v.grid()
+    front = (gx < 248) & (gy >= FOOT - T) & (gy < FOOT) & (gz < HGT)
+    east = (gx >= 240) & (gx < 248) & (gy >= HGT) & (gy < FOOT) & (gz < HGT)
+    bid = courses(v, front | east, st, 7)
+    rng = np.random.default_rng(3)
+    push = rng.random(int(bid.max()) + 1) > 0.8
+    out_front = (gx < 248) & (gy == FOOT) & (gz < HGT - 2) & push[np.clip(bid, 0, len(push) - 1)] & ((gz % 8) != 0)
+    v.fill(out_front, st, 0.4)
+    # grass lip spilling over the coping
+    lip = (front | east) & (gz >= HGT - 2)
+    v.fill(lip, gr, (np.random.default_rng(5).random((X, Y, Z)) * 1.2).astype(np.float32))
+    hang = (gx < 248) & (gy == FOOT - 1 + 1) & (gz >= HGT - 4) & (gz < HGT - 2) & (np.random.default_rng(6).random((X, Y, Z)) > 0.55)
+    v.fill(hang, gr, -0.5)
+    # stone stair cut into the wall
+    v.m[152:184, FOOT - 48:FOOT + 1, :] = 0
+    for k in range(6):
+        y1 = FOOT + 1 - k * 7
+        v.box(152, y1 - 7, 0, 184, y1, (k + 1) * 6, st)
+        v.tone[152:184, y1 - 7:y1, (k + 1) * 6 - 1] = 1.0
+    v.render('terrace', contrast=3.0)
+
+
+def lantern():
+    """석등: plinth, lotus base, shaft, fire chamber with glowing windows, flared roof, jewel finial."""
+    X, Y, Z = 24, 24, 50
+    v = Vox(X, Y, Z)
+    st, gl = v.mat(STONE), v.mat(GLOW)
+    gx, gy, gz = v.grid()
+    cx, cy = 12, 12
+    d = np.sqrt((gx + 0.5 - cx) ** 2 + (gy + 0.5 - cy) ** 2)
+    v.fill((np.abs(gx + 0.5 - cx) < 9) & (np.abs(gy + 0.5 - cy) < 8) & (gz < 4), st, -0.2)
+    v.fill((d < 6.5 - (gz - 4) * 0.5) & (gz >= 4) & (gz < 8), st, 0.3)   # lotus base
+    v.fill((d < 2.6) & (gz >= 8) & (gz < 24), st)                       # shaft
+    v.fill((d < 6) & (gz >= 24) & (gz < 26), st, 0.4)                  # chamber floor
+    box = (np.abs(gx + 0.5 - cx) < 5.5) & (np.abs(gy + 0.5 - cy) < 4.5) & (gz >= 26) & (gz < 36)
+    v.fill(box, st)
+    win = box & (np.abs(gx + 0.5 - cx) < 4) & (gz >= 27) & (gz < 35)
+    v.fill(win & (gy >= cy + 3), gl, 1)                                 # front window
+    v.fill(win & (np.abs(gx + 0.5 - cx) < 0.6), st)                    # mullion
+    for zz in range(36, 44):                                            # flared roof
+        half = 9 - (zz - 36) * 1.1 + (1.2 if zz < 38 else 0)
+        v.fill((np.abs(gx + 0.5 - cx) < half) & (np.abs(gy + 0.5 - cy) < half * 0.85) & (gz == zz), st, 0.3 if zz < 38 else 0)
+    v.fill((d < 1.8) & (gz >= 44) & (gz < 48), st, 0.6)
+    v.render('lantern', contrast=3.4)
+
+
+def jangseung(name, red):
+    """장승: a carved pole taller than a man; the top third is one huge fierce face under a tall 관모."""
+    X, Y, Z = 22, 22, 84
+    v = Vox(X, Y, Z)
+    wd = v.mat(REDWOOD if red else WOOD)
+    pole = v.mat(WOOD)
+    hat = v.mat(Mat(['#0c0a10', '#17141e', '#24202e', '#353044', '#4a4560']))
+    pw, ink = v.mat(PAPER), v.mat(Mat(['#07060b', '#07060b', '#0e0a10']))
+    gx, gy, gz = v.grid()
+    cx, cy = 11, 11
+    d = np.sqrt((gx + 0.5 - cx) ** 2 + (gy + 0.5 - cy) ** 2)
+    v.fill((d < 5) & (gz < 50), pole, (np.sin(gz * 0.9 + gx) * 0.4).astype(np.float32))
+    head = (d < 7.2) & (gz >= 46) & (gz < 72)
+    v.fill(head, wd)
+    v.fill((d < 8.5) & (gz >= 72) & (gz < 74), hat)          # brim
+    v.fill((d < 5.2) & (gz >= 74) & (gz < 79), hat, 0.5)     # 관모 crown
+
+    def face(x0, x1, z0, z1, m, t=0.0):
+        # carve onto the frontmost surface voxel of each (x, z) column of the round head
+        for x in range(x0, x1):
+            for z in range(z0, z1):
+                ys = np.nonzero(v.m[x, :, z])[0]
+                if len(ys):
+                    v.m[x, ys.max(), z] = m
+                    v.tone[x, ys.max(), z] = t
+    face(4, 10, 62, 67, pw, 1); face(12, 18, 62, 67, pw, 1)   # huge staring eyes
+    face(6, 9, 63, 66, ink); face(13, 16, 63, 66, ink)
+    face(3, 10, 68, 70, ink); face(12, 19, 68, 70, ink)       # brows slashing up
+    face(10, 12, 56, 62, wd, 1.4)                             # long nose ridge
+    face(9, 13, 55, 57, wd, 0.6)
+    face(4, 18, 50, 53, ink)                                  # wide grimace
+    face(4, 6, 48, 54, pw, 1.2); face(16, 18, 48, 54, pw, 1.2)  # fangs
+    face(8, 14, 52, 53, pw, 0.6)                              # teeth
+    groove = (gy >= cy + 4) & (d < 5) & (gz < 44) & (gz > 6) & ((gz % 5) < 2) & (np.abs(gx + 0.5 - cx) < 1.6)
+    v.tone[groove] -= 1.6
+    v.render(name, contrast=3.2)
+
+
+def dodam(name, length):
+    """돌담: rounded field stones stacked dry, grass growing along the top."""
+    X, Y, Z = length + 4, 16, 24
+    v = Vox(X, Y, Z)
+    st, gr = v.mat(STONE), v.mat(GRASS)
+    gx, gy, gz = v.grid()
+    rng = np.random.default_rng(length)
+    z = 0
+    while z < 18:
+        x = -rng.integers(0, 6)
+        while x < length:
+            rx, rz = rng.integers(4, 7), rng.integers(3, 5)
+            cxs, czs = x + rx + 2, z + rz
+            blob = (((gx + 0.5 - cxs) / rx) ** 2 + ((gy + 0.5 - 8) / 5.5) ** 2 + ((gz + 0.5 - czs) / rz) ** 2) < 1
+            v.fill(blob & (v.m == 0), st, float(rng.random() * 1.2 - 0.4))
+            x += rx * 2 - 1
+        z += 6
+    top = (v.m > 0) & (gz >= 17)
+    v.fill(top & (np.random.default_rng(2).random((X, Y, Z)) > 0.35), gr, 0.5)
+    v.render(name, contrast=3.4)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    house()
+    house(); terrace(); lantern(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
+    dodam('dodam', 64)
 
 
 if __name__ == '__main__':

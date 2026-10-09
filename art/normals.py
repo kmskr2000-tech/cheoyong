@@ -12,7 +12,7 @@ from PIL import Image
 
 GODOT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets'
 INK_MAX = 34
-VOXEL = {'house'}  # pixels darker than this (max channel) are treated as outline / crease
+VOXEL = {'house', 'terrace', 'lantern', 'jangseung_m', 'jangseung_f', 'dodam'}  # pixels darker than this (max channel) are treated as outline / crease
 
 
 def lum(c):

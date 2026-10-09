@@ -1,4 +1,4 @@
-"""Village props (hand-drawn): 장승, 금줄, 솟대, 서낭나무, 돌무더기, 석등, 소나무.
+"""Village props (hand-drawn; 집·석등·장승·석축·돌담 are voxel models in vox.py): 금줄, 솟대, 서낭나무, 돌무더기, 석등, 소나무.
 
 Drawn pixel by pixel with a few shading rules (light from the upper left, violet-black ink outline
 added automatically around every silhouette). Each prop is anchored at the bottom-centre of its
@@ -138,104 +138,6 @@ def hashf(x, y, s=0):
     return (h ^ (h >> 16)) / 4294967296
 
 
-# ---------------------------------------------------------------- 초가집 (thatched house), 96x84
-def house():
-    c = Canvas(96, 84)
-    # stone plinth (기단)
-    for x in range(10, 86):
-        for y in range(74, 82):
-            row = (y - 74) // 4
-            bx = (x + row * 5) // 9
-            edge = (x + row * 5) % 9 == 0 or (y - 74) % 4 == 0
-            t = 2 + hashf(bx, row, 3) * 1.4 - (0.6 if y >= 80 else 0) + (0.8 if (y - 74) % 4 == 1 else 0)
-            c.set(x, y, STONE[0] if edge else c.ramp_at(STONE, t))
-    # earthen walls between timber posts
-    for x in range(14, 82):
-        for y in range(46, 74):
-            t = 2.2 + hashf(x // 2, y // 3, 5) * 0.8 - (y - 46) * 0.03 - (x - 14) * 0.012
-            if hashf(x // 3, y // 3, 9) > 0.93:
-                t -= 1.2  # cracks where the plaster flaked
-            c.set(x, y, c.ramp_at(MUD, t))
-    for px_ in (14, 34, 60, 78):
-        c.cylinder(px_, 44, 4, 30, WOOD, base=2.2)
-    c.cylinder(14, 50, 68, 3, WOOD, base=1.6)  # lintel beam (drawn as a flat log)
-    for x in range(14, 82):
-        c.set(x, 50, WOOD[4]); c.set(x, 52, WOOD[1])
-    # paper-latticed door, faint warm light behind it
-    for x in range(40, 56):
-        for y in range(55, 74):
-            lattice = (x - 40) % 5 == 0 or (y - 55) % 6 == 0 or x == 55
-            if lattice:
-                c.set(x, y, WOOD[1])
-            else:
-                c.set(x, y, GLOW[1] if y > 66 else GLOW[2], outline=False)
-    # small window
-    for x in range(64, 74):
-        for y in range(57, 64):
-            if (x - 64) % 3 == 0 or y in (57, 63):
-                c.set(x, y, WOOD[1])
-            else:
-                c.set(x, y, GLOW[1], outline=False)
-    # thatched roof: thick rounded mound with heavy eaves
-    def thatch_tex(x, y):
-        streak = (hashf(x, y // 3, 11) - 0.5) * 1.2
-        if (y + (x // 6)) % 7 == 0:
-            streak -= 0.8  # straw layers
-        return streak
-    c.dome(48, 46, 46, 34, THATCH, base=2.0, tex=thatch_tex)
-    # eave lip: dark underside shadow and ragged straw ends
-    for x in range(3, 94):
-        dx = (x + 0.5 - 48) / 46
-        if abs(dx) > 1:
-            continue
-        ye = 46
-        for k in range(3):
-            c.set(x, ye + k, THATCH[1] if k < 2 else THATCH[0])
-        if hashf(x, 1, 13) > 0.45:
-            c.set(x, ye + 3, THATCH[2])
-    # straw ropes binding the roof (새끼줄 grid)
-    for i, ax in enumerate((-30, -10, 10, 30)):
-        for y in range(13, 46):
-            dy = (y + 0.5 - 46) / 34
-            x = 48 + ax * math.sqrt(max(0, 1 - dy * dy)) * 1.0
-            if c.get(int(x), y):
-                c.set(int(x), y, THATCH[4] if i < 2 else THATCH[3])
-    for y in (24, 36):
-        dy = (y + 0.5 - 46) / 34
-        half = 46 * math.sqrt(max(0, 1 - dy * dy))
-        for x in range(int(48 - half) + 2, int(48 + half) - 1):
-            if c.get(x, y) and (x % 3):
-                c.set(x, y, THATCH[3] if x < 48 else THATCH[2])
-    # chimney smoke stain and a talisman pasted by the door (역병 막이)
-    for y in range(58, 66):
-        c.set(37, y, PAPER[3]); c.set(38, y, PAPER[2])
-    c.set(37, 60, RED[3]); c.set(38, 61, RED[3]); c.set(37, 62, RED[2])
-    return c.save('house')
-
-
-# ---------------------------------------------------------------- 장승 pair element (one post), 16x48
-def jangseung(name, red):
-    c = Canvas(18, 50)
-    wood = RED if red else WOOD
-    c.cylinder(4, 14, 10, 34, WOOD, base=1.8, rings=11)
-    # head block: bulging carved face
-    c.dome(9, 10, 6.5, 9, wood, base=2.2, top_only=False)
-    c.rect(3, 0, 12, 3, BARK[1]); c.rect(4, 0, 10, 1, BARK[2])  # 관모 cap
-    # eyes: big round, staring
-    for ex in (6, 11):
-        c.set(ex, 8, PAPER[4]); c.set(ex + 1, 8, PAPER[3]); c.set(ex, 9, PAPER[3]); c.set(ex + 1, 9, INK)
-    c.line(4, 6, 8, 7, INK); c.line(10, 7, 14, 6, INK)  # furious brows
-    c.set(9, 11, WOOD[1]); c.set(9, 12, WOOD[1])  # nose
-    # grinning fanged mouth
-    for x in range(5, 14):
-        c.set(x, 15, INK)
-    c.set(6, 16, PAPER[4]); c.set(12, 16, PAPER[4]); c.set(6, 14, PAPER[3]); c.set(12, 14, PAPER[3])
-    # carved inscription column (天下大將軍 / 地下女將軍 as abstract strokes)
-    for y in range(22, 46, 4):
-        c.line(8, y, 11, y, WOOD[0]); c.set(9, y + 1, WOOD[0]); c.set(10, y + 2, WOOD[0])
-    return c.save(name)
-
-
 # ---------------------------------------------------------------- 금줄 rope between two stakes, 56x34
 def geumjul():
     c = Canvas(58, 36)
@@ -342,22 +244,6 @@ def cairn():
     return c.save('cairn')
 
 
-# ---------------------------------------------------------------- 석등 (stone lantern, lit), 18x40
-def lantern():
-    c = Canvas(20, 42)
-    c.cylinder(4, 36, 12, 5, STONE, base=2.0)   # base
-    c.cylinder(8, 22, 4, 14, STONE, base=2.2)   # shaft
-    c.cylinder(3, 19, 14, 3, STONE, base=2.0)   # fire chamber floor
-    c.cylinder(4, 10, 12, 9, STONE, base=2.0)   # fire chamber
-    for x in range(6, 14):
-        for y in range(12, 18):
-            c.set(x, y, GLOW[3] if 8 <= x <= 11 and 13 <= y <= 16 else GLOW[2], outline=False)
-    c.cylinder(9, 10, 2, 9, STONE, base=1.5)    # mullion
-    c.poly([(1, 10), (19, 10), (14, 4), (6, 4)], lambda x, y: c.ramp_at(STONE, 3.4 - (x - 1) * 0.12))  # roof
-    c.rect(8, 1, 4, 3, STONE[3])
-    return c.save('lantern')
-
-
 # ---------------------------------------------------------------- 소나무 (twisted pine), 56x84
 def pine():
     c = Canvas(60, 88)
@@ -383,91 +269,11 @@ def pine():
     return c.save('pine')
 
 
-# ---------------------------------------------------------------- 석축 (dry-stone retaining wall), w x 36
-def seokchuk(name, w, stair_at=None):
-    """Big dressed granite blocks in staggered courses, grass lip spilling over the top, dark wet foot.
-    stair_at: x offset of a 32px stone stair cut into the wall."""
-    H = 36
-    c = Canvas(w, H)
-    rnd = random.Random(w * 7 + 1)
-    # courses of blocks (rows of varying height), joints staggered
-    y = 4
-    rows = []
-    while y < H - 2:
-        hgt = rnd.choice((7, 8, 9))
-        rows.append((y, min(hgt, H - 2 - y)))
-        y += hgt
-    for ri, (y0, hh) in enumerate(rows):
-        x = -rnd.randint(0, 10)
-        while x < w:
-            bw = rnd.randint(11, 20)
-            shade = rnd.random()
-            for yy in range(y0, y0 + hh):
-                for xx in range(max(0, x), min(w, x + bw)):
-                    lx, ly = xx - x, yy - y0
-                    if lx == 0 or ly == 0:
-                        col = STONE[0]
-                    else:
-                        t = 2.9 + shade * 1.2 - ly * 0.1 - (yy / H) * 1.1
-                        if ly == 1 or lx == 1: t += 1.2  # lit bevel (upper left)
-                        if ly == hh - 1 or lx == bw - 1: t -= 1.0
-                        if hashf(xx, yy, 41) > 0.93: t -= 0.8  # pitting
-                        col = c.ramp_at(STONE, t)
-                    c.set(xx, yy, col)
-            x += bw
-    # coping: grass lip spilling over the top edge
-    for xx in range(w):
-        drop = 1 + int(hashf(xx // 2, 0, 43) * 3)
-        for yy in range(0, 3 + drop):
-            c.set(xx, yy, PINE[4] if yy < 2 else (PINE[3] if yy < 2 + drop - 1 else PINE[1]))
-        if hashf(xx, 1, 44) > 0.6:
-            c.set(xx, 0, PINE[4])
-    # moss in the joints, dark damp foot
-    for xx in range(w):
-        for yy in range(H - 3, H):
-            if c.get(xx, yy):
-                c.set(xx, yy, STONE[0] if yy > H - 2 else STONE[1])
-        if hashf(xx, 2, 45) > 0.85:
-            for yy in range(4, H - 3):
-                if c.get(xx, yy) == STONE[0] and hashf(xx, yy, 46) > 0.6:
-                    c.set(xx, yy, PINE[2])
-    if stair_at is not None:
-        for xx in range(stair_at, stair_at + 32):
-            for yy in range(H):
-                step = yy // 6
-                lx = xx - stair_at
-                if lx == 0 or lx == 31:
-                    col = STONE[1]
-                else:
-                    t = 1.8 + (yy % 6 == 0) * 1.6 - (yy % 6 == 5) * 0.8 + hashf(xx // 8, step, 47) * 0.6 + step * 0.15
-                    col = c.ramp_at(STONE, t)
-                c.set(xx, yy, col)
-    return c.save(name)
-
-
-def seokchuk_side(name, h):
-    """East end of the terrace seen from above: a narrow column of stacked stones."""
-    c = Canvas(9, h)
-    y = 0
-    k = 0
-    while y < h:
-        bh = 5 + (k * 7) % 4
-        for yy in range(y, min(h, y + bh)):
-            for xx in range(9):
-                t = 2.2 - xx * 0.18 + (1.2 if yy == y + 1 else 0) - (0.9 if yy == y + bh - 1 else 0)
-                c.set(xx, yy, STONE[0] if yy == y else c.ramp_at(STONE, t))
-        y += bh; k += 1
-    for yy in range(h):
-        c.set(0, yy, PINE[2] if hashf(0, yy // 3, 48) > 0.5 else PINE[1])
-    return c.save(name)
-
-
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    jangseung('jangseung_m', False); jangseung('jangseung_f', True)
-    seokchuk('seokchuk', 240, stair_at=152); seokchuk_side('seokchuk_side', 118); geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); lantern(); pine()
+    geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); pine()
     # contact sheet for review
-    names = ['seokchuk', 'jangseung_m', 'jangseung_f', 'geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'lantern', 'pine']
+    names = ['geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'pine']
     ims = [Image.open(OUT / f'{n}.png') for n in names]
     W = sum(i.width for i in ims) + 6 * len(ims); H = max(i.height for i in ims)
     sheet = Image.new('RGBA', (W, H), (60, 66, 84, 255))

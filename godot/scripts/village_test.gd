@@ -33,9 +33,10 @@ const MAP := [
 const PROPS := [
 	["house", 120, 108, [-6, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
 	["house", 540, 140, [-6, Color(1.0, 0.62, 0.3), 1.0, 0.9]],
-	["lantern", 284, 150, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
-	["lantern", 436, 196, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
-	["jangseung_m", 592, 156, null], ["jangseung_f", 592, 196, null],
+	["lantern", 284, 150, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
+	["lantern", 436, 196, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
+	["jangseung_m", 590, 150, null], ["jangseung_f", 590, 200, null],
+	["dodam", 470, 236, null], ["dodam", 540, 236, null], ["dodam", 90, 290, null],
 	["geumjul", 296, 300, null],
 	["seonang", 470, 300, [-60, Color(0.75, 0.35, 1.0), 0.7, 1.5]],
 	["cairn", 432, 312, null],
@@ -44,7 +45,7 @@ const PROPS := [
 	["pine", 390, 44, null], ["pine", 20, 230, null], ["pine", 360, 350, null],
 ]
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(4, 4), "jangseung_f": Vector2(4, 4), "lantern": Vector2(5, 4)}
+const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
 
 var light_tex: Texture2D
 
@@ -131,24 +132,18 @@ const STAIR := Vector2(152, 184)
 
 
 func _terrace() -> void:
-	var wall_tex := Tex.lit("res://assets/props/seokchuk.png")
+	# one voxel-rendered piece (art/vox.py terrace): front wall, stair, east wall running back
+	var wall_tex := Tex.lit("res://assets/props/terrace.png")
 	var body := StaticBody2D.new()
 	body.position = Vector2(0, TERRACE_FOOT)
 	add_child(body)
 	var spr := Sprite2D.new()
 	spr.texture = wall_tex
 	spr.centered = false
-	spr.offset = Vector2(0, -wall_tex.get_height() + 1)
+	spr.offset = Vector2(0, -wall_tex.get_height() + 2)
 	body.add_child(spr)
-	var side_tex := Tex.lit("res://assets/props/seokchuk_side.png")
-	var side := Sprite2D.new()
-	side.texture = side_tex
-	side.centered = false
-	side.position = Vector2(240, -TERRACE_FOOT)
-	side.z_index = -9
-	body.add_child(side)
-	# walls block everywhere except the stair gap; the side column blocks the east edge
-	for r in [Rect2(0, -36, STAIR.x, 34), Rect2(STAIR.y, -36, 240 - STAIR.y, 34), Rect2(240, -TERRACE_FOOT, 9, TERRACE_FOOT - 2)]:
+	# walls block everywhere except the stair gap; the east wall blocks the terrace's side
+	for r in [Rect2(0, -44, STAIR.x, 42), Rect2(STAIR.y, -44, 248 - STAIR.y, 42), Rect2(240, -TERRACE_FOOT, 8, TERRACE_FOOT - 2)]:
 		var col := CollisionShape2D.new()
 		var sh := RectangleShape2D.new()
 		sh.size = r.size
