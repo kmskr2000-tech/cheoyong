@@ -368,10 +368,54 @@ def dodam(name, length):
     v.render(name, contrast=3.4)
 
 
+def board():
+    """의뢰 게시판: two posts, a little tiled roof, a board pinned with paper notices and red seals."""
+    X, Y, Z = 40, 14, 44
+    v = Vox(X, Y, Z)
+    wd, pp, rd, st = v.mat(WOOD), v.mat(PAPER), v.mat(RED), v.mat(STONE)
+    v.box(5, 6, 0, 9, 10, 40, wd); v.box(31, 6, 0, 35, 10, 40, wd)
+    v.box(4, 7, 14, 36, 10, 36, wd)
+    v.tone[4:36, 7:10, 14:36] = -0.4
+    for (x0, z0, w, h) in ((7, 18, 8, 12), (17, 20, 7, 10), (26, 17, 8, 13)):
+        v.box(x0, 10, z0, x0 + w, 11, z0 + h, pp)
+        v.tone[x0:x0 + w, 10, z0:z0 + h] = np.where((np.arange(z0, z0 + h) % 3 == 0)[None, :], -1.2, 0.3)
+        v.box(x0 + w - 3, 10, z0 + 1, x0 + w - 1, 11, z0 + 3, rd)
+    v.box(2, 4, 38, 38, 12, 41, st)   # roof slab
+    v.box(4, 6, 41, 36, 10, 43, st)
+    v.tone[2:38, 4:12, 38:41] = 0.5
+    v.render('board', contrast=3.2)
+
+
+def stall():
+    """약방 노점: a low table under an indigo cloth awning, jars and herb bundles on top."""
+    X, Y, Z = 56, 22, 46
+    v = Vox(X, Y, Z)
+    wd = v.mat(WOOD)
+    cloth = v.mat(Mat(['#0c1026', '#141a3a', '#1e2854', '#2c3a74', '#3e4e92', '#56669e']))
+    jar, herb, gold = v.mat(STONE), v.mat(GRASS), v.mat(Mat(['#4a3418', '#8a6a30', '#c9a24a', '#f0d488']))
+    gx, gy, gz = v.grid()
+    for (px, py) in ((4, 4), (50, 4), (4, 16), (50, 16)):
+        v.box(px, py, 0, px + 3, py + 3, 36 if py == 4 else 30, wd)
+    v.box(3, 3, 14, 53, 20, 18, wd)                              # table top
+    v.tone[3:53, 3:20, 17] = 0.8
+    for (cx, cy) in ((10, 10), (20, 12), (40, 10)):              # jars
+        d = np.sqrt((gx + 0.5 - cx) ** 2 + (gy + 0.5 - cy) ** 2)
+        v.fill((d < 3.4 - np.abs(gz - 22) * 0.15) & (gz >= 18) & (gz < 26), jar)
+    v.box(28, 8, 18, 34, 13, 22, herb); v.box(45, 12, 18, 49, 16, 21, gold)
+    # sagging awning: higher at the back
+    for y in range(0, 22):
+        z = 38 - int(y * 0.35)
+        v.box(0, y, z, 56, y + 1, z + 2, cloth)
+        v.tone[0:56, y, z:z + 2] = np.where((np.arange(56) // 7) % 2 == 0, 0.4, -0.3)[:, None]
+    for x in range(0, 56, 4):                                    # scalloped front edge
+        v.box(x, 21, 29, x + 2, 22, 31, cloth)
+    v.render('stall', contrast=3.2)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     house(); terrace(); lantern(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
-    dodam('dodam', 64)
+    dodam('dodam', 64); board(); stall()
 
 
 if __name__ == '__main__':
