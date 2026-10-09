@@ -31,8 +31,8 @@ const MAP := [
 
 ## [prop, x, y, light] — x,y = ground contact point; light = [offset_y, colour, energy, scale] or null
 const PROPS := [
-	["house", 120, 100, [-30, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
-	["house", 520, 116, [-30, Color(1.0, 0.62, 0.3), 0.9, 0.8]],
+	["house", 120, 108, [-6, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
+	["house", 540, 140, [-6, Color(1.0, 0.62, 0.3), 1.0, 0.9]],
 	["lantern", 284, 150, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
 	["lantern", 436, 196, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
 	["jangseung_m", 592, 156, null], ["jangseung_f", 592, 196, null],
@@ -44,7 +44,7 @@ const PROPS := [
 	["pine", 390, 44, null], ["pine", 20, 230, null], ["pine", 360, 350, null],
 ]
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"house": Vector2(36, 26), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(4, 4), "jangseung_f": Vector2(4, 4), "lantern": Vector2(5, 4)}
+const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(4, 4), "jangseung_f": Vector2(4, 4), "lantern": Vector2(5, 4)}
 
 var light_tex: Texture2D
 
@@ -166,7 +166,7 @@ func _terrace() -> void:
 	top.position = Vector2(124, -TERRACE_FOOT / 2.0 - 18)
 	top.scale = Vector2(250 / 64.0, (TERRACE_FOOT - 20) / 64.0)
 	top.color = Color(1.0, 0.5, 0.55)
-	top.energy = 0.45
+	top.energy = 0.2
 	top.height = 40.0
 	body.add_child(top)
 	# the lower ground at the wall foot sits in the terrace's shadow

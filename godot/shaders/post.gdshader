@@ -3,7 +3,7 @@ shader_type canvas_item;
 // tilt-shift depth of field, bloom, split-tone colour grade, top haze and vignette.
 // Blur comes from the screen texture's mipmaps, so it is cheap enough for phones.
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
-uniform float tilt = 0.7;            // depth-of-field strength (0 = off)
+uniform float tilt = 0.55;           // depth-of-field strength (0 = off)
 uniform float focus_y = 0.56;        // screen height that stays sharp (the hero's row)
 uniform float bloom = 0.9;
 uniform float bloom_threshold = 0.32;
@@ -19,7 +19,7 @@ vec3 bright(vec3 c) { return max(c - bloom_threshold, vec3(0.0)) / (1.0 - bloom_
 void fragment() {
 	vec2 uv = SCREEN_UV;
 	float d = abs(uv.y - focus_y);
-	float lod = smoothstep(0.2, 0.55, d) * 2.0 * tilt;
+	float lod = smoothstep(0.26, 0.6, d) * 2.0 * tilt;
 	vec3 c = textureLod(screen_tex, uv, lod).rgb;
 	// bloom: wide soft halo from two blurred mip levels
 	vec3 b = bright(textureLod(screen_tex, uv, 2.5).rgb) * 0.6 + bright(textureLod(screen_tex, uv, 4.0).rgb) * 0.9;

@@ -1,4 +1,4 @@
-"""Village props: 초가집, 장승, 금줄, 솟대, 서낭나무, 돌무더기, 석등, 소나무.
+"""Village props (hand-drawn): 장승, 금줄, 솟대, 서낭나무, 돌무더기, 석등, 소나무.
 
 Drawn pixel by pixel with a few shading rules (light from the upper left, violet-black ink outline
 added automatically around every silhouette). Each prop is anchored at the bottom-centre of its
@@ -464,10 +464,10 @@ def seokchuk_side(name, h):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    house(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
+    jangseung('jangseung_m', False); jangseung('jangseung_f', True)
     seokchuk('seokchuk', 240, stair_at=152); seokchuk_side('seokchuk_side', 118); geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); lantern(); pine()
     # contact sheet for review
-    names = ['seokchuk', 'house', 'jangseung_m', 'jangseung_f', 'geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'lantern', 'pine']
+    names = ['seokchuk', 'jangseung_m', 'jangseung_f', 'geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'lantern', 'pine']
     ims = [Image.open(OUT / f'{n}.png') for n in names]
     W = sum(i.width for i in ims) + 6 * len(ims); H = max(i.height for i in ims)
     sheet = Image.new('RGBA', (W, H), (60, 66, 84, 255))

@@ -11,7 +11,8 @@ import math, pathlib
 from PIL import Image
 
 GODOT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets'
-INK_MAX = 34  # pixels darker than this (max channel) are treated as outline / crease
+INK_MAX = 34
+VOXEL = {'house'}  # pixels darker than this (max channel) are treated as outline / crease
 
 
 def lum(c):
@@ -93,6 +94,8 @@ def main():
     done = []
     for path in sorted((GODOT / 'sprites').glob('*.png')) + sorted((GODOT / 'props').glob('*.png')):
         if path.stem.endswith(('_n', '_glow')):
+            continue
+        if path.stem in VOXEL:  # art/vox.py writes true geometric normals for these
             continue
         big = path.parent.name == 'props'
         sprite_normals(path, radius=5.0 if big else 3.5)
