@@ -3,6 +3,7 @@ extends Node
 ## and level transitions behind a fade. Saves go to user://save.json.
 
 signal toast(text: String, color: Color)
+signal skills_changed
 signal leveled(lv: int)
 signal progress_changed
 
@@ -21,6 +22,7 @@ var jeonggi := 0             # 정기: 강화·부적·퇴치향 제작
 var deok := 0                # 덕망: 다음 레벨까지 모은 양
 var lv := 1
 var skill_points := 0
+var skills: Array = []       # 익힌 수 (Skills.LIST id)
 var mats := {}               # 재료 이름 → 개수
 var dogam := {}              # 요괴 키 → 정화한 횟수
 var tal := ""                # 쓰고 있는 탈 ("" 무탈, "cheoyong" 처용탈 …)
@@ -46,6 +48,8 @@ func _ready() -> void:
 		if a.begins_with("--level="): level_id = a.get_slice("=", 1)
 		elif a.begins_with("--spawn="): spawn_name = a.get_slice("=", 1)
 		elif a.begins_with("--deok="): deok = int(a.get_slice("=", 1))   # test hook
+		elif a.begins_with("--sp="): skill_points = int(a.get_slice("=", 1))   # test hook: 수련 점수
+		elif a.begins_with("--skills="): skills = Array(a.get_slice("=", 1).split(","))   # test hook: 익힌 수
 		elif a.begins_with("--flags="):
 			for f in a.get_slice("=", 1).split(","):
 				flags[f] = 1
@@ -136,7 +140,7 @@ func need(n: int) -> int:
 
 ## 위쳐식 자동 성장: stats follow the level, no manual allocation
 func max_hp() -> float:
-	return 100.0 + (lv - 1) * 6.0
+	return 100.0 + (lv - 1) * 6.0 + (40.0 if has_skill("simhae") else 0.0)
 
 
 func attack_mult() -> float:
@@ -144,7 +148,14 @@ func attack_mult() -> float:
 
 
 func damage_taken_mult() -> float:
-	return 0.9 if tal == "cheoyong" else 1.0
+	var m := 0.9 if tal == "cheoyong" else 1.0
+	if has_skill("bigeul"):
+		m *= 0.88
+	return m
+
+
+func has_skill(id: String) -> bool:
+	return id in skills
 
 
 func add_deok(n: int) -> void:
@@ -153,7 +164,7 @@ func add_deok(n: int) -> void:
 		deok -= need(lv)
 		lv += 1
 		skill_points += 1
-		say_toast("덕망이 쌓였다 — Lv.%d" % lv, Color(1.0, 0.85, 0.45))
+		say_toast("덕망이 쌓였다 — Lv.%d · 수련 +1점" % lv, Color(1.0, 0.85, 0.45))
 		leveled.emit(lv)
 	progress_changed.emit()
 
@@ -168,7 +179,9 @@ func reward_purify(kind: String, where: Vector2, parent: Node, mult := 1.0) -> D
 		"money": int(randi_range(t["money"][0], t["money"][1]) * mult),
 		"mat": "",
 	}
-	if randf() < t["mat"]:
+	if has_skill("yeouiju"):  # 여의주 공명
+		r["jeonggi"] = int(r["jeonggi"] * 1.2)
+	if randf() < t["mat"] * (1.2 if has_skill("yeouiju") else 1.0):
 		r["mat"] = Bestiary.MATERIALS.get(e["family"], "")
 		mats[r["mat"]] = int(mats.get(r["mat"], 0)) + (2 if e["tier"] != "normal" else 1)
 	jeonggi += r["jeonggi"]
@@ -264,7 +277,7 @@ func set_setting(k: String, v) -> void:
 # ---------------------------------------------------------------- save / load
 func save() -> void:
 	var data := {"flags": flags, "money": money, "items": items, "checkpoint": checkpoint,
-		"jeonggi": jeonggi, "deok": deok, "lv": lv, "skill_points": skill_points, "mats": mats,
+		"jeonggi": jeonggi, "deok": deok, "lv": lv, "skill_points": skill_points, "skills": skills, "mats": mats,
 		"dogam": dogam, "tal": tal, "tals": tals, "accessories": accessories, "titles": titles}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -289,6 +302,7 @@ func load_save() -> bool:
 	deok = int(data.get("deok", 0))
 	lv = int(data.get("lv", 1))
 	skill_points = int(data.get("skill_points", 0))
+	skills = data.get("skills", [])
 	mats = data.get("mats", {})
 	dogam = data.get("dogam", {})
 	tal = data.get("tal", "")
@@ -305,7 +319,7 @@ func new_game() -> void:
 	checkpoint = "beach"
 	level_id = "beach"
 	spawn_name = "start"
-	jeonggi = 0; deok = 0; lv = 1; skill_points = 0
+	jeonggi = 0; deok = 0; lv = 1; skill_points = 0; skills = []
 	mats = {}; dogam = {}; tal = ""; tals = []; accessories = []; titles = []
 
 

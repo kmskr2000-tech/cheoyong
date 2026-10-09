@@ -190,15 +190,17 @@ func _open_bag() -> void:
 	while true:
 		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
 		var i: int = await dialog.choose({"name": "행낭", "text": status},
-			["약 꺼내기", "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "닫기"])
+			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "닫기"])
 		if i == 0:
 			if await _bag_items(dialog):
 				break
 		elif i == 1:
-			await _bag_dogam(dialog)
+			await _bag_skills(dialog)
 		elif i == 2:
-			await _bag_kept(dialog)
+			await _bag_dogam(dialog)
 		elif i == 3:
+			await _bag_kept(dialog)
+		elif i == 4:
 			await _recall()
 			break
 		else:
@@ -273,6 +275,53 @@ func _bag_dogam(dialog: DialogBox) -> void:
 			var e: Dictionary = Bestiary.ENTRIES[shown[i]]
 			var tier: String = {"normal": "", "elite": " · 정예", "boss": " · 보스"}[e["tier"]]
 			await dialog.choose({"name": e["name"], "text": "%s 계열%s · 정화 %d번\n%s" % [e["family"], tier, int(Game.dogam[shown[i]]), e["lore"]]}, ["닫기"])
+
+
+## 수련: 소리 · 춤 · 가호 — pick a line, then a 수 to read or learn (docs/growth-system.md §4)
+func _bag_skills(dialog: DialogBox) -> void:
+	var trees: Array = Skills.TREES.keys()
+	while true:
+		var opts := []
+		for k in trees:
+			var tr: Dictionary = Skills.TREES[k]
+			var n := Skills.of_tree(k).filter(func(x): return x["id"] in Game.skills).size()
+			opts.append("%s — %s  %d/%d%s" % [tr["name"], tr["desc"], n, Skills.of_tree(k).size(), "" if Skills.tree_open(k) else " (잠김)"])
+		opts.append("돌아가기")
+		var i: int = await dialog.choose({"name": "수련", "text": "수련 점수 %d점. 1·2단 1점, 3단 2점, 비전 3점." % Game.skill_points}, opts)
+		if i >= trees.size():
+			return
+		await _bag_tree(dialog, trees[i])
+
+
+func _bag_tree(dialog: DialogBox, tree: String) -> void:
+	var list := Skills.of_tree(tree)
+	var page := 0
+	var per := 5
+	while true:
+		var shown := list.slice(page * per, page * per + per)
+		var opts := []
+		for sk in shown:
+			var mark := "● " if sk["id"] in Game.skills else ("○ " if Skills.why_not(sk["id"]) == "" else "· ")
+			opts.append("%s%s %s" % [mark, Skills.TIER_NAME[sk["tier"]], sk["name"]])
+		var has_next := (page + 1) * per < list.size()
+		opts.append("다음 쪽" if has_next else "첫 쪽")
+		opts.append("돌아가기")
+		var i: int = await dialog.choose({"name": Skills.TREES[tree]["name"], "text": "● 익힘  ○ 익힐 수 있음  · 아직\n수련 점수 %d점" % Game.skill_points}, opts)
+		if i == shown.size():
+			page = page + 1 if has_next else 0
+			continue
+		if i > shown.size():
+			return
+		var sk: Dictionary = shown[i]
+		var why := Skills.why_not(sk["id"])
+		var head := "%s · %d점\n%s" % [Skills.TIER_NAME[sk["tier"]], Skills.COST[sk["tier"]], sk["desc"]]
+		if why == "":
+			var c: int = await dialog.choose({"name": sk["name"], "text": head}, ["익힌다", "그만둔다"])
+			if c == 0 and Skills.learn(sk["id"]):
+				Audio.sfx("levelup", -6.0, 0.0)
+				Game.say_toast("%s — 몸에 익었다" % sk["name"], Color(1.0, 0.85, 0.45))
+		else:
+			await dialog.choose({"name": sk["name"], "text": head + "\n" + why}, ["닫기"])
 
 
 func _bag_kept(dialog: DialogBox) -> void:
