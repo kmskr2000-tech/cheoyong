@@ -66,7 +66,7 @@ func _process(_delta: float) -> void:
 	for c in Audio.get_children():
 		if c is AudioStreamPlayer and c.playing: ap += 1
 	print("  audio track ", Audio._track, " amb ", Audio._amb.playing, " playing ", ap, " stream ", Audio._music[Audio._cur].stream)
-	print("  growth items ", Game.items, " Lv.", Game.lv, " deok ", Game.deok, " jeonggi ", Game.jeonggi, " money ", Game.money, " dogam ", Game.dogam, " mats ", Game.mats, " tal ", Game.tal)
+	print("  growth items ", Game.items, " Lv.", Game.lv, " deok ", Game.deok, " jeonggi ", Game.jeonggi, " money ", Game.money, " dogam ", Game.dogam, " mats ", Game.mats,  " tal ", Game.tal, " sp ", Game.skill_points, " skills ", Game.skills)
 	var lv = get_tree().current_scene
 	if lv.get("_dark") and lv._dark: print("  darkness ", snappedf(lv._dark.color.a, 0.01))
 	print("  hazards/projectiles ", get_tree().current_scene.get_children().filter(func(n): return n is Hazard or n is Projectile or n is Shockwave).size())

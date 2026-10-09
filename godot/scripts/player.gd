@@ -59,6 +59,8 @@ var slow_t := 0.0               # 손각시의 붉은 실 / 물귀신: half spee
 var pull_t := 0.0               # dragged toward pull_to (물귀신, 붉은 실)
 var pull_to := Vector2.ZERO
 var _stun_fx: Label
+var haste_t := 0.0              # 연풍
+var rhythm := 0                 # 장단맞춤: presses that landed on the beat in this combo
 const SONG_TIME := 1.1
 const SONG_RANGE := 90.0
 
@@ -67,6 +69,11 @@ func _ready() -> void:
 	max_hp = Game.max_hp()
 	hp = max_hp
 	Game.leveled.connect(_on_leveled)
+	Game.skills_changed.connect(func():  # 심해의 인내 raises the ceiling at once
+		var gain := Game.max_hp() - max_hp
+		max_hp = Game.max_hp()
+		hp = minf(max_hp, hp + maxf(0.0, gain))
+		stats_changed.emit(hp, max_hp, ki, max_ki))
 	var tex: Texture2D = Tex.lit("res://assets/sprites/cheoyong.png")
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
@@ -108,6 +115,7 @@ func _physics_process(delta: float) -> void:
 	if state == "dead":
 		return
 	slow_t = maxf(0.0, slow_t - delta)
+	haste_t = maxf(0.0, haste_t - delta)
 	pull_t = maxf(0.0, pull_t - delta)
 	if stun_t > 0.0:
 		stun_t -= delta
@@ -127,11 +135,14 @@ func _physics_process(delta: float) -> void:
 		_start_roll(dir)
 	elif not locked and Input.is_action_just_pressed("attack"):
 		if state == "attack":
+			if not queued and Game.has_skill("jangdan") and t >= _swing_time() * 0.55:
+				rhythm += 1  # 장단맞춤: pressed as the swing settles, not mashed
 			queued = true
 		elif state == "move":
 			if interact.is_valid() and interact.call():
 				return
 			combo = 0
+			rhythm = 0
 			_start_attack()
 	match state:
 		"move": _move(dir)
@@ -141,7 +152,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _move(dir: Vector2) -> void:
-	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) + _pull_vel()
+	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) * (1.25 if haste_t > 0.0 else 1.0) + _pull_vel()
 	move_and_slide()
 	if dir != Vector2.ZERO:
 		_face(dir)
@@ -193,7 +204,7 @@ func _start_attack() -> void:
 
 func _attack(delta: float) -> void:
 	var c: Dictionary = COMBO[combo]
-	var dur: float = c["time"]
+	var dur := _swing_time()
 	var k := clampf(t / dur, 0.0, 1.0)
 	var base: float = FACE_ANGLE[facing]
 	var mirror := -1.0 if facing == "left" or facing == "up" else 1.0
@@ -236,6 +247,15 @@ func _attack(delta: float) -> void:
 			_end_attack()
 
 
+func _swing_time() -> float:
+	return COMBO[combo]["time"] / (1.4 if _frenzy() else 1.0)
+
+
+## 무아지경: at the edge of falling he moves faster and feels less
+func _frenzy() -> bool:
+	return Game.has_skill("muaji") and hp <= max_hp * 0.3
+
+
 func _end_attack() -> void:
 	state = "move"
 	arm.visible = false
@@ -245,16 +265,47 @@ func _end_attack() -> void:
 
 func _resolve_hit(c: Dictionary, base: float) -> void:
 	var origin := global_position + Vector2(0, -14)
+	var last := combo == COMBO.size() - 1
+	var whirl := last and Game.has_skill("geommu")   # 검무: the thrust becomes a full turn
+	var reach: float = c["reach"] + (6.0 if whirl else 0.0)
+	var mult := Game.attack_mult()
+	if last and rhythm >= 2:   # 장단맞춤
+		mult *= 1.3
+		Game.float_text(get_parent(), global_position + Vector2(0, -40), ["얼쑤!"])
+	if whirl:
+		_whirl_fx()
+	if Game.has_skill("eumpa"):
+		SoundWave.fire(self, base, int(round(5 * Game.attack_mult())))
 	for e in get_tree().get_nodes_in_group("enemy"):
 		var to: Vector2 = (e.global_position + Vector2(0, -10)) - origin
-		if to.length() > c["reach"]:
+		if to.length() > reach:
 			continue
-		if absf(wrapf(to.angle() - base, -PI, PI)) > 1.3 and to.length() > 10:
+		if not whirl and absf(wrapf(to.angle() - base, -PI, PI)) > 1.3 and to.length() > 10:
 			continue
 		if e.has_method("take_hit"):
-			e.take_hit(int(round(c["dmg"] * Game.attack_mult())), to.normalized(), combo == COMBO.size() - 1)
+			e.take_hit(int(round(c["dmg"] * mult)), to.normalized(), last)
 			_spark(e.global_position + Vector2(0, -12))
 			hit_landed.emit(e)
+
+
+## 검무: a ring of wind around him
+func _whirl_fx() -> void:
+	var ring := Line2D.new()
+	var pts := PackedVector2Array()
+	for i in 25:
+		pts.append(Vector2.from_angle(i * TAU / 24.0) * Vector2(1.0, 0.6) * 20.0)
+	ring.points = pts
+	ring.width = 3.0
+	ring.default_color = Color(0.75, 0.95, 1.0, 0.8)
+	ring.material = slash.material
+	ring.position = Vector2(0, -12)
+	ring.z_index = 40
+	ring.z_as_relative = false
+	add_child(ring)
+	var tw := ring.create_tween().set_parallel()
+	tw.tween_property(ring, "scale", Vector2(2.4, 2.4), 0.25)
+	tw.tween_property(ring, "modulate:a", 0.0, 0.25)
+	tw.chain().tween_callback(ring.queue_free)
 
 
 func _spark(at: Vector2) -> void:
@@ -280,7 +331,9 @@ func hurt(dmg: int, dir: Vector2) -> void:
 		return
 	hurt_t = 0.6
 	Audio.sfx("hurt", -2.0)
-	dmg = int(ceil(dmg * Game.damage_taken_mult()))   # 탈
+	dmg = int(ceil(dmg * Game.damage_taken_mult() * (0.8 if _frenzy() else 1.0)))   # 탈·가호·무아지경
+	if Game.has_skill("simhae"):  # 심해의 인내
+		ki = minf(max_ki, ki + 5.0)
 	if gentle_hits > 0:
 		gentle_hits -= 1  # 벌 없이 배운다: early hits only push him back
 		dmg = 0
@@ -560,7 +613,7 @@ func _start_roll(dir: Vector2) -> void:
 
 func _roll(delta: float) -> void:
 	var k := clampf(t / ROLL_TIME, 0.0, 1.0)
-	velocity = roll_dir * ROLL_SPEED * (1.0 - k * 0.6)
+	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (1.0 - k * 0.6)
 	move_and_slide()
 	# a spinning dance step: full turn, squashed low in the middle
 	var spin := (1.0 if roll_dir.x >= 0 else -1.0) * TAU * smoothstep(0.0, 1.0, k)
@@ -576,6 +629,8 @@ func _roll(delta: float) -> void:
 	if k >= 1.0:
 		state = "move"
 		invuln = false
+		if Game.has_skill("yeonpung"):  # 연풍
+			haste_t = 2.0
 		sprite.rotation = 0.0
 		sprite.scale = Vector2.ONE
 		sprite.position = Vector2.ZERO
