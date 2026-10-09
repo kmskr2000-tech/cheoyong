@@ -1,7 +1,7 @@
 shader_type canvas_item;
 render_mode blend_add;
 // Slanted light shafts falling through the haze; soft-edged, slowly breathing and drifting.
-uniform vec3 tint : source_color = vec3(1.0, 0.35, 0.4);
+uniform vec3 tint : source_color = vec3(0.55, 0.72, 1.0);
 uniform float strength = 0.16;
 float hash(float n) { return fract(sin(n) * 43758.5453); }
 void fragment() {

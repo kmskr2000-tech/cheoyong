@@ -1,16 +1,16 @@
 extends Node2D
 ## Test corner of the village: baked tiered ground (art/ground3d.py), voxel and hand-drawn props,
-## blood-moon lighting, fog, embers, ghost-fires and the HD-2D finishing pass.
+## cold moonlit night, fog, spirit motes, ghost-fires and the HD-2D finishing pass.
 
 const LEVEL := "village"
 
 ## [prop, x, y, light] — x,y = ground contact point in *footprint* coordinates (before the tier lift); light = [offset_y, colour, energy, scale] or null
 const PROPS := [
 	["house", 72, 108, [-6, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
-	["lantern", 160, 100, [-34, Color(1.0, 0.7, 0.38), 1.0, 1.0]],
+	["lantern", 160, 100, [-34, Color(1.0, 0.52, 0.18), 1.2, 1.0]],
 	["house", 560, 300, [-6, Color(1.0, 0.62, 0.3), 1.0, 0.9]],
-	["lantern", 282, 138, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
-	["lantern", 440, 214, [-34, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
+	["lantern", 282, 138, [-34, Color(1.0, 0.52, 0.18), 1.3, 1.1]],
+	["lantern", 440, 214, [-34, Color(1.0, 0.52, 0.18), 1.3, 1.1]],
 	["jangseung_m", 606, 154, null], ["jangseung_f", 606, 200, null],
 	["dodam", 470, 250, null], ["dodam", 400, 250, null],
 	["geumjul", 320, 330, null],
@@ -46,6 +46,21 @@ func _ready() -> void:
 	for i in 4:
 		_wisp(lift(Vector2(470, 290)) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
 	_blob($Player, 10)
+	dialog = DialogBox.new()
+	add_child(dialog)
+	if "--dialog" in OS.get_cmdline_user_args():
+		_demo_dialog.call_deferred()
+
+
+var dialog: DialogBox
+
+
+func _demo_dialog() -> void:
+	await dialog.say([
+		{"name": "처용", "text": "바람에 비린내가 섞였다. 역병이 지나간 자리는 언제나 이렇게 조용하지."},
+		{"name": "촌주 박노인", "text": "나리, 동쪽 폐가에서 밤마다 아이 우는 소리가 납니다. 장승도 그 뒤로 눈을 감지 못합니다."},
+		"멀리서 보랏빛 귀화가 서낭나무 가지 사이를 맴돈다.",
+	])
 
 
 ## footprint → screen: ground on tier k is drawn k*TIER px higher (oblique camera)
@@ -225,20 +240,20 @@ func _process(_d: float) -> void:
 func _atmosphere() -> void:
 	# moonlit night: everything unlit sinks into cold violet-blue
 	var cm := CanvasModulate.new()
-	cm.color = Color(0.46, 0.25, 0.33)
+	cm.color = Color(0.2, 0.26, 0.42)
 	add_child(cm)
 	# the moon: a cold key light from the upper left that rakes across every normal map and casts
 	# long diagonal shadows from houses and trees
 	var moon := DirectionalLight2D.new()
-	moon.color = Color(1.0, 0.42, 0.45) # blood moon
-	moon.energy = 0.7
+	moon.color = Color(0.6, 0.74, 1.0) # cold moon
+	moon.energy = 0.75
 	moon.height = 0.45
 	moon.rotation = deg_to_rad(35)
 	add_child(moon)
 	# a faint cold aura around the hero so he never vanishes in the dark
 	var pl := PointLight2D.new()
 	pl.texture = light_tex
-	pl.color = Color(0.85, 0.6, 0.75)
+	pl.color = Color(0.6, 0.7, 0.95)
 	pl.energy = 0.55
 	pl.texture_scale = 0.55
 	pl.position = Vector2(0, -16)
@@ -255,13 +270,13 @@ func _atmosphere() -> void:
 	var fm := ShaderMaterial.new()
 	fm.shader = load("res://shaders/fog.gdshader")
 	fm.set_shader_parameter("world_size", Vector2(w, h))
-	fm.set_shader_parameter("tint", Color(0.7, 0.25, 0.32))
-	fm.set_shader_parameter("sick", Color(0.55, 0.3, 0.75))
+	fm.set_shader_parameter("tint", Color(0.36, 0.46, 0.66))
+	fm.set_shader_parameter("sick", Color(0.42, 0.3, 0.7))
 	fog.material = fm
 	add_child(fog)
 	# ash / spores drifting down across the view
 	var ash := CPUParticles2D.new()
-	# embers rising through the red haze
+	# cold spirit motes rising through the haze (warm embers only near the lanterns' light)
 	ash.amount = 60
 	ash.lifetime = 7.0
 	ash.preprocess = 7.0
@@ -275,7 +290,7 @@ func _atmosphere() -> void:
 	ash.initial_velocity_max = 26.0
 	var ramp := Gradient.new()
 	ramp.offsets = PackedFloat32Array([0.0, 0.15, 0.7, 1.0])
-	ramp.colors = PackedColorArray([Color(1, 0.6, 0.3, 0), Color(1, 0.55, 0.3, 1), Color(1, 0.25, 0.3, 0.8), Color(0.6, 0.1, 0.3, 0)])
+	ramp.colors = PackedColorArray([Color(0.6, 0.8, 1, 0), Color(0.7, 0.85, 1, 1), Color(0.5, 0.6, 1, 0.7), Color(0.4, 0.3, 0.9, 0)])
 	ash.color_ramp = ramp
 	ash.z_index = 60
 	var am := CanvasItemMaterial.new()
