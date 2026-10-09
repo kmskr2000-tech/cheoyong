@@ -13,6 +13,8 @@ var _done := false
 
 
 func _ready() -> void:
+	Audio.music("title")
+	Audio.ambience("waves")
 	dialog = DialogBox.new()
 	add_child(dialog)
 	var ui := CanvasLayer.new()

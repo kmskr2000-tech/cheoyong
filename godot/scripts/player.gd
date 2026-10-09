@@ -163,6 +163,7 @@ func _face(dir: Vector2) -> void:
 
 # ---------------------------------------------------------------- attack
 func _start_attack() -> void:
+	Audio.sfx("slash", -4.0)
 	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if dir != Vector2.ZERO:
 		_face(dir)
@@ -278,6 +279,7 @@ func hurt(dmg: int, dir: Vector2) -> void:
 	if invuln or hurt_t > 0.0 or state == "dead":
 		return
 	hurt_t = 0.6
+	Audio.sfx("hurt", -2.0)
 	dmg = int(ceil(dmg * Game.damage_taken_mult()))   # 탈
 	if gentle_hits > 0:
 		gentle_hits -= 1  # 벌 없이 배운다: early hits only push him back
@@ -344,6 +346,7 @@ func sing() -> void:
 
 
 func _start_song() -> void:
+	Audio.sfx("song", -1.0, 0.0)
 	_end_attack()
 	state = "song"
 	t = 0.0
@@ -424,6 +427,7 @@ func _ripple(col: Color, delay: float) -> void:
 
 ## 레벨업: stats rise on their own, and the body is renewed
 func _on_leveled(_lv: int) -> void:
+	Audio.sfx("levelup", -2.0, 0.0)
 	max_hp = Game.max_hp()
 	hp = max_hp
 	ki = max_ki
@@ -438,6 +442,7 @@ func _on_leveled(_lv: int) -> void:
 func stun(sec: float) -> void:
 	if invuln or state == "dead":
 		return
+	Audio.sfx("stun", -6.0)
 	_end_attack()
 	if state != "move":
 		state = "move"
@@ -544,6 +549,7 @@ func _talisman() -> void:
 func _start_roll(dir: Vector2) -> void:
 	_end_attack()
 	pull_t = 0.0  # rolling tears free of whatever is dragging him
+	Audio.sfx("roll", -6.0)
 	state = "roll"
 	t = 0.0
 	roll_dir = dir.normalized() if dir != Vector2.ZERO else Vector2.from_angle(FACE_ANGLE[facing])

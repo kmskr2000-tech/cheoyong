@@ -106,6 +106,7 @@ func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 	if _busy:
 		return
 	_busy = true
+	Audio.sfx("door", -8.0)
 	await fade(1.0, 0.35 if title == "" else 1.2)
 	if title != "":
 		await card(title, sub)
@@ -214,6 +215,7 @@ func _dogam_milestones() -> void:
 
 
 func give_tal(id: String) -> void:
+	Audio.sfx("pickup", -4.0, 0.0)
 	if not id in tals:
 		tals.append(id)
 	tal = id

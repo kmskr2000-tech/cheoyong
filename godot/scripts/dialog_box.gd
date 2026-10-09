@@ -131,6 +131,8 @@ func _process(delta: float) -> void:
 	var total := _body.get_total_character_count()
 	if _shown < total:
 		_shown = minf(total, _shown + delta * CHARS_PER_SEC)
+		if int(_shown) / 3 != _body.visible_characters / 3:
+			Audio.sfx("blip", -16.0, 0.1)
 		_body.visible_characters = int(_shown)
 	var done := _shown >= total
 	_knot.visible = done
@@ -193,6 +195,7 @@ func choose(line, options: Array) -> int:
 
 
 func _paint_menu() -> void:
+	Audio.sfx("ui_move", -14.0, 0.0)
 	for i in _opts.size():
 		var on := i == _sel
 		_opts[i].add_theme_color_override("font_color", CREAM if on else Color(0.6, 0.6, 0.66))
@@ -202,6 +205,7 @@ func _paint_menu() -> void:
 func _pick() -> void:
 	if not _choosing:
 		return
+	Audio.sfx("ui_ok", -10.0, 0.0)
 	_choosing = false
 	_menu.queue_free()
 	_menu = null

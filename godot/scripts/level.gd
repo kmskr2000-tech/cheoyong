@@ -95,6 +95,8 @@ func _ready() -> void:
 		hud.show_boss(boss, "역신(疫神)")
 		if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the defeat sequence
 			boss.hp = 20.0
+	Audio.music(def.get("music", "night"))
+	Audio.ambience(def.get("amb", ""))
 	Story.on_enter(self)
 	_make_guide()
 
@@ -281,6 +283,24 @@ func on_purified(r: Dictionary, where: Vector2) -> void:
 		Game.reward_bonus(_earned_j / 2, _earned_d / 2, where, self)   # 정화율 100%: ×1.5 in total
 
 
+# ---------------------------------------------------------------- 전투 음악: 요괴가 쫓아오면 자진모리
+var _calm_t := 0.0
+
+
+func _update_combat_music(d: float) -> void:
+	var p: Node2D = $Player
+	var hunting := false
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if e.get("state") in ["chase", "tell", "strike", "vanish", "lure"] and e.global_position.distance_to(p.global_position) < 200.0:
+			hunting = true
+			break
+	_calm_t = 0.0 if hunting else _calm_t + d
+	if hunting:
+		Audio.combat(true)
+	elif _calm_t > 4.0:
+		Audio.combat(false)
+
+
 # ---------------------------------------------------------------- darkness (어둑시니, 불개의 일식)
 var _dark: ColorRect
 var _dark_req := {}
@@ -351,6 +371,7 @@ func _wet_feet(d: float) -> void:
 	if _splash_cd > 0.0 or p.velocity.length() < 10.0 or not is_water(p.global_position + Vector2(0, 30)):  # screen → roughly the footprint just ahead
 		return
 	_splash_cd = 0.22
+	Audio.sfx("splash", -16.0, 0.15)
 	var sp := CPUParticles2D.new()
 	sp.one_shot = true
 	sp.amount = 6
@@ -568,6 +589,7 @@ func _process(d: float) -> void:
 		_update_guide(d)
 		_wet_feet(d)
 	_update_darkness(d)
+	_update_combat_music(d)
 	var pp: Vector2 = $Player.global_position + Vector2(0, -16)
 	for fp in fade_props:
 		var body: Node2D = fp[0]
