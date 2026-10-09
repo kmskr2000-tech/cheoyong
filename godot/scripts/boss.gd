@@ -171,6 +171,7 @@ func disguise() -> void:
 
 
 func awaken() -> void:
+	Audio.override("boss")
 	_ring(position, 70.0, Color(0.6, 1.0, 0.5))
 	sprite.play("idle")
 	_begin("idle")
@@ -307,6 +308,8 @@ func _clear_tells() -> void:
 
 # ---------------------------------------------------------------- taking hits
 func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
+	if state not in ["dead", "kneel", "wait"]:
+		Audio.sfx("hit", -3.0)
 	if state == "dead" or state == "kneel" or state == "wait":
 		return
 	hp -= dmg
@@ -342,9 +345,15 @@ func purify() -> void:
 
 
 func _defeat() -> void:
+	Audio.sfx("purify", 0.0, 0.0)
+	Audio.override("")
 	state = "dead"
 	_clear_tells()
 	remove_from_group("enemy")
+	Game.reward_purify("plague_god", global_position, get_parent())
+	if not "역신의 눈물" in Game.accessories:
+		Game.accessories.append("역신의 눈물")
+		Game.say_toast("장신구 「역신의 눈물」을 얻었다", Color(0.75, 0.95, 0.7))
 	for e in get_tree().get_nodes_in_group("downed"):
 		e.purify()
 	defeated.emit()

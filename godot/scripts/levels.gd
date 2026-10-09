@@ -17,6 +17,7 @@ const CANDLE := Color(0.7, 0.55, 1.0)
 const DATA := {
 	# 월성 편전 — SC1-22~23 왕의 부름과 퇴마어사 임명
 	"palace": {
+		"music": "title", "amb": "",
 		"name": "월성 편전",
 		"ground": "palace",
 		"ambient": Color(0.3, 0.29, 0.42),
@@ -35,6 +36,7 @@ const DATA := {
 	},
 	# 경주 관아 — SC1-12 의뢰
 	"gwana": {
+		"music": "night", "amb": "wind",
 		"name": "경주 관아",
 		"ground": "gwana",
 		"spawns": {"start": Vector2(24, 232)},
@@ -58,6 +60,7 @@ const DATA := {
 	},
 	# 서쪽 폐가 — 마당과 안채 (SC1-13)
 	"pyega1": {
+		"music": "dread", "amb": "wind",
 		"name": "서쪽 폐가",
 		"ground": "pyega1",
 		"ambient": Color(0.26, 0.28, 0.44),
@@ -77,6 +80,7 @@ const DATA := {
 	},
 	# 서쪽 폐가 — 다락과 최심부 (SC1-14~20)
 	"pyega2": {
+		"music": "dread", "amb": "",
 		"name": "폐가 다락",
 		"ground": "pyega2",
 		"ambient": Color(0.3, 0.29, 0.44),
@@ -98,6 +102,7 @@ const DATA := {
 	},
 	# 개운포 — 백사장과 해안 마을 (SC1-01~07). 처용이 바다에서 뭍으로 올라오는 곳.
 	"beach": {
+		"music": "night", "amb": "waves",
 		"name": "개운포",
 		"ground": "beach",
 		"spawns": {"start": Vector2(100, 262)},
@@ -126,6 +131,7 @@ const DATA := {
 	},
 	# 경주 변두리 (서라벌 외곽) — SC1-08~11
 	"gyeongju": {
+		"music": "night", "amb": "wind",
 		"name": "경주 변두리",
 		"ground": "village",
 		"time": "dusk",

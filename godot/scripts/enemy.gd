@@ -312,6 +312,7 @@ func _reach() -> float:
 
 
 func _begin_tell(to: Vector2) -> void:
+	Audio.sfx("tell", -10.0)
 	state = "tell"; st = 0.0
 	lunge_dir = to.normalized()
 	sprite.play("tell")
@@ -410,6 +411,7 @@ func _on_strike(to: Vector2, d: float) -> void:
 			for k in [-0.28, 0.0, 0.28]:
 				_shoot("mama_boil", Vector2i(10, 10), 2, to.normalized().rotated(k) * 115.0, 8)
 		"maiden_ghost":   # 울음: a ring that stuns whoever it sweeps over
+			Audio.sfx("wail", -3.0)
 			var w := Shockwave.new()
 			w.max_r = 84.0; w.time = 0.6; w.color = Color(0.85, 0.8, 1.0)
 			w.on_hit = func(p):
@@ -471,6 +473,7 @@ func _after_strike(to: Vector2, d: float) -> void:
 	match kind:
 		"dokkaebi_fire":   # the flaming club leaves the ground burning
 			var h := Hazard.make("fire_patch", Vector2i(28, 14), 4)
+			Audio.sfx("fire", -8.0)
 			h.position = position + lunge_dir * 22.0
 			get_parent().add_child(h)
 		"sangun", "pado":
@@ -531,6 +534,7 @@ func _lure(delta: float, to: Vector2, d: float) -> Vector2:
 
 
 func _shoot(sheet: String, cell: Vector2i, n: int, vel: Vector2, dmg: int, homing := 0.0, life := 2.0) -> Projectile:
+	Audio.sfx("throw", -8.0)
 	var pr := Projectile.make(sheet, cell, n)
 	pr.vel = vel
 	pr.dmg = dmg
@@ -574,6 +578,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 		state = "chase"; cd = 0.8   # 해태 accepts the challenge
 	if kind == "jeoseung_guard" and state not in ["strike", "stagger"] and guard_dir.dot(-dir) > 0.45:
 		flash = 0.05                 # 정면 방어: the blow glances off
+		Audio.sfx("block", -3.0)
 		knock = dir * 40.0
 		_spark(-dir)
 		return
@@ -584,6 +589,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 		mult = 0.4
 	dmg = int(ceil(dmg * mult))
 	reveal_t = 2.0
+	Audio.sfx("hit", -3.0)
 	if kind == "eodukssini":
 		grow = maxf(0.85, grow - 0.1)
 	if state in ["vanish", "lure"]:
@@ -680,6 +686,12 @@ func _purify() -> void:
 	remove_from_group("enemy")
 	remove_from_group("downed")
 	purified.emit()
+	Audio.sfx("purify", -4.0, 0.03)
+	if not is_clone:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
+		var lv: Node = get_tree().current_scene
+		var r := Game.reward_purify(kind, global_position, get_parent())
+		if lv.has_method("on_purified"):
+			lv.on_purified(r, global_position)
 	var motes := CPUParticles2D.new()
 	motes.amount = 24
 	motes.lifetime = 1.2

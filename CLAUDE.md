@@ -29,6 +29,8 @@
 - `art/ground3d.py` 높이 지도 → 레벨 지형 한 장 (윗면·절벽 옆면·물·충돌)
 - `art/props.py` 손그림 소품, `art/enemies.py` 적·보스, `art/fx.py` 이펙트, `art/ui.py` UI
 - `art/normals.py` 노멀맵, `art/tiles.py` 지형 텍스처·팔레트
+- `art/monsters.py` 설화 요괴, `art/intro.py` 인트로·타이틀 배경 그림
+- `art/sound.py` 소리 전부 합성(대금·피리·장구·징·풍경, A 계면조) → `godot/assets/audio`. 재생은 오토로드 `Audio`(레벨 `music`/`amb`, 요괴가 쫓아오면 전투곡, 보스는 override)
 - 화풍: 시오브스타즈식 3/4 탑다운 + 옥토파스식 HD-2D 후처리(심도·블룸·색보정). 색조는 어두운 푸른 밤, 따뜻한 등불·보랏빛 귀화가 포인트.
 
 ## 검증

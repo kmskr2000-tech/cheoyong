@@ -64,6 +64,9 @@ const SONG_RANGE := 90.0
 
 
 func _ready() -> void:
+	max_hp = Game.max_hp()
+	hp = max_hp
+	Game.leveled.connect(_on_leveled)
 	var tex: Texture2D = Tex.lit("res://assets/sprites/cheoyong.png")
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
@@ -160,6 +163,7 @@ func _face(dir: Vector2) -> void:
 
 # ---------------------------------------------------------------- attack
 func _start_attack() -> void:
+	Audio.sfx("slash", -4.0)
 	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if dir != Vector2.ZERO:
 		_face(dir)
@@ -248,7 +252,7 @@ func _resolve_hit(c: Dictionary, base: float) -> void:
 		if absf(wrapf(to.angle() - base, -PI, PI)) > 1.3 and to.length() > 10:
 			continue
 		if e.has_method("take_hit"):
-			e.take_hit(c["dmg"], to.normalized(), combo == COMBO.size() - 1)
+			e.take_hit(int(round(c["dmg"] * Game.attack_mult())), to.normalized(), combo == COMBO.size() - 1)
 			_spark(e.global_position + Vector2(0, -12))
 			hit_landed.emit(e)
 
@@ -275,6 +279,8 @@ func hurt(dmg: int, dir: Vector2) -> void:
 	if invuln or hurt_t > 0.0 or state == "dead":
 		return
 	hurt_t = 0.6
+	Audio.sfx("hurt", -2.0)
+	dmg = int(ceil(dmg * Game.damage_taken_mult()))   # 탈
 	if gentle_hits > 0:
 		gentle_hits -= 1  # 벌 없이 배운다: early hits only push him back
 		dmg = 0
@@ -340,6 +346,7 @@ func sing() -> void:
 
 
 func _start_song() -> void:
+	Audio.sfx("song", -1.0, 0.0)
 	_end_attack()
 	state = "song"
 	t = 0.0
@@ -418,10 +425,24 @@ func _ripple(col: Color, delay: float) -> void:
 	tw.tween_callback(ring.queue_free)
 
 
+## 레벨업: stats rise on their own, and the body is renewed
+func _on_leveled(_lv: int) -> void:
+	Audio.sfx("levelup", -2.0, 0.0)
+	max_hp = Game.max_hp()
+	hp = max_hp
+	ki = max_ki
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+	var ring := Shockwave.new()
+	ring.max_r = 30.0; ring.time = 0.6; ring.color = Color(1.0, 0.85, 0.45)
+	ring.position = position
+	get_parent().add_child(ring)
+
+
 # ---------------------------------------------------------------- status effects from 요괴
 func stun(sec: float) -> void:
 	if invuln or state == "dead":
 		return
+	Audio.sfx("stun", -6.0)
 	_end_attack()
 	if state != "move":
 		state = "move"
@@ -528,6 +549,7 @@ func _talisman() -> void:
 func _start_roll(dir: Vector2) -> void:
 	_end_attack()
 	pull_t = 0.0  # rolling tears free of whatever is dragging him
+	Audio.sfx("roll", -6.0)
 	state = "roll"
 	t = 0.0
 	roll_dir = dir.normalized() if dir != Vector2.ZERO else Vector2.from_angle(FACE_ANGLE[facing])

@@ -82,6 +82,7 @@ func purify() -> void:
 	if not is_in_group("downed"):
 		return
 	set_afflicted(false)
+	Audio.sfx("purify", -4.0)
 	var motes := CPUParticles2D.new()
 	motes.amount = 16
 	motes.lifetime = 1.4

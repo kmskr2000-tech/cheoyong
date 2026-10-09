@@ -49,6 +49,10 @@ const RUMOR := {
 func interact(level: Node, id: String) -> void:
 	if Game.flag("rumor") and RUMOR.has(id) and not Game.flag("appointed"):
 		await level.talk(RUMOR[id])
+		if not "cheoyong" in Game.tals and id in ["villagerA", "elder", "villagerB", "villagerC", "apothecary"]:
+			# SC1-21 → 처용탈 (growth-system §3): the mask they hang on gates, carved for him to wear
+			await level.talk([{"name": RUMOR[id][0]["name"], "text": "어사님 것도 하나 깎아 왔소. 문에 거는 것 말고, 쓰시라고."}])
+			Game.give_tal("cheoyong")
 		return
 	match id:
 		"flute": _pick_flute(level)
@@ -103,6 +107,7 @@ func _beach_wake(level: Node) -> void:
 ## SC1-03: 떠밀려온 대나무 피리 → SC1-04: 멀리 해안 마을에서 비명
 func _pick_flute(level: Node) -> void:
 	level.remove_interact("flute")
+	Audio.sfx("pickup", -4.0, 0.0)
 	Game.set_flag("flute")
 	Game.say_toast("대나무 피리를 주웠다.")
 	await level.get_tree().create_timer(1.6).timeout
@@ -618,6 +623,7 @@ func _farewell(level: Node) -> void:
 	var tw := p.create_tween()
 	tw.tween_property(p, "position", p.position + Vector2(170, 20), 3.2)
 	await level.get_tree().create_timer(1.8).timeout
+	Audio.override("title")   # SC1-25: the theme carries the verse
 	await Game.fade(1.0, 1.4)
 	tw.kill()
 	for line in ["동경 밝은 달 아래\n기침 소리 잦아들고",

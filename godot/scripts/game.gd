@@ -3,6 +3,8 @@ extends Node
 ## and level transitions behind a fade. Saves go to user://save.json.
 
 signal toast(text: String, color: Color)
+signal leveled(lv: int)
+signal progress_changed
 
 const SAVE_PATH := "user://save.json"
 const SETTINGS_PATH := "user://settings.json"
@@ -13,7 +15,20 @@ const SHOP := [
 ]
 
 var flags := {}
-var money := 50
+var money := 50              # 엽전: 상점 구매 전용
+# ---- 성장 (docs/growth-system.md)
+var jeonggi := 0             # 정기: 강화·부적·퇴치향 제작
+var deok := 0                # 덕망: 다음 레벨까지 모은 양
+var lv := 1
+var skill_points := 0
+var mats := {}               # 재료 이름 → 개수
+var dogam := {}              # 요괴 키 → 정화한 횟수
+var tal := ""                # 쓰고 있는 탈 ("" 무탈, "cheoyong" 처용탈 …)
+var tals: Array = []         # 가진 탈
+var accessories: Array = []  # 장신구 (보스·정예 드롭)
+var titles: Array = []
+const MAX_LV := 30
+const TALS := {"cheoyong": {"name": "처용탈", "desc": "받는 피해 10% 감소"}}
 var items := {"insam": 2, "gugija": 1, "jeonghwa": 0}
 var checkpoint := "beach"
 var level_id := "beach"
@@ -30,6 +45,7 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():  # test hooks: --level=gyeongju --spawn=home --flags=met_nanyeong,night
 		if a.begins_with("--level="): level_id = a.get_slice("=", 1)
 		elif a.begins_with("--spawn="): spawn_name = a.get_slice("=", 1)
+		elif a.begins_with("--deok="): deok = int(a.get_slice("=", 1))   # test hook
 		elif a.begins_with("--flags="):
 			for f in a.get_slice("=", 1).split(","):
 				flags[f] = 1
@@ -90,6 +106,7 @@ func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 	if _busy:
 		return
 	_busy = true
+	Audio.sfx("door", -8.0)
 	await fade(1.0, 0.35 if title == "" else 1.2)
 	if title != "":
 		await card(title, sub)
@@ -111,6 +128,123 @@ func to_title() -> void:
 	await fade(0.0, 0.8)
 
 
+# ---------------------------------------------------------------- 성장: 정화 보상, 레벨, 도감
+## 덕망 needed to go from level n to n+1
+func need(n: int) -> int:
+	return n * 120
+
+
+## 위쳐식 자동 성장: stats follow the level, no manual allocation
+func max_hp() -> float:
+	return 100.0 + (lv - 1) * 6.0
+
+
+func attack_mult() -> float:
+	return 1.0 + (lv - 1) * 0.05
+
+
+func damage_taken_mult() -> float:
+	return 0.9 if tal == "cheoyong" else 1.0
+
+
+func add_deok(n: int) -> void:
+	deok += n
+	while lv < MAX_LV and deok >= need(lv):
+		deok -= need(lv)
+		lv += 1
+		skill_points += 1
+		say_toast("덕망이 쌓였다 — Lv.%d" % lv, Color(1.0, 0.85, 0.45))
+		leveled.emit(lv)
+	progress_changed.emit()
+
+
+## a 요괴 has been sung clean: its 탁기 condenses into 정기, people's regard grows, sometimes material remains
+func reward_purify(kind: String, where: Vector2, parent: Node, mult := 1.0) -> Dictionary:
+	var e := Bestiary.entry(kind)
+	var t: Dictionary = Bestiary.TIERS[e["tier"]]
+	var r := {
+		"jeonggi": int(randi_range(t["jeonggi"][0], t["jeonggi"][1]) * mult),
+		"deok": int(randi_range(t["deok"][0], t["deok"][1]) * mult),
+		"money": int(randi_range(t["money"][0], t["money"][1]) * mult),
+		"mat": "",
+	}
+	if randf() < t["mat"]:
+		r["mat"] = Bestiary.MATERIALS.get(e["family"], "")
+		mats[r["mat"]] = int(mats.get(r["mat"], 0)) + (2 if e["tier"] != "normal" else 1)
+	jeonggi += r["jeonggi"]
+	money += r["money"]
+	var first := not dogam.has(kind)
+	dogam[kind] = int(dogam.get(kind, 0)) + 1
+	var lines := ["+%d 정기" % r["jeonggi"]]
+	if r["mat"] != "":
+		lines.append(r["mat"])
+	float_text(parent, where, lines)
+	if first:
+		say_toast("요괴 도감에 올랐다 — %s" % e["name"], Color(0.75, 0.85, 1.0))
+		_dogam_milestones()
+	add_deok(r["deok"])
+	return r
+
+
+## bonus grant (한풀이) without registering anything
+func reward_bonus(jg: int, dk: int, where: Vector2, parent: Node) -> void:
+	jeonggi += jg
+	float_text(parent, where, ["한풀이 +%d 정기" % jg])
+	add_deok(dk)
+
+
+func dogam_count() -> int:
+	var n := 0
+	for k in Bestiary.ENTRIES:
+		if dogam.has(k):
+			n += 1
+	return n
+
+
+func _dogam_milestones() -> void:
+	var total := Bestiary.ENTRIES.size()
+	var n := dogam_count()
+	if n * 2 >= total and not flag("dogam_half"):
+		set_flag("dogam_half")
+		jeonggi += 500
+		say_toast("도감 절반 — 정기 500", Color(0.75, 0.85, 1.0))
+	if n >= total and not flag("dogam_full"):
+		set_flag("dogam_full")
+		titles.append("요괴의 벗")
+		say_toast("도감 완성 — 칭호 「요괴의 벗」", Color(1.0, 0.85, 0.45))
+
+
+func give_tal(id: String) -> void:
+	Audio.sfx("pickup", -4.0, 0.0)
+	if not id in tals:
+		tals.append(id)
+	tal = id
+	say_toast("%s을 얻었다 — %s" % [TALS[id]["name"], TALS[id]["desc"]], Color(1.0, 0.7, 0.55))
+	progress_changed.emit()
+
+
+## little rising numbers where a 요괴 was purified
+func float_text(parent: Node, where: Vector2, lines: Array) -> void:
+	for i in lines.size():
+		var l := Label.new()
+		l.text = lines[i]
+		l.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
+		l.add_theme_font_size_override("font_size", 12)
+		l.add_theme_color_override("font_color", Color(0.75, 0.9, 1.0) if i == 0 else Color(0.95, 0.85, 0.6))
+		l.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
+		l.add_theme_constant_override("outline_size", 4)
+		l.position = where + Vector2(-30, -48 - i * 13)
+		l.size = Vector2(60, 14)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.z_index = 48
+		l.z_as_relative = false
+		parent.add_child(l)
+		var tw := l.create_tween().set_parallel()
+		tw.tween_property(l, "position:y", l.position.y - 18, 1.4).set_delay(i * 0.12)
+		tw.tween_property(l, "modulate:a", 0.0, 0.6).set_delay(0.9 + i * 0.12)
+		tw.chain().tween_callback(l.queue_free)
+
+
 # ---------------------------------------------------------------- settings (persist across saves)
 func setting(k: String):
 	if _settings.is_empty() and FileAccess.file_exists(SETTINGS_PATH):
@@ -129,7 +263,9 @@ func set_setting(k: String, v) -> void:
 
 # ---------------------------------------------------------------- save / load
 func save() -> void:
-	var data := {"flags": flags, "money": money, "items": items, "checkpoint": checkpoint}
+	var data := {"flags": flags, "money": money, "items": items, "checkpoint": checkpoint,
+		"jeonggi": jeonggi, "deok": deok, "lv": lv, "skill_points": skill_points, "mats": mats,
+		"dogam": dogam, "tal": tal, "tals": tals, "accessories": accessories, "titles": titles}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(data))
@@ -149,6 +285,16 @@ func load_save() -> bool:
 	money = int(data.get("money", 50))
 	items = data.get("items", items)
 	checkpoint = data.get("checkpoint", "beach")
+	jeonggi = int(data.get("jeonggi", 0))
+	deok = int(data.get("deok", 0))
+	lv = int(data.get("lv", 1))
+	skill_points = int(data.get("skill_points", 0))
+	mats = data.get("mats", {})
+	dogam = data.get("dogam", {})
+	tal = data.get("tal", "")
+	tals = data.get("tals", [])
+	accessories = data.get("accessories", [])
+	titles = data.get("titles", [])
 	return true
 
 
@@ -159,6 +305,8 @@ func new_game() -> void:
 	checkpoint = "beach"
 	level_id = "beach"
 	spawn_name = "start"
+	jeonggi = 0; deok = 0; lv = 1; skill_points = 0
+	mats = {}; dogam = {}; tal = ""; tals = []; accessories = []; titles = []
 
 
 ## where a fresh start / continue / death puts you

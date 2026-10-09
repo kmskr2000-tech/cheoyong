@@ -29,6 +29,16 @@ func _ready() -> void:
 	em.position = Vector2(6, 5)
 	root.add_child(em)
 	_hp_fill = _gauge(root, Vector2(30, 8), _hp_w, "res://assets/ui/gauge_hp.png")
+	_lv = Label.new()
+	_lv.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
+	_lv.add_theme_font_size_override("font_size", 12)
+	_lv.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
+	_lv.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
+	_lv.add_theme_constant_override("outline_size", 4)
+	_lv.position = Vector2(30, 28)
+	root.add_child(_lv)
+	_refresh_lv()
+	Game.leveled.connect(func(_l): _refresh_lv())
 	_ki_fill = _gauge(root, Vector2(30, 19), _ki_w, "res://assets/ui/gauge_ki.png")
 	_touch_root = Control.new()
 	_touch_root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -91,6 +101,11 @@ func _ready() -> void:
 
 
 var _buttons := {}
+var _lv: Label
+
+
+func _refresh_lv() -> void:
+	_lv.text = "Lv.%d" % Game.lv
 var _rings := {}
 var _talk: Sprite2D
 var _talk_on := false
@@ -173,22 +188,79 @@ func _open_bag() -> void:
 	var dialog: DialogBox = get_parent().dialog
 	get_tree().paused = true
 	while true:
+		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
+		var i: int = await dialog.choose({"name": "행낭", "text": status},
+			["약 꺼내기", "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "닫기"])
+		if i == 0:
+			if await _bag_items(dialog):
+				break
+		elif i == 1:
+			await _bag_dogam(dialog)
+		elif i == 2:
+			await _bag_kept(dialog)
+		else:
+			break
+	get_tree().paused = false
+
+
+## returns true when the bag should close (a 정화부 was used)
+func _bag_items(dialog: DialogBox) -> bool:
+	while true:
 		var opts := []
 		var ids := []
 		for it in Game.SHOP:
 			opts.append("%s ×%d" % [it["name"], int(Game.items.get(it["id"], 0))])
 			ids.append(it["id"])
-		opts.append("닫기")
-		var i: int = await dialog.choose({"name": "행낭", "text": "엽전 %d냥. 무엇을 꺼내겠소?" % Game.money}, opts)
+		opts.append("돌아가기")
+		var i: int = await dialog.choose({"name": "행낭", "text": "무엇을 꺼내겠소?"}, opts)
 		if i >= ids.size():
-			break
+			return false
 		if player.use_item(ids[i]):
 			Game.say_toast("%s을(를) 썼다." % Game.SHOP[i]["name"])
 			if ids[i] == "jeonghwa":
-				break
+				return true
 		else:
 			Game.say_toast("지금은 쓸 수 없다.", Color(0.7, 0.72, 0.8))
-	get_tree().paused = false
+	return false
+
+
+## 요괴 도감: six to a page; unknown ones stay hidden
+func _bag_dogam(dialog: DialogBox) -> void:
+	var keys: Array = Bestiary.ENTRIES.keys()
+	var page := 0
+	var per := 5
+	while true:
+		var opts := []
+		var shown := keys.slice(page * per, page * per + per)
+		for k in shown:
+			var e: Dictionary = Bestiary.ENTRIES[k]
+			opts.append(("%s%s" % ["★ " if e["tier"] != "normal" else "", e["name"]]) if Game.dogam.has(k) else "？？？")
+		var has_next := (page + 1) * per < keys.size()
+		opts.append("다음 쪽" if has_next else "첫 쪽")
+		opts.append("돌아가기")
+		var i: int = await dialog.choose({"name": "요괴 도감", "text": "정화한 요괴 %d / %d  (%d쪽)" % [Game.dogam_count(), keys.size(), page + 1]}, opts)
+		if i == shown.size():
+			page = page + 1 if has_next else 0
+		elif i > shown.size():
+			return
+		elif Game.dogam.has(shown[i]):
+			var e: Dictionary = Bestiary.ENTRIES[shown[i]]
+			var tier: String = {"normal": "", "elite": " · 정예", "boss": " · 보스"}[e["tier"]]
+			await dialog.choose({"name": e["name"], "text": "%s 계열%s · 정화 %d번\n%s" % [e["family"], tier, int(Game.dogam[shown[i]]), e["lore"]]}, ["닫기"])
+
+
+func _bag_kept(dialog: DialogBox) -> void:
+	var lines := []
+	lines.append("탈: %s" % (Game.TALS[Game.tal]["name"] + " (" + Game.TALS[Game.tal]["desc"] + ")" if Game.tal != "" else "무탈"))
+	if not Game.accessories.is_empty():
+		lines.append("장신구: " + ", ".join(Game.accessories))
+	var m := []
+	for k in Game.mats:
+		m.append("%s ×%d" % [k, int(Game.mats[k])])
+	lines.append("재료: " + (", ".join(m) if not m.is_empty() else "없음"))
+	if not Game.titles.is_empty():
+		lines.append("칭호: " + ", ".join(Game.titles))
+	await dialog.choose({"name": "지닌 것", "text": "\n".join(lines)}, ["닫기"])
 
 
 func _gauge(root: Control, at: Vector2, w: float, fill: String) -> TextureRect:

@@ -19,6 +19,8 @@ func _ready() -> void:
 	if not "--title" in args and args.any(func(a): return a.begins_with("--capture") or a.begins_with("--level") or a.begins_with("--beach")):
 		get_tree().change_scene_to_file.call_deferred("res://scenes/level.tscn")
 		return
+	Audio.music("title")
+	Audio.ambience("waves")
 	var bg := Sprite2D.new()
 	bg.texture = load("res://assets/intro/title_bg.png")
 	bg.centered = false
