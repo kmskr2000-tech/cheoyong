@@ -3,6 +3,8 @@ extends CharacterBody2D
 ## around the shoulder + spirit-wind slash) and a spinning dodge roll with after-images.
 
 signal hit_landed(target: Node2D)
+signal stats_changed(hp: float, max_hp: float, ki: float, max_ki: float)
+signal died
 
 const SPEED := 72.0
 const FRAME := Vector2i(32, 48)
@@ -42,6 +44,14 @@ var roll_dir := Vector2.ZERO
 var ghost_t := 0.0
 var invuln := false
 
+var max_hp := 100.0
+var hp := 100.0
+var max_ki := 100.0
+var ki := 100.0
+const KI_REGEN := 6.0 # per second
+const TALISMAN_COST := 35.0
+var spawn := Vector2.ZERO
+
 
 func _ready() -> void:
 	var tex: Texture2D = Tex.lit("res://assets/sprites/cheoyong.png")
@@ -59,6 +69,7 @@ func _ready() -> void:
 	sprite.sprite_frames = frames
 	sprite.offset = Vector2(0, FRAME.y / 2.0 - FEET_ROW)
 	sprite.play("down_idle")
+	spawn = position
 	arm = Sprite2D.new()
 	arm.texture = Tex.lit("res://assets/sprites/cheoyong_arm.png")
 	arm.centered = false
@@ -81,6 +92,10 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	t += delta
 	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if state == "dead":
+		return
+	if not locked and Input.is_action_just_pressed("talisman") and state == "move":
+		_talisman()
 	if not locked and Input.is_action_just_pressed("roll") and state != "roll":
 		_start_roll(dir)
 	elif not locked and Input.is_action_just_pressed("attack"):
@@ -219,10 +234,15 @@ func _spark(at: Vector2) -> void:
 var hurt_t := 0.0
 
 
-func hurt(_dmg: int, dir: Vector2) -> void:
-	if invuln or hurt_t > 0.0:
+func hurt(dmg: int, dir: Vector2) -> void:
+	if invuln or hurt_t > 0.0 or state == "dead":
 		return
 	hurt_t = 0.6
+	hp = maxf(0.0, hp - dmg)
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+	if hp <= 0.0:
+		_die()
+		return
 	_end_attack()
 	velocity = dir * 160.0
 	move_and_slide()
@@ -234,6 +254,73 @@ func hurt(_dmg: int, dir: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	hurt_t = maxf(0.0, hurt_t - delta)
+	if ki < max_ki and state != "dead":
+		ki = minf(max_ki, ki + KI_REGEN * delta)
+		stats_changed.emit(hp, max_hp, ki, max_ki)
+
+
+func _die() -> void:
+	state = "dead"
+	_end_attack()
+	velocity = Vector2.ZERO
+	died.emit()
+	var tw := create_tween()
+	tw.tween_property(sprite, "rotation", PI / 2 * (1 if facing != "left" else -1), 0.25)
+	tw.parallel().tween_property(sprite, "modulate", Color(0.5, 0.6, 0.9, 0.8), 0.6)
+	tw.tween_interval(1.4)
+	tw.tween_callback(_respawn)
+
+
+func _respawn() -> void:
+	position = spawn
+	hp = max_hp
+	ki = max_ki
+	sprite.rotation = 0.0
+	sprite.modulate = Color.WHITE
+	state = "move"
+	hurt_t = 1.0
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+
+
+# ---------------------------------------------------------------- 정화부 (talisman burst)
+func _talisman() -> void:
+	if ki < TALISMAN_COST:
+		return
+	ki -= TALISMAN_COST
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+	for e in get_tree().get_nodes_in_group("enemy"):
+		var to: Vector2 = e.global_position - global_position
+		if to.length() < 58.0 and e.has_method("take_hit"):
+			e.take_hit(14, to.normalized(), true)
+	# an expanding ring of pearl light with a paper talisman flaring at the centre
+	var ring := Line2D.new()
+	ring.width = 2.0
+	ring.default_color = Color(0.75, 0.95, 1.0, 0.9)
+	ring.material = slash.material
+	ring.z_index = 40
+	ring.z_as_relative = false
+	for i in 33:
+		ring.add_point(Vector2.from_angle(i * TAU / 32) * Vector2(1, 0.55))
+	ring.position = Vector2(0, -6)
+	add_child(ring)
+	var tw := ring.create_tween().set_parallel()
+	tw.tween_property(ring, "scale", Vector2(60, 60), 0.35).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ring, "width", 0.04, 0.35)
+	tw.tween_property(ring, "modulate:a", 0.0, 0.4)
+	tw.chain().tween_callback(ring.queue_free)
+	var tl := Sprite2D.new()
+	tl.texture = load("res://assets/ui/btn_talisman.png")
+	tl.region_enabled = true
+	tl.region_rect = Rect2(12, 9, 10, 16)
+	tl.position = Vector2(0, -52)
+	tl.material = slash.material
+	tl.z_index = 41
+	tl.z_as_relative = false
+	add_child(tl)
+	var tw2 := tl.create_tween().set_parallel()
+	tw2.tween_property(tl, "position:y", -64.0, 0.5)
+	tw2.tween_property(tl, "modulate:a", 0.0, 0.5)
+	tw2.chain().tween_callback(tl.queue_free)
 
 
 # ---------------------------------------------------------------- roll (춤 구르기)

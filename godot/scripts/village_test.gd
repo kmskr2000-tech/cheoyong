@@ -51,6 +51,9 @@ func _ready() -> void:
 		en.kind = e[0]
 		en.position = lift(e[1])
 		add_child(en)
+	hud = Hud.new()
+	add_child(hud)
+	hud.bind($Player)
 	dialog = DialogBox.new()
 	add_child(dialog)
 	if "--dialog" in OS.get_cmdline_user_args():
@@ -58,6 +61,7 @@ func _ready() -> void:
 
 
 var dialog: DialogBox
+var hud: Hud
 
 
 func _demo_dialog() -> void:
