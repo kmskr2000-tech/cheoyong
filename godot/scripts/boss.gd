@@ -13,7 +13,7 @@ signal knelt
 signal phase_two
 
 const CELL := Vector2i(56, 76)
-const MAX_HP := 600.0
+const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
 const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7]}
 
 var hp := MAX_HP

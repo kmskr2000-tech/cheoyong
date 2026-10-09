@@ -391,7 +391,11 @@ func _briefing(level: Node) -> void:
 		{"name": "형방 박문", "text": "급간 처용이오? 개운포 수령 영감의 천거로 왔다는…"},
 		{"name": "형방 박문", "text": "서쪽 폐가에서 역병이 시작됐다는 소문이오. 들어가 본 자가 없소."},
 		{"name": "처용", "text": "…가겠소."},
+		{"name": "형방 박문", "text": "관아에서 내주는 약이오. 폐가는 사람 몸으로 버틸 곳이 아니라 하오."},
 	])
+	# 난이도: the first dungeon comes with a safety net (인삼정기탕 ×2)
+	Game.items["insam"] = int(Game.items.get("insam", 0)) + 2
+	Game.say_toast("인삼정기탕 ×2 — 행낭에서 꺼내 쓰시오")
 	p.locked = true
 	var run: Npc = level.npc("runner")
 	run.set_present(true)
@@ -443,6 +447,12 @@ func _inner_room(level: Node) -> void:
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	level.add_barrier(Rect2(492, 156, 22, 72))
+	# the door seals the room for 처용 and 역신 alone: anything that followed him in is thrown back out
+	for e in level.get_tree().get_nodes_in_group("enemy") + level.get_tree().get_nodes_in_group("downed"):
+		if e == boss or e is Npc or not (e is Node2D) or e.global_position.x < 492:
+			continue
+		var out: Vector2 = level.lift(Vector2(468, 192)) + Vector2(0, randf_range(-24, 24))
+		e.global_position = out
 	var cam: Camera2D = p.get_node("Camera")
 	var tw := cam.create_tween()
 	tw.tween_property(cam, "offset", (boss.global_position - p.global_position) * 0.6, 1.0).set_trans(Tween.TRANS_SINE)

@@ -190,7 +190,7 @@ func _open_bag() -> void:
 	while true:
 		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
 		var i: int = await dialog.choose({"name": "행낭", "text": status},
-			["약 꺼내기", "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "닫기"])
+			["약 꺼내기", "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "닫기"])
 		if i == 0:
 			if await _bag_items(dialog):
 				break
@@ -198,9 +198,35 @@ func _open_bag() -> void:
 			await _bag_dogam(dialog)
 		elif i == 2:
 			await _bag_kept(dialog)
+		elif i == 3:
+			await _recall()
+			break
 		else:
 			break
 	get_tree().paused = false
+
+
+## 회상: the intro 「떠나는 자」 again, played over the paused level; the level is left exactly as it was
+func _recall() -> void:
+	var level := get_parent()
+	var prev_override: String = Audio._override
+	await Game.fade(1.0, 0.6)
+	var cl := CanvasLayer.new()
+	cl.layer = 18
+	cl.process_mode = Node.PROCESS_MODE_ALWAYS
+	var bg := ColorRect.new()  # the level must not show through between shots
+	bg.color = Color.BLACK
+	bg.size = Vector2(480, 270)
+	cl.add_child(bg)
+	var intro: Node = load("res://scenes/intro.tscn").instantiate()
+	intro.overlay = true
+	cl.add_child(intro)
+	level.add_child(cl)
+	await intro.finished
+	cl.queue_free()
+	Audio.override(prev_override)
+	Audio.ambience(Levels.DATA[Game.level_id].get("amb", ""))
+	await Game.fade(0.0, 0.6)
 
 
 ## returns true when the bag should close (a 정화부 was used)
