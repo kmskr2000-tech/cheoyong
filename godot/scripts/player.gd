@@ -215,6 +215,27 @@ func _spark(at: Vector2) -> void:
 	tw.tween_callback(s.queue_free)
 
 
+# ---------------------------------------------------------------- getting hit
+var hurt_t := 0.0
+
+
+func hurt(_dmg: int, dir: Vector2) -> void:
+	if invuln or hurt_t > 0.0:
+		return
+	hurt_t = 0.6
+	_end_attack()
+	velocity = dir * 160.0
+	move_and_slide()
+	var tw := create_tween()
+	for i in 3:
+		tw.tween_property(sprite, "modulate", Color(1.8, 0.5, 0.5), 0.05)
+		tw.tween_property(sprite, "modulate", Color.WHITE, 0.08)
+
+
+func _process(delta: float) -> void:
+	hurt_t = maxf(0.0, hurt_t - delta)
+
+
 # ---------------------------------------------------------------- roll (춤 구르기)
 func _start_roll(dir: Vector2) -> void:
 	_end_attack()

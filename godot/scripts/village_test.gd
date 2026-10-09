@@ -46,6 +46,11 @@ func _ready() -> void:
 	for i in 4:
 		_wisp(lift(Vector2(470, 290)) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
 	_blob($Player, 10)
+	for e in [["dog", Vector2(260, 270)], ["dog", Vector2(540, 250)], ["ghoul", Vector2(330, 300)], ["ghoul", Vector2(150, 230)]]:
+		var en := Enemy.new()
+		en.kind = e[0]
+		en.position = lift(e[1])
+		add_child(en)
 	dialog = DialogBox.new()
 	add_child(dialog)
 	if "--dialog" in OS.get_cmdline_user_args():
