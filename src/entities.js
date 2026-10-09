@@ -206,7 +206,7 @@ export class Player {
       if (this.ultTick <= 0) {
         this.ultTick = 0.2;
         const ang = G.time * 9;
-        lvl.fx.push(new SlashFx(this.x, this.y - 8, ang, 44, 1.2, '#ffd86a', 0.2, 3));
+        lvl.fx.push(new SlashFx(this.x, this.y - 16, ang, 44, 1.2, '#ffd86a', 0.2, 3));
         for (const e of lvl.allTargets()) if (dist(e, this) < 70) e.takeHit({ dmg: BAL.ultDps * 0.2 * (e.isBoss ? 0.35 : 1), pur: e.isBoss ? 1 : 6, kx: 0, ky: 0, noStagger: !!e.isBoss, quiet: true }, lvl);
         sfx('slash');
       }
@@ -263,7 +263,7 @@ export class Player {
       case 'charge':
         this.chargeT += dt;
         this.move(lvl, mx * speed * 0.4 * dt, my * speed * 0.4 * dt);
-        if (this.chargeT >= 0.45 && !this.chargeReady) { this.chargeReady = true; sfx('bell'); lvl.fx.push(new Ring(this.x, this.y - 8, 4, 18, 0.3, '#ffffff')); }
+        if (this.chargeT >= 0.45 && !this.chargeReady) { this.chargeReady = true; sfx('bell'); lvl.fx.push(new Ring(this.x, this.y - 18, 4, 18, 0.3, '#ffffff')); }
         if (Math.random() < 0.5) lvl.fx.push(new Particle(this.x + rand(-10, 10), this.y + rand(-14, 2), 0, -20, 0.4, this.chargeReady ? '#ffffff' : '#9fe8ff', 1));
         break;
       case 'attack':
@@ -303,7 +303,7 @@ export class Player {
       if (Math.abs(this.kx) + Math.abs(this.ky) < 4) { this.kx = 0; this.ky = 0; }
     }
     if (moving && (this.state === 'move' || this.state === 'charge')) this.walkT += dt; else this.walkT = 0;
-    if (this.songT > 0 && Math.random() < 0.15) lvl.fx.push(new Particle(this.x + rand(-8, 8), this.y - 20, rand(-6, 6), -18, 0.8, C.goldL, 2));
+    if (this.songT > 0 && Math.random() < 0.15) lvl.fx.push(new Particle(this.x + rand(-8, 8), this.y - 34, rand(-6, 6), -18, 0.8, C.goldL, 2));
   }
 
   move(lvl, dx, dy) { lvl.moveEntity(this, dx, dy); }
@@ -349,8 +349,8 @@ export class Player {
     const mult = (heavy ? BAL.heavyMult : BAL.comboMult[Math.max(0, this.combo)]) * this.damageMult();
     const dmg = atk() * mult;
     const knock = heavy ? 170 : this.combo === 2 ? 150 : 40;
-    lvl.fx.push(new SlashFx(cx + this.fx * 4, cy + this.fy * 4, ang, r * 0.8, heavy ? Math.PI : 1.0, this.parryBonus ? '#ffffff' : heavy ? '#d8f4ff' : '#9fe8ff', heavy ? 0.3 : 0.16, heavy ? 5 : 4));
-    if (heavy) lvl.fx.push(new Ring(cx, cy, 8, r, 0.3, '#9fe8ff', 3));
+    lvl.fx.push(new SlashFx(cx + this.fx * 4, cy - 8 + this.fy * 4, ang, r * 0.8, heavy ? Math.PI : 1.0, this.parryBonus ? '#ffffff' : heavy ? '#d8f4ff' : '#9fe8ff', heavy ? 0.3 : 0.16, heavy ? 5 : 4));
+    if (heavy) lvl.fx.push(new Ring(cx, cy - 6, 8, r, 0.3, '#9fe8ff', 3));
     let hitAny = false;
     for (const e of lvl.allTargets()) {
       const d = Math.hypot(e.x - cx, (e.y - (e.hy || 6)) - cy);
@@ -403,7 +403,7 @@ export class Player {
     } else if (kind === 'guard') {
       this.shield = 10; sfx('shield');
     }
-    lvl.fx.push(new Ring(this.x, this.y - 8, 4, 22, 0.35, '#d8c89a'));
+    lvl.fx.push(new Ring(this.x, this.y - 18, 4, 22, 0.35, '#d8c89a'));
   }
   song(lvl) {
     if (G.encounter.songUsed) { sfx('denied'); toast('처용가는 교전마다 한 번뿐이다', '#9fb0d0', 1.5); return; }
@@ -412,7 +412,7 @@ export class Player {
     this.sori = Math.min(100, this.sori + BAL.soriSongBonus);
     sfx('song');
     toast('처용가 — 공격력 +30% (10초)', C.goldL, 2);
-    for (let i = 0; i < 3; i++) lvl.fx.push(new Ring(this.x, this.y - 8, 6, 60 + i * 20, 0.8 + i * 0.2, C.goldL, 2));
+    for (let i = 0; i < 3; i++) lvl.fx.push(new Ring(this.x, this.y - 18, 6, 60 + i * 20, 0.8 + i * 0.2, C.goldL, 2));
   }
   ult(lvl) {
     if (this.sin < 100) { sfx('denied'); toast('신명이 차지 않았다', '#9fb0d0', 1.2); return; }
@@ -427,14 +427,14 @@ export class Player {
     if (id === 'insam') {
       if (G.stats.hp >= G.stats.maxHp) { toast('이미 기력이 충분하다', '#9fb0d0', 1.2); return; }
       G.stats.hp = Math.min(G.stats.maxHp, G.stats.hp + 60);
-      lvl.fx.push(new TextPop(this.x, this.y - 24, '+60', '#7aff9a'));
+      lvl.fx.push(new TextPop(this.x, this.y - 46, '+60', '#7aff9a'));
     } else if (id === 'gugija') {
       this.sori = Math.min(100, this.sori + 50);
-      lvl.fx.push(new TextPop(this.x, this.y - 24, '소리 +50', '#9fe8ff'));
+      lvl.fx.push(new TextPop(this.x, this.y - 46, '소리 +50', '#9fe8ff'));
     } else if (id === 'jeonghwa') {
       let n = 0;
       for (const e of lvl.allTargets()) if (dist(e, this) < 90) { e.takeHit({ dmg: 0, pur: 35, kx: 0, ky: 0, noStagger: true, quiet: true }, lvl); n++; }
-      lvl.fx.push(new Ring(this.x, this.y - 8, 6, 90, 0.6, C.goldL, 2));
+      lvl.fx.push(new Ring(this.x, this.y - 18, 6, 90, 0.6, C.goldL, 2));
       if (!n) toast('주변에 요괴가 없다', '#9fb0d0', 1.2);
     }
     G.items[id]--;
@@ -458,7 +458,7 @@ export class Player {
     }
     if (this.shield > 0) {
       this.shield = 0; this.invuln = 0.5; sfx('shieldBreak');
-      lvl.fx.push(new Ring(this.x, this.y - 8, 8, 26, 0.4, C.goldL, 3));
+      lvl.fx.push(new Ring(this.x, this.y - 18, 8, 26, 0.4, C.goldL, 3));
       return 'blocked';
     }
     G.stats.hp -= h.dmg;
@@ -468,7 +468,7 @@ export class Player {
     const k = h.knock ?? 120;
     this.kx = Math.cos(a) * k; this.ky = Math.sin(a) * k;
     sfx('phit'); shake(3);
-    lvl.fx.push(new TextPop(this.x, this.y - 24, '-' + Math.round(h.dmg), '#ff6a5a'));
+    lvl.fx.push(new TextPop(this.x, this.y - 46, '-' + Math.round(h.dmg), '#ff6a5a'));
     if (G.stats.hp <= 0) this.die(lvl);
     return 'hit';
   }
@@ -480,12 +480,26 @@ export class Player {
     this.sin = Math.min(100, this.sin + BAL.sinPerParry);
     this.parryChain++; this.parryChainT = 10;
     sfx('parry');
-    lvl.fx.push(new Ring(this.x, this.y - 8, 6, 34, 0.5, '#ffffff', 2));
-    lvl.fx.push(new TextPop(this.x, this.y - 28, '받아넘기기', '#ffffff', 1.0));
+    lvl.fx.push(new Ring(this.x, this.y - 18, 6, 34, 0.5, '#ffffff', 2));
+    lvl.fx.push(new TextPop(this.x, this.y - 48, '받아넘기기', '#ffffff', 1.0));
     if (this.parryChain >= 3) {
       this.parryChain = 0; this.heightT = 5;
       toast('신명 고조 — 이속·베기 속도 상승 (5초)', C.goldL, 2);
     }
+  }
+  // 피리 (bamboo pipe, the hero's weapon) while attacking or charging
+  drawPipe(g, x, y) {
+    if (!(this.state === 'attack' || this.state === 'heavy' || this.state === 'charge')) return;
+    const len = 15;
+    const hx = x + this.fx * 6, hy = y - 17 + this.fy * 3;
+    const ex = hx + this.fx * len, ey = hy + this.fy * len - 3;
+    g.lineCap = 'round';
+    g.strokeStyle = '#0a080c'; g.lineWidth = 3.2; g.beginPath(); g.moveTo(hx, hy); g.lineTo(ex, ey); g.stroke();
+    g.strokeStyle = '#8a6a34'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(hx, hy); g.lineTo(ex, ey); g.stroke();
+    g.strokeStyle = '#d8b66a'; g.lineWidth = 0.8; g.beginPath(); g.moveTo(hx, hy - 0.5); g.lineTo(ex, ey - 0.5); g.stroke();
+    g.fillStyle = '#3a2410';
+    for (const k of [0.33, 0.66]) g.fillRect(Math.round(hx + (ex - hx) * k), Math.round(hy + (ey - hy) * k) - 1, 1, 2);
+    g.lineCap = 'butt';
   }
   die(lvl) {
     G.stats.hp = 0; this.dead = true; this.state = 'dead';
@@ -497,9 +511,11 @@ export class Player {
     const blink = this.invuln > 0 && this.hurtT > 0 && Math.floor(G.time * 20) % 2 === 0;
     const x = Math.round(this.x), y = Math.round(this.y);
     // shadow
-    shadow(g, x, y, this.state === 'roll' ? 10 : 14);
+    shadow(g, x, y, this.state === 'roll' ? 12 : 16);
+    // sprites are anchored at the feet: (13, 40) inside the 26x42 canvas
+    const AX = 13, AY = 40;
     if (this.state === 'dead') {
-      g.save(); g.translate(x, y - 4); g.rotate(Math.PI / 2); g.drawImage(SPR.player.down[0], -8, -9); g.restore();
+      g.save(); g.translate(x, y - 5); g.rotate(Math.PI / 2); g.drawImage(SPR.player.down[0], -AX, -20); g.restore();
       return;
     }
     let frame = 0;
@@ -507,36 +523,31 @@ export class Player {
     const spr = SPR.player[this.dir][frame];
     g.save();
     if (blink) g.globalAlpha = 0.4;
-    let ox = 0, oy = 0;
     if (this.state === 'roll') {
       // 춤 구르기: spin-step afterimage
       const k = 1 - this.rollT / BAL.rollTime;
       g.globalAlpha = 0.3;
-      g.drawImage(spr, x - 8 - this.rvx * 8, y - 18 - this.rvy * 8);
+      g.drawImage(spr, x - AX - this.rvx * 8, y - AY - this.rvy * 8);
       g.globalAlpha = 1;
-      oy = -Math.sin(k * Math.PI) * 4;
-      g.translate(x, y - 9 + oy); g.rotate(Math.sin(k * Math.PI * 2) * 0.35); g.drawImage(spr, -8, -9);
+      const oy = -Math.sin(k * Math.PI) * 4;
+      g.translate(x, y - 20 + oy); g.rotate(Math.sin(k * Math.PI * 2) * 0.35); g.drawImage(spr, -AX, -20);
       g.restore();
       return;
     }
     if (this.state === 'ult') {
-      g.translate(x, y - 9); g.scale(Math.cos(G.time * 14) >= 0 ? 1 : -1, 1); g.drawImage(SPR.player.down[0], -8, -9);
+      g.translate(x, y - 20); g.scale(Math.cos(G.time * 14) >= 0 ? 1 : -1, 1); g.drawImage(SPR.player.down[0], -AX, -20);
       g.restore();
       return;
     }
-    rim(g, spr, x - 8 + ox, y - 18 + oy, this.x, this.y);
-    g.drawImage(spr, x - 8 + ox, y - 18 + oy);
-    // 피리 (pipe) while attacking or charging
-    if (this.state === 'attack' || this.state === 'heavy' || this.state === 'charge') {
-      const len = 10;
-      const hx = x + this.fx * 4, hy = y - 8 + this.fy * 3;
-      g.strokeStyle = C.ink; g.lineWidth = 3; g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx + this.fx * len, hy + this.fy * len); g.stroke();
-      g.strokeStyle = '#a06a32'; g.lineWidth = 1; g.beginPath(); g.moveTo(hx, hy); g.lineTo(hx + this.fx * len, hy + this.fy * len); g.stroke();
-    }
+    const behind = this.fy < -0.3; // pipe held on the far side when facing away
+    if (behind) this.drawPipe(g, x, y);
+    rim(g, spr, x - AX, y - AY, this.x, this.y);
+    g.drawImage(spr, x - AX, y - AY);
+    if (!behind) this.drawPipe(g, x, y);
     g.restore();
     if (this.shield > 0) {
       g.save(); g.globalAlpha = 0.35 + Math.sin(G.time * 6) * 0.1; g.strokeStyle = C.goldL; g.lineWidth = 1;
-      g.beginPath(); g.ellipse(x, y - 9, 12, 14, 0, 0, TAU); g.stroke(); g.restore();
+      g.beginPath(); g.ellipse(x, y - 19, 15, 23, 0, 0, TAU); g.stroke(); g.restore();
     }
     if (this.heightT > 0) { g.save(); g.globalAlpha = 0.25; g.fillStyle = C.goldL; g.fillRect(x - 7, y - 19, 14, 1); g.restore(); }
   }
@@ -650,7 +661,7 @@ export class Dog extends Enemy {
     super(def);
     this.kind = 'dog'; this.name = '역병 들린 들개';
     this.hp = this.maxHp = Math.round(52 * this.pow); this.purMax = Math.round(60 * this.pow); this.purRate = 0.75; this.weak = 'fire';
-    this.exp = Math.round(26 * this.pow); this.radius = 7; this.w = 12; this.h = 6; this.aggroR = 100; this.barY = 20; this.hy = 5;
+    this.exp = Math.round(26 * this.pow); this.radius = 7; this.w = 12; this.h = 6; this.aggroR = 100; this.barY = 26; this.hy = 5;
     this.face = 1;
     this.pureSprite = SPR.dogPure;
   }
@@ -689,15 +700,15 @@ export class Dog extends Enemy {
     }
   }
   draw(g) {
-    this.drawShadow(g, 14);
+    this.drawShadow(g, 22);
     const moving = this.state === 'chase' || (this.state === 'idle' && this.wx);
     const f = moving ? Math.floor(this.anim * 8) % 2 : 0;
     const set = this.flash > 0 ? 'dogWhite' : this.state === 'tele' ? 'dogRed' : 'dog';
     let img = SPR[set][f];
     if (this.face < 0) img = this.flash > 0 || this.state === 'tele' ? flipCache(img) : SPR.dogL[f];
     const crouch = this.state === 'tele' ? 2 : 0;
-    rim(g, img, Math.round(this.x) - 8, Math.round(this.y) - 12 + crouch, this.x, this.y);
-    g.drawImage(img, Math.round(this.x) - 8, Math.round(this.y) - 12 + crouch);
+    rim(g, img, Math.round(this.x) - 17, Math.round(this.y) - 20 + crouch, this.x, this.y);
+    g.drawImage(img, Math.round(this.x) - 17, Math.round(this.y) - 20 + crouch);
     if (this.slowT > 0) drawBindMark(g, this);
     this.drawBars(g);
   }
@@ -722,7 +733,7 @@ export class Imp extends Enemy {
     super(def);
     this.kind = 'imp'; this.name = '역귀 졸개';
     this.hp = this.maxHp = Math.round(58 * this.pow); this.purMax = Math.round(60 * this.pow); this.purRate = 0.75; this.weak = 'bind';
-    this.exp = Math.round(30 * this.pow); this.radius = 7; this.w = 10; this.h = 6; this.aggroR = 120; this.barY = 22; this.hy = 8;
+    this.exp = Math.round(30 * this.pow); this.radius = 7; this.w = 10; this.h = 6; this.aggroR = 120; this.barY = 36; this.hy = 8;
     this.pureSprite = SPR.impPure;
     this.strafe = Math.random() < 0.5 ? 1 : -1;
   }
@@ -762,13 +773,13 @@ export class Imp extends Enemy {
     }
   }
   draw(g) {
-    this.drawShadow(g, 12);
+    this.drawShadow(g, 14);
     const f = this.state === 'move' ? Math.floor(this.anim * 6) % 2 : 0;
     const tele = this.state === 'tele' || (this.state === 'claw' && this.t < 0.42);
     const set = this.flash > 0 ? 'impWhite' : tele ? 'impRed' : 'imp';
     const bob = Math.round(Math.sin(this.anim * 5) * 1);
-    rim(g, SPR[set][f], Math.round(this.x) - 7, Math.round(this.y) - 16 + bob - (tele ? 1 : 0), this.x, this.y);
-    g.drawImage(SPR[set][f], Math.round(this.x) - 7, Math.round(this.y) - 16 + bob - (tele ? 1 : 0));
+    rim(g, SPR[set][f], Math.round(this.x) - 12, Math.round(this.y) - 30 + bob - (tele ? 1 : 0), this.x, this.y);
+    g.drawImage(SPR[set][f], Math.round(this.x) - 12, Math.round(this.y) - 30 + bob - (tele ? 1 : 0));
     if (this.slowT > 0) drawBindMark(g, this);
     this.drawBars(g);
   }
@@ -809,7 +820,7 @@ export class Clone {
     }
   }
   draw(g) {
-    shadow(g, this.x, this.y, 20);
+    shadow(g, this.x, this.y, 28);
     drawBoss(g, this.x, this.y, G.time + (this.real ? 0 : this.x * 0.01), { tele: this.state === 'tele', flash: this.flash > 0 });
     if (this.slowT > 0) drawBindMark(g, this);
   }
@@ -1048,7 +1059,7 @@ export class Boss {
   draw(g) {
     if (this.state === 'defeated' && this.vanishedForEnding) return;
     if (this.alpha <= 0) return;
-    shadow(g, this.x, this.y, 22 * this.alpha);
+    shadow(g, this.x, this.y, 30 * this.alpha);
     const tele = this.state === 'coughTele' || this.state === 'fogTele' || this.state === 'pulseTele' || (this.state === 'clones' && this.swipeT > 0);
     drawBoss(g, this.x, this.y, this.t, { human: this.state === 'human', tele, flash: this.flash > 0, alpha: this.alpha * (this.state === 'defeated' ? 0.8 : 1) });
     if (this.slowT > 0) drawBindMark(g, this);
@@ -1071,13 +1082,14 @@ export class NPC {
     const x = Math.round(this.x), y = Math.round(this.y);
     if (this.ghost || this.spirit) {
       g.save(); g.globalAlpha = 0.55 + Math.sin(this.t * 3) * 0.2;
-      g.drawImage(spr, x - 8, y - 20 + Math.round(Math.sin(this.t * 2) * 2));
+      g.drawImage(spr, x - (spr.width >> 1), y - spr.height + 1 + Math.round(Math.sin(this.t * 2) * 2));
       g.restore();
       return;
     }
-    shadow(g, x, y, 14);
-    const ny = y - 18 + (Math.sin(this.t * 2) > 0.95 ? -1 : 0);
-    rim(g, spr, x - 8, ny, this.x, this.y);
-    g.drawImage(spr, x - 8, ny);
+    shadow(g, x, y, 16);
+    const ny = y - spr.height + 2 + (Math.sin(this.t * 2) > 0.95 ? -1 : 0);
+    const nx = x - (spr.width >> 1);
+    rim(g, spr, nx, ny, this.x, this.y);
+    g.drawImage(spr, nx, ny);
   }
 }

@@ -317,7 +317,7 @@ function fit() {
 function boot() {
   buildSprites();
   SPR.cheoyong = SPR.player.down[0];
-  const mk = (human) => { const [c, g] = makeCanvas(36, 48); drawBoss(g, 18, 46, 0, { human }); return c; };
+  const mk = (human) => { const [c, g] = makeCanvas(48, 66); drawBoss(g, 24, 64, 0, { human }); return c; };
   SPR.yeoksin = mk(false); SPR.yeoksinHuman = mk(true);
   initInput(canvas);
   initTouch(canvas, () => !!readSave());

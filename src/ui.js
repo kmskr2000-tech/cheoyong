@@ -3,7 +3,7 @@
 import { G, BAL, SCALE, VIEW_W, VIEW_H } from './state.js';
 import { input } from './input.js';
 import { sfx } from './audio.js';
-import { SPR, C, drawTalismanIcon } from './gfx.js';
+import { SPR, PORTRAIT, C, drawTalismanIcon } from './gfx.js';
 import { TextPop } from './entities.js';
 
 export const W = VIEW_W * SCALE, H = VIEW_H * SCALE;
@@ -104,13 +104,18 @@ export function drawDialog(ctx) {
   const x = 40, y = H - 150, w = W - 80, h = 128;
   panel(ctx, x, y, w, h);
   let tx = x + 24;
-  if (line.p && SPR[line.p]) {
+  if (line.p && (PORTRAIT[line.p] || SPR[line.p])) {
     ctx.fillStyle = '#060814'; ctx.fillRect(x + 16, y + 16, 96, 96);
-    ctx.strokeStyle = C.goldD; ctx.strokeRect(x + 16, y + 16, 96, 96);
     ctx.imageSmoothingEnabled = false;
-    const s = SPR[line.p];
-    const sc = Math.floor(80 / Math.max(s.width, s.height)) || 4;
-    ctx.drawImage(s, x + 64 - s.width * sc / 2, y + 64 - s.height * sc / 2, s.width * sc, s.height * sc);
+    const s = PORTRAIT[line.p] || SPR[line.p];
+    const sc = PORTRAIT[line.p] ? 2 : Math.floor(80 / Math.max(s.width, s.height)) || 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(x + 16, y + 16, 96, 96); ctx.clip();
+    const bg = ctx.createRadialGradient(x + 64, y + 50, 4, x + 64, y + 64, 70);
+    bg.addColorStop(0, '#1c2236'); bg.addColorStop(1, '#05060c');
+    ctx.fillStyle = bg; ctx.fillRect(x + 16, y + 16, 96, 96);
+    ctx.drawImage(s, Math.round(x + 64 - s.width * sc / 2), PORTRAIT[line.p] ? y + 16 : Math.round(y + 64 - s.height * sc / 2), s.width * sc, s.height * sc);
+    ctx.restore();
+    ctx.strokeStyle = C.goldD; ctx.strokeRect(x + 16.5, y + 16.5, 95, 95);
     tx = x + 128;
   }
   if (line.n) {
