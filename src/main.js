@@ -8,6 +8,7 @@ import { Player } from './entities.js';
 import { say, choose, updateDialog, updateMenu, drawDialog, drawMenu, drawHUD, drawWorldText, drawToasts, font, W, H, panel } from './ui.js';
 import * as story from './story.js';
 import { FX, finishTitle, trackRender } from './post.js';
+import { initTouch, syncTouch } from './touch.js';
 
 const SAVE_KEY = 'cheoyong.ch1.save';
 const canvas = document.getElementById('game');
@@ -140,7 +141,7 @@ async function startNew() {
   await wait(0.6);
   await say([
     { n: '처용', t: '(마을 광장의 촌주 박노인이 나를 찾는다고 했다. 먼저 집 앞의 난영에게 들렀다 가자.)', p: 'cheoyong' },
-    '이동: 방향키/WASD · 대화·조사: 가까이 가서 Z · 일시정지·조작법: ESC',
+    G.touch ? '이동: 왼쪽 조이스틱 · 대화·조사: 가까이 가서 [베기] 버튼 · 일시정지·조작법: 오른쪽 위 ☰' : '이동: 방향키/WASD · 대화·조사: 가까이 가서 Z · 일시정지·조작법: ESC',
   ]);
 }
 async function continueGame() {
@@ -203,7 +204,8 @@ function drawTitle() {
     ctx.fillText((sel ? '▶ ' : '') + o + (sel ? ' ◀' : ''), W / 2, 268 + i * 38);
   });
   ctx.font = font(13); ctx.fillStyle = '#7a8090';
-  ctx.fillText('Z/Enter 선택 · 방향키 이동 · Z 베기 · Shift/Space 구르기 · X/C 부적 · V 처용가 · F 처용무 · 1/2/3 영약 · M 소리 끄기', W / 2, H - 46);
+  ctx.fillText(G.touch ? '메뉴를 눌러 선택 · 왼쪽 조이스틱 이동 · 오른쪽 버튼으로 베기·구르기·부적·처용가·처용무·영약 · ☰ 일시정지'
+    : 'Z/Enter 선택 · 방향키 이동 · Z 베기 · Shift/Space 구르기 · X/C 부적 · V 처용가 · F 처용무 · 1/2/3 영약 · M 소리 끄기', W / 2, H - 46);
   ctx.fillStyle = '#5a6070';
   ctx.fillText('본 게임은 삼국유사의 처용 설화를 재해석한 픽션입니다.', W / 2, H - 22);
   if (G.creditsShown) { ctx.fillStyle = C.gold; ctx.fillText('제1장 완료 — 이어하기로 마을을 다시 둘러볼 수 있습니다', W / 2, 360); }
@@ -214,7 +216,13 @@ function drawTitle() {
 async function pauseMenu() {
   const r = await choose(null, ['계속하기', '조작법', '타이틀로 (마지막 체크포인트 기록 유지)'], { title: '일시정지' });
   if (r === 1) {
-    await say([
+    await say(G.touch ? [
+      '이동: 왼쪽 아래를 누른 채 끌기 (조이스틱) · 대화·조사: [베기] 버튼 · 대화 넘기기·메뉴 선택: 화면을 누르기',
+      '[베기] 연타 3단 콤보 · 길게 눌렀다 떼면 강 베기 (원형 범위, 200%)',
+      '[구르기] 0.4초 무적. 공격 직전에 구르면 받아넘기기 — 1초 슬로우 + 다음 베기 200%. 3연속이면 신명 고조.',
+      '[전환]/[발동] 부적 — 화염부(25), 결박부(30), 수호부(20). 소리는 자동으로 찬다.',
+      '[처용가] 교전마다 1회 · [처용무] 신명 100일 때 · [인삼]/[구기자]/[정화부] 영약 · ♪ 소리 끄기 · 상점은 한 번 눌러 설명, 다시 눌러 구매',
+    ] : [
       '이동: 방향키/WASD · 대화·조사: Z',
       '피리 베기: Z 연타 (3타째 넉백) · 강 베기: Z를 길게 눌렀다 떼기 (원형 범위, 200%)',
       '춤 구르기: Shift/Space (0.4초 무적). 공격 직전에 구르면 받아넘기기 — 1초 슬로우 + 다음 베기 200%. 3연속이면 신명 고조.',
@@ -287,6 +295,7 @@ function frame(now) {
     while (acc >= STEP && steps < 6) { update(STEP); acc -= STEP; steps++; }
     if (steps >= 6) acc = 0;
     render(dt);
+    syncTouch();
   } catch (e) { showError(e); }
   requestAnimationFrame(frame);
 }
@@ -311,6 +320,7 @@ function boot() {
   const mk = (human) => { const [c, g] = makeCanvas(36, 48); drawBoss(g, 18, 46, 0, { human }); return c; };
   SPR.yeoksin = mk(false); SPR.yeoksinHuman = mk(true);
   initInput(canvas);
+  initTouch(canvas, () => !!readSave());
   onAnyKey(() => initAudio());
   window.addEventListener('resize', fit); fit();
   canvas.addEventListener('mousedown', () => { canvas.focus(); initAudio(); });

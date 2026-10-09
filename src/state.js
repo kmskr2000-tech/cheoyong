@@ -22,6 +22,7 @@ export const BAL = {
 
 export const G = {
   scene: 'title',
+  touch: false, // touch overlay active (touch.js)
   stats: null,
   items: null,
   tal: null,

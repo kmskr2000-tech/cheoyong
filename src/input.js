@@ -30,6 +30,24 @@ export function initInput(target) {
 
 export function onAnyKey(fn) { listeners.push(fn); }
 
+// Virtual keys from the touch overlay (touch.js). Same sets as the keyboard, so
+// game logic cannot tell a touch button from a key. Hold = vDown ... vUp.
+export function vDown(code) {
+  if (held.has(code)) return;
+  held.add(code);
+  pressedQ.add(code);
+}
+export function vUp(code) {
+  if (!held.has(code)) return;
+  held.delete(code);
+  releasedQ.add(code);
+}
+// One-frame press without hold (UI confirm taps).
+export function vTap(code) {
+  pressedQ.add(code);
+  releasedQ.add(code);
+}
+
 // Called once per fixed update step, before game logic.
 export function pollInput() {
   pressed = new Set(pressedQ);

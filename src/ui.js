@@ -139,6 +139,8 @@ export function drawMenu(ctx) {
   const h = 40 + promptRows.length * 26 + m.options.length * rowH + (m.options[m.sel]?.desc ? 40 : 10);
   const x = (W - w) / 2, y = Math.max(20, (H - h) / 2 - 30);
   panel(ctx, x, y, w, h, 0.96);
+  // hit rects for touch (touch.js reads them, so taps match exactly what is drawn)
+  m.hit = { x, y, w, h, rows: [] };
   let yy = y + 36;
   if (m.title) { ctx.font = font(20, true, true); ctx.fillStyle = C.goldL; ctx.fillText(m.title, x + 24, yy); yy += 30; }
   ctx.font = font(18);
@@ -147,6 +149,7 @@ export function drawMenu(ctx) {
   yy += 6;
   m.options.forEach((o, i) => {
     const sel = i === m.sel;
+    m.hit.rows.push([yy - 25, yy - 25 + rowH]);
     if (sel) { ctx.fillStyle = 'rgba(184,150,74,0.22)'; ctx.fillRect(x + 14, yy - 23, w - 28, rowH - 4); }
     ctx.font = font(20, sel);
     ctx.fillStyle = o.disabled ? '#5a5a66' : sel ? '#fff4d0' : '#d8d0c0';
@@ -274,7 +277,7 @@ export function drawHUD(ctx, lvl) {
     const it = lvl.nearestInteractable(p);
     if (it && !lvl.enemies.some((e) => !e.dead && e.aggro)) {
       const sx = (it.x - lvl.cam.x) * SCALE, sy = (it.y - 30 - lvl.cam.y) * SCALE;
-      const label = `Z  ${it.label}`;
+      const label = `${G.touch ? "▶" : "Z"}  ${it.label}`;
       ctx.font = font(14, true);
       const tw = ctx.measureText(label).width + 16;
       ctx.fillStyle = 'rgba(8,11,24,0.85)'; ctx.fillRect(sx - tw / 2, sy - 18, tw, 24);
