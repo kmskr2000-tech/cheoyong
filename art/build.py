@@ -9,6 +9,7 @@ from PIL import Image
 
 ROOT = pathlib.Path(__file__).parent
 SRC, OUT = ROOT / 'src', ROOT / 'out'
+GODOT = ROOT.parent / 'godot' / 'assets' / 'sprites'
 
 
 def load(path):
@@ -46,6 +47,8 @@ def main():
         for i, (_, f) in enumerate(frames):
             sheet.paste(f, (i * fw, 0))
         sheet.save(OUT / f'{path.stem}.png')
+        GODOT.mkdir(parents=True, exist_ok=True)
+        sheet.save(GODOT / f'{path.stem}.png')  # the Godot project reads its own copy
         print(f'{path.stem}.png  {len(frames)} frames of {fw}x{fh}: {", ".join(n for n, _ in frames)}')
         if scale:
             bg = Image.new('RGBA', sheet.size, (34, 40, 52, 255))
