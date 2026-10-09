@@ -37,7 +37,7 @@ const PROPS := [
 	["lantern", 436, 196, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
 	["jangseung_m", 592, 156, null], ["jangseung_f", 592, 196, null],
 	["geumjul", 296, 300, null],
-	["seonang", 470, 300, [-60, Color(0.55, 1.0, 0.45), 0.55, 1.4]],
+	["seonang", 470, 300, [-60, Color(0.75, 0.35, 1.0), 0.7, 1.5]],
 	["cairn", 432, 312, null],
 	["sotdae", 252, 52, null], ["sotdae_s", 264, 58, null], ["sotdae", 276, 50, null],
 	["pine", 210, 64, null], ["pine", 86, 330, null], ["pine", 612, 334, null], ["pine", 620, 70, null],
@@ -165,7 +165,7 @@ func _terrace() -> void:
 	top.texture = ImageTexture.create_from_image(gi)
 	top.position = Vector2(124, -TERRACE_FOOT / 2.0 - 18)
 	top.scale = Vector2(250 / 64.0, (TERRACE_FOOT - 20) / 64.0)
-	top.color = Color(0.6, 0.68, 0.95)
+	top.color = Color(1.0, 0.5, 0.55)
 	top.energy = 0.45
 	top.height = 40.0
 	body.add_child(top)
@@ -185,7 +185,7 @@ func _terrace() -> void:
 var wisps: Array[Node2D] = []
 
 
-## 도깨비불: drifting blue-green will-o'-the-wisps that are real light sources
+## 귀화(鬼火): drifting violet ghost-fires that are real light sources
 func _wisp(home: Vector2, i: int) -> void:
 	var n := Node2D.new()
 	n.position = home
@@ -198,7 +198,7 @@ func _wisp(home: Vector2, i: int) -> void:
 		for x in 5:
 			var d := Vector2(x - 2, (y - 4) * 0.8).length()
 			if d < 2.6 - (0.0 if y > 2 else 0.8):
-				img.set_pixel(x, y, Color(0.75, 1.0, 0.95) if d < 1.2 else Color(0.3, 0.85, 0.8, 0.85))
+				img.set_pixel(x, y, Color(1.0, 0.85, 1.0) if d < 1.2 else Color(0.75, 0.35, 1.0, 0.9))
 	core.texture = ImageTexture.create_from_image(img)
 	var um := CanvasItemMaterial.new()
 	um.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
@@ -206,9 +206,9 @@ func _wisp(home: Vector2, i: int) -> void:
 	n.add_child(core)
 	var l := PointLight2D.new()
 	l.texture = light_tex
-	l.color = Color(0.35, 0.95, 0.85)
-	l.energy = 0.9
-	l.texture_scale = 0.45
+	l.color = Color(0.7, 0.35, 1.0)
+	l.energy = 1.3
+	l.texture_scale = 0.55
 	l.height = 16.0
 	n.add_child(l)
 	add_child(n)
@@ -263,20 +263,20 @@ func _process(_d: float) -> void:
 func _atmosphere() -> void:
 	# moonlit night: everything unlit sinks into cold violet-blue
 	var cm := CanvasModulate.new()
-	cm.color = Color(0.17, 0.19, 0.3)
+	cm.color = Color(0.46, 0.25, 0.33)
 	add_child(cm)
 	# the moon: a cold key light from the upper left that rakes across every normal map and casts
 	# long diagonal shadows from houses and trees
 	var moon := DirectionalLight2D.new()
-	moon.color = Color(0.55, 0.62, 0.9)
-	moon.energy = 0.8
+	moon.color = Color(1.0, 0.42, 0.45) # blood moon
+	moon.energy = 0.7
 	moon.height = 0.45
 	moon.rotation = deg_to_rad(35)
 	add_child(moon)
 	# a faint cold aura around the hero so he never vanishes in the dark
 	var pl := PointLight2D.new()
 	pl.texture = light_tex
-	pl.color = Color(0.55, 0.62, 0.9)
+	pl.color = Color(0.85, 0.6, 0.75)
 	pl.energy = 0.55
 	pl.texture_scale = 0.55
 	pl.position = Vector2(0, -16)
@@ -292,38 +292,56 @@ func _atmosphere() -> void:
 	var fm := ShaderMaterial.new()
 	fm.shader = load("res://shaders/fog.gdshader")
 	fm.set_shader_parameter("world_size", Vector2(w, h))
+	fm.set_shader_parameter("tint", Color(0.7, 0.25, 0.32))
+	fm.set_shader_parameter("sick", Color(0.55, 0.3, 0.75))
 	fog.material = fm
 	add_child(fog)
 	# ash / spores drifting down across the view
 	var ash := CPUParticles2D.new()
-	ash.amount = 70
-	ash.lifetime = 9.0
-	ash.preprocess = 9.0
+	# embers rising through the red haze
+	ash.amount = 60
+	ash.lifetime = 7.0
+	ash.preprocess = 7.0
 	ash.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	ash.emission_rect_extents = Vector2(300, 10)
-	ash.position = Vector2(0, -170)
-	ash.direction = Vector2(0.3, 1)
-	ash.spread = 25.0
-	ash.gravity = Vector2(0, 4)
-	ash.initial_velocity_min = 8.0
-	ash.initial_velocity_max = 18.0
-	ash.color = Color(0.55, 0.6, 0.68, 0.7)
+	ash.emission_rect_extents = Vector2(280, 20)
+	ash.position = Vector2(0, 150)
+	ash.direction = Vector2(0.15, -1)
+	ash.spread = 20.0
+	ash.gravity = Vector2(0, -3)
+	ash.initial_velocity_min = 10.0
+	ash.initial_velocity_max = 26.0
+	var ramp := Gradient.new()
+	ramp.offsets = PackedFloat32Array([0.0, 0.15, 0.7, 1.0])
+	ramp.colors = PackedColorArray([Color(1, 0.6, 0.3, 0), Color(1, 0.55, 0.3, 1), Color(1, 0.25, 0.3, 0.8), Color(0.6, 0.1, 0.3, 0)])
+	ash.color_ramp = ramp
 	ash.z_index = 60
 	var am := CanvasItemMaterial.new()
 	am.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	am.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	ash.material = am
 	ash.local_coords = false
 	$Player/Camera.add_child(ash)
-	# vignette on its own screen layer
-	var layer := CanvasLayer.new()
-	var vig := ColorRect.new()
-	vig.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var vm := ShaderMaterial.new()
-	vm.shader = load("res://shaders/vignette.gdshader")
-	vig.material = vm
-	layer.add_child(vig)
-	add_child(layer)
+	# light shafts through the haze, then the HD-2D finishing pass (DoF, bloom, grade, haze, vignette)
+	var shafts_layer := CanvasLayer.new()
+	shafts_layer.layer = 5
+	var shafts := ColorRect.new()
+	shafts.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shafts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/shafts.gdshader")
+	shafts.material = sm
+	shafts_layer.add_child(shafts)
+	add_child(shafts_layer)
+	var post_layer := CanvasLayer.new()
+	post_layer.layer = 10
+	var post := ColorRect.new()
+	post.set_anchors_preset(Control.PRESET_FULL_RECT)
+	post.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pm := ShaderMaterial.new()
+	pm.shader = load("res://shaders/post.gdshader")
+	post.material = pm
+	post_layer.add_child(post)
+	add_child(post_layer)
 
 
 static func _radial(size: int) -> Texture2D:
