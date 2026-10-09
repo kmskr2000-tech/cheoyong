@@ -46,7 +46,8 @@ func _ready() -> void:
 	for i in 4:
 		_wisp(lift(Vector2(470, 290)) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
 	_blob($Player, 10)
-	for e in [["dog", Vector2(260, 270)], ["dog", Vector2(540, 250)], ["ghoul", Vector2(330, 300)], ["ghoul", Vector2(150, 230)]]:
+	var boss_fight := "--boss" in OS.get_cmdline_user_args()
+	for e in ([] if boss_fight else [["dog", Vector2(260, 270)], ["dog", Vector2(540, 250)], ["ghoul", Vector2(330, 300)], ["ghoul", Vector2(150, 230)]]):
 		var en := Enemy.new()
 		en.kind = e[0]
 		en.position = lift(e[1])
@@ -56,6 +57,13 @@ func _ready() -> void:
 	hud.bind($Player)
 	dialog = DialogBox.new()
 	add_child(dialog)
+	if boss_fight:
+		var boss := PlagueGod.new()
+		boss.position = lift(Vector2(370, 190))
+		add_child(boss)
+		hud.show_boss(boss, "역신(疫神)")
+		if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the defeat sequence
+			boss.hp = 20.0
 	if "--dialog" in OS.get_cmdline_user_args():
 		_demo_dialog.call_deferred()
 

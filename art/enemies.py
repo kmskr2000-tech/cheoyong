@@ -4,6 +4,7 @@ plague_dog.png  side view facing right, 44x30 cells, feet on row 28:
                 run0..run3, lunge (jaws open, stretched), hurt (recoil)
 ghoul.png       front view, 30x42 cells, feet on row 40:
                 walk0..walk3 (shambling bob), claw0 (arms raised), claw1 (raking down)
+plague_god.png  역신 boss, 56x76 cells, hem bottom ~row 70: idle0..3 (float), cast, swipe, hurt, human (disguise)
 Output: godot/assets/sprites/
 """
 import importlib.util, math, pathlib
@@ -171,11 +172,92 @@ def ghoul(phase, pose='walk'):
     return c
 
 
+# ---------------------------------------------------------------- 역신 (boss)
+ROBE = R('#0e1210', '#1a201c', '#28322a', '#3a4638', '#4e5c4a', '#66765e')
+HAIR = R('#06050a', '#0e0c14', '#18151f', '#24202e')
+FACE = R('#5a5e66', '#8a8e96', '#b4b8bc', '#d6d8d8', '#eeeeea')
+HUMAN_ROBE = R('#1c1a24', '#2c2a38', '#403e52', '#58566e', '#727090')
+
+
+def plague_god(phase, pose='idle'):
+    """A floating plague god, 1.5x a man: hair curtain over a pale mask face, rotting robe whose
+    hem dissolves into miasma, sleeves ending in long claws."""
+    W, H = 56, 76
+    c = Canvas(W, H)
+    cx = 28
+    sway = math.sin(phase * math.pi / 2) * 1.2
+    lift = (0, -1, -2, -1)[phase] if pose == 'idle' else -1
+    human = pose == 'human'
+    robe = HUMAN_ROBE if human else ROBE
+    top = 10 + lift
+    # robe: a tall bell, the hem ragged and dissolving
+    for y in range(top + 16, 70 + lift):
+        k = (y - top - 16) / 52
+        half = 8 + k * 13
+        for x in range(int(cx - half + sway * k), int(cx + half + sway * k) + 1):
+            u = (x - (cx - half)) / (2 * half)
+            t = 3.0 - u * 2.4 - k * 0.6 + (0.7 if (x // 3 + y // 7) % 4 == 0 else 0)
+            if not human and y > 56 + lift and props.hashf(x, y + phase * 3, 77) < (y - 56 - lift) / 16:
+                continue  # hem eaten away
+            c.set(x, y, c.ramp_at(robe, t))
+    if not human:  # rot stains and sores on the robe
+        for (gx, gy, r) in ((cx - 6, 44, 2.5), (cx + 7, 52, 2.0), (cx - 2, 60, 1.6)):
+            c.dome(gx, gy + lift, r, r * 1.2, GREEN, 2.2, top_only=False)
+    # sleeves and claws
+    for s in (-1, 1):
+        if pose == 'cast':
+            el = (cx + s * 18, top + 18); hand = (cx + s * 24, top + 8)
+        elif pose == 'swipe':
+            el = (cx + s * 16, top + 28); hand = (cx + s * (6 if s < 0 else 26), top + 40)
+        else:
+            el = (cx + s * 13, top + 30); hand = (cx + s * 15, top + 42 + (phase % 2))
+        sh = (cx + s * 8, top + 18)
+        for i in range(12):  # wide sleeve tapering to the wrist
+            t = i / 11
+            x = sh[0] + (el[0] - sh[0]) * t; y = sh[1] + (el[1] - sh[1]) * t
+            r = 4.5 - t * 1.5
+            c.dome(x, y, r, r, robe, 2.0 if s < 0 else 1.4, top_only=False)
+        if not human:
+            for k in (-2, 0, 2):  # long claws
+                limb(c, el[0], el[1], hand[0] + k, hand[1], FACE, 1, 3.0 if s < 0 else 2.0)
+        else:
+            c.dome(el[0], el[1] + 2, 2, 2, R('#8a6656', '#b08670', '#d0a88c'), 1.5, top_only=False)
+    # head: long pale face, half hidden by a curtain of black hair
+    hy = top + 8
+    c.dome(cx + sway, hy, 5.5, 7, FACE, 2.6, top_only=False)
+    if human:  # the disguise: a scholar's face under a 복두, a thin crooked smile
+        for x in range(int(cx - 7), int(cx + 8)):
+            c.set(x, hy - 7, HAIR[2]); c.set(x, hy - 6, HAIR[1])
+        for x in range(int(cx - 13), int(cx + 14)):
+            c.set(x, hy - 5, HAIR[1])
+        c.set(cx - 2, hy, HAIR[0]); c.set(cx + 2, hy, HAIR[0])
+        for x in range(int(cx - 1), int(cx + 3)):
+            c.set(x, hy + 4, R('#5a2a2a')[0])
+    else:
+        for y in range(hy - 9, hy + 26):  # hair curtain falling past the shoulders
+            for x in range(int(cx - 8 + sway), int(cx + 9 + sway)):
+                gap = abs(x - (cx + sway + 1)) < 3 - max(0, (y - hy - 2) * 0.25) and y > hy - 3
+                if gap or (y > hy + 6 and abs(x - cx) < 6 and (x * 5 + y) % 7 < 3):
+                    continue
+                c.set(x, y, HAIR[1 + ((x + y // 3) % 3 == 0)])
+        c.set(cx - 1 + sway, hy, EYE, outline=False); c.set(cx + 2 + sway, hy, EYE, outline=False)
+        for x in range(int(cx - 1 + sway), int(cx + 3 + sway)):  # gaping dark mouth
+            c.set(x, hy + 4, MAW); c.set(x, hy + 5, MAW)
+    if pose == 'hurt':
+        for y in range(H):
+            for x in range(W):
+                p = c.get(x, y)
+                if p and p != EYE:
+                    c.set(x, y, tuple(min(255, int(v * 1.6)) for v in p[:3]) + (255,))
+    return c
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     sheet('plague_dog', [dog(i) for i in range(4)] + [dog(1, 'lunge'), dog(0, 'hurt')], (44, 30))
     sheet('ghoul', [ghoul(i) for i in range(4)] + [ghoul(0, 'claw0'), ghoul(0, 'claw1')], (30, 42))
-    print('enemies: plague_dog (run0-3, lunge, hurt), ghoul (walk0-3, claw0, claw1)')
+    sheet('plague_god', [plague_god(i) for i in range(4)] + [plague_god(0, p) for p in ('cast', 'swipe', 'hurt', 'human')], (56, 76))
+    print('enemies: plague_dog (run0-3, lunge, hurt), ghoul (walk0-3, claw0, claw1), plague_god (idle0-3, cast, swipe, hurt, human)')
 
 
 if __name__ == '__main__':

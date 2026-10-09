@@ -136,6 +136,16 @@ func _start_attack() -> void:
 	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if dir != Vector2.ZERO:
 		_face(dir)
+	else:
+		# auto-aim for touch play: without a stick direction, turn toward the nearest foe in reach
+		var best: Node2D = null
+		var bd := 70.0
+		for e in get_tree().get_nodes_in_group("enemy"):
+			var dd: float = (e.global_position - global_position).length()
+			if dd < bd:
+				bd = dd; best = e
+		if best:
+			_face(best.global_position - global_position)
 	state = "attack"
 	t = 0.0
 	queued = false

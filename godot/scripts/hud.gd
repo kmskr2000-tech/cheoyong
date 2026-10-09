@@ -131,6 +131,34 @@ func _on_stats(hp: float, max_hp: float, ki: float, max_ki: float) -> void:
 	_ki_fill.size.x = roundf(_ki_w * clampf(ki / max_ki, 0, 1))
 
 
+# ---------------------------------------------------------------- boss gauge
+var _boss_fill: TextureRect
+var _boss_root: Control
+const BOSS_W := 200.0
+
+
+func show_boss(boss: Node, title: String) -> void:
+	_boss_root = Control.new()
+	_boss_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_boss_root)
+	_boss_fill = _gauge(_boss_root, Vector2(140, 34), BOSS_W, "res://assets/ui/gauge_hp.png")
+	var seal := NinePatchRect.new()
+	seal.texture = load("res://assets/ui/seal.png")
+	seal.patch_margin_left = 6; seal.patch_margin_right = 6; seal.patch_margin_top = 6; seal.patch_margin_bottom = 6
+	var name := Label.new()
+	name.text = title
+	name.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11-Bold.ttf"))
+	name.add_theme_font_size_override("font_size", 12)
+	name.add_theme_color_override("font_color", Color(0.93, 0.88, 0.76))
+	name.position = Vector2(8, 3)
+	seal.add_child(name)
+	seal.size = Vector2(name.get_minimum_size().x + 16, 20)
+	seal.position = Vector2(240 - seal.size.x / 2.0, 14)
+	_boss_root.add_child(seal)
+	boss.hp_changed.connect(func(hp, mx): _boss_fill.size.x = roundf(BOSS_W * clampf(hp / mx, 0, 1)))
+	boss.defeated.connect(func(): _boss_root.queue_free())
+
+
 # ---------------------------------------------------------------- floating joystick
 func _show_stick(at: Vector2) -> void:
 	_stick_origin = at
