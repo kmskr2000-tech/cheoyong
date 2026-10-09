@@ -213,3 +213,53 @@ FRAMES = {'down_idle': DOWN, 'up_idle': UP, 'right_idle': SIDE}
 for name, base, a, b in (('down', DOWN, FB_A, FB_B), ('up', UP, FB_A, FB_B), ('right', SIDE, SIDE_A, SIDE_B)):
     for i, f in enumerate(walk(base, a, b)):
         FRAMES[f'{name}_walk{i}'] = f
+
+
+# ---------------------------------------------------------------- combat: body without the weapon arm
+# The weapon arm (sleeve + 토시 + hand + 대금) is a separate part (cheoyong_arm.py) that Godot swings
+# around the shoulder, cut-out style. Here the arm is removed from each facing.
+def _erase(rows, x0, x1, y0, y1, fill=None):
+    out = list(rows)
+    for y in range(y0, y1 + 1):
+        r = out[y]
+        for x in range(x0, x1 + 1):
+            c = '.' if fill is None else fill(x, y)
+            r = r[:x] + c + r[x + 1:]
+        out[y] = r
+    return out
+
+
+def _coat(x, y):
+    return 'gfe'[(x + y) % 3] if x < 18 else 'ed'[(x + y) % 2]
+
+
+DOWN_ARMLESS = _erase(DOWN, 4, 8, 21, 28)
+DOWN_ARMLESS = _erase(DOWN_ARMLESS, 9, 9, 21, 28, lambda x, y: 'o')
+UP_ARMLESS = _erase(UP, 22, 26, 21, 28)
+UP_ARMLESS = _erase(UP_ARMLESS, 22, 22, 21, 28, lambda x, y: 'o')
+SIDE_ARMLESS = _erase(SIDE, 11, 15, 20, 28, _coat)  # the near arm hid the torso: paint coat back in
+
+FRAMES['down_attack'] = DOWN_ARMLESS
+FRAMES['up_attack'] = UP_ARMLESS
+FRAMES['right_attack'] = SIDE_ARMLESS
+
+
+# in attack poses the 대금 is in hand, so it leaves the back
+def _no_flute(rows, coat_fill):
+    out = []
+    for y, r in enumerate(rows):
+        s = ''
+        for x, c in enumerate(r):
+            if c in 'Pp':
+                s += coat_fill(x, y) if 16 <= y <= 30 else '.'
+            elif c == 'o' and 10 <= y <= 15 and (x <= 9 or x >= 21):
+                s += '.'  # outline that only belonged to the flute tip
+            else:
+                s += c
+        out.append(s)
+    return out
+
+
+FRAMES['down_attack'] = _no_flute(DOWN_ARMLESS, _coat)
+FRAMES['up_attack'] = _no_flute(UP_ARMLESS, _coat)
+FRAMES['right_attack'] = _no_flute(SIDE_ARMLESS, _coat)

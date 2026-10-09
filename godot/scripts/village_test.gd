@@ -56,11 +56,13 @@ var dialog: DialogBox
 
 
 func _demo_dialog() -> void:
+	$Player.locked = true
 	await dialog.say([
 		{"name": "처용", "text": "바람에 비린내가 섞였다. 역병이 지나간 자리는 언제나 이렇게 조용하지."},
 		{"name": "촌주 박노인", "text": "나리, 동쪽 폐가에서 밤마다 아이 우는 소리가 납니다. 장승도 그 뒤로 눈을 감지 못합니다."},
 		"멀리서 보랏빛 귀화가 서낭나무 가지 사이를 맴돈다.",
 	])
+	$Player.locked = false
 
 
 ## footprint → screen: ground on tier k is drawn k*TIER px higher (oblique camera)

@@ -37,6 +37,7 @@ def frame_image(rows, pal, name):
 
 
 def main():
+    sys.path.insert(0, str(SRC))
     scale = int(sys.argv[sys.argv.index('--preview') + 1]) if '--preview' in sys.argv else 0
     OUT.mkdir(exist_ok=True)
     for path in sorted(SRC.glob('*.py')):

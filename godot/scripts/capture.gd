@@ -1,11 +1,13 @@
 extends Node
-## Headless-ish verification: `godot --path godot -- --capture=out.png [--frames=N] [--hold=move_right] [--at=x,y]`
+## Headless-ish verification: `godot --path godot -- --capture=out.png [--frames=N] [--hold=move_right] [--at=x,y] [--seq=attack:5,roll:20]`
 ## holds an input action, waits N frames, saves the viewport and quits. Does nothing without --capture.
 
 var out := ""
 var frames := 60
 var hold := ""
 var at := ""
+var seq := {} # frame -> action tapped on that frame
+var frame_i := 0
 
 
 func _ready() -> void:
@@ -14,6 +16,9 @@ func _ready() -> void:
 		elif a.begins_with("--frames="): frames = int(a.get_slice("=", 1))
 		elif a.begins_with("--hold="): hold = a.get_slice("=", 1)
 		elif a.begins_with("--at="): at = a.get_slice("=", 1)
+		elif a.begins_with("--seq="):
+			for item in a.get_slice("=", 1).split(","):
+				seq[int(item.get_slice(":", 1))] = item.get_slice(":", 0)
 	if out == "":
 		set_process(false)
 	else:
@@ -31,6 +36,12 @@ func _place() -> void:
 
 
 func _process(_delta: float) -> void:
+	frame_i += 1
+	for f in seq:
+		if f == frame_i:
+			Input.action_press(seq[f])
+		elif f == frame_i - 3:
+			Input.action_release(seq[f])
 	frames -= 1
 	if frames > 0:
 		return
