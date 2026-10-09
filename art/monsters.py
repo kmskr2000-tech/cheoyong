@@ -775,9 +775,11 @@ def eodukssini(phase, pose):
     # many small eyes opening in the dark
     eyes = [(-3, 8), (3, 7), (0, 13), (-7, 17), (6, 16), (-2, 22), (8, 25), (-9, 28)]
     n = 3 if hurt else (8 if (tell or strike) else 4 + phase % 2)
-    for (dx, dy) in eyes[:n]:
-        c.set(cx + dx, top + dy, hx('#e8ecff'), outline=False)
-        c.set(cx + dx + 1, top + dy, hx('#8a90b0'), outline=False)
+    for (dx, dy) in eyes[:n]:   # bright eyes so the dark thing can always be read
+        c.set(cx + dx, top + dy, hx('#ffffff'), outline=False)
+        c.set(cx + dx + 1, top + dy, hx('#e8ecff'), outline=False)
+        c.set(cx + dx, top + dy + 1, hx('#a8b8ff'), outline=False)
+        c.set(cx + dx + 1, top + dy + 1, hx('#7080c8'), outline=False)
     if strike:   # arms of shadow sweeping out
         for s in (-1, 1):
             for k in range(14):
@@ -949,6 +951,24 @@ def jeoseung_guard(phase, pose):
     return c
 
 
+# ---------------------------------------------------------------- small projectiles
+def orb(ramp, r=3.0):
+    def f(phase):
+        c = Canvas(10, 10)
+        rr = r + (phase % 2) * 0.5
+        c.dome(5, 5, rr, rr, ramp, 3.0, top_only=False)
+        c.set(4, 3, ramp[-1], outline=False)
+        return c
+    return f
+
+
+def thread_knot(phase):
+    c = Canvas(8, 8)
+    for (x, y) in ((3, 2), (4, 2), (2, 3), (5, 3), (2, 4), (5, 4), (3, 5), (4, 5), (4, 3)):
+        c.set(x, y, hx('#e83040') if (x + y + phase) % 2 else hx('#a01828'))
+    return c
+
+
 # ================================================================ build
 CHAPTERS = {
     1: [('mama', mama, (48, 58)), ('egg_ghost', egg, (34, 56)), ('maiden_ghost', maiden, (34, 56)), ('mulgwi', mulgwi, (56, 46))],
@@ -958,6 +978,8 @@ CHAPTERS = {
     2: [('dokkaebi_oneeye', oneeye, (48, 56)), ('dokkaebi_fire', firedok, (48, 56)), ('jangsanbeom', jangsanbeom, (66, 44)), ('sangun', sangun, (66, 44))],
 }
 EXTRAS = {1: [('mama_boil', [mama_boil(i) for i in range(2)], (10, 10))],
+          3: [('foxfire', [orb(FOXFIRE)(i) for i in range(2)], (10, 10)), ('thread_knot', [thread_knot(i) for i in range(2)], (8, 8))],
+          4: [('fireball', [orb(FIRE, 3.2)(i) for i in range(2)], (10, 10))],
           2: [('fire_patch', [fire_patch(i) for i in range(4)], (28, 14))]}
 
 

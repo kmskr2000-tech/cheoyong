@@ -262,6 +262,33 @@ var _guide_t := 0.0
 var _splash_cd := 0.0
 
 
+# ---------------------------------------------------------------- darkness (어둑시니, 불개의 일식)
+var _dark: ColorRect
+var _dark_req := {}
+
+
+## enemies ask for the screen to darken (each frame); the strongest request wins, eased in and out
+func request_darkness(key, amount: float) -> void:
+	_dark_req[key] = clampf(maxf(amount, _dark_req.get(key, 0.0)), 0.0, 0.9)   # never fully black
+
+
+func _update_darkness(d: float) -> void:
+	if _dark == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 11
+		_dark = ColorRect.new()
+		_dark.color = Color(0.0, 0.0, 0.02, 0.0)
+		_dark.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(_dark)
+		add_child(layer)
+	var want := 0.0
+	for v in _dark_req.values():
+		want = maxf(want, v)
+	_dark_req.clear()
+	_dark.color.a = move_toward(_dark.color.a, want, d * 1.6)
+
+
 func _make_guide() -> void:
 	_guide = Sprite2D.new()
 	var img := Image.create(5, 5, false, Image.FORMAT_RGBA8)
@@ -512,6 +539,7 @@ func _process(d: float) -> void:
 	if _guide:
 		_update_guide(d)
 		_wet_feet(d)
+	_update_darkness(d)
 	var pp: Vector2 = $Player.global_position + Vector2(0, -16)
 	for fp in fade_props:
 		var body: Node2D = fp[0]

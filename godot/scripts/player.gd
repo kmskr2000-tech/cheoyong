@@ -54,6 +54,11 @@ const TALISMAN_COST := 35.0
 var spawn := Vector2.ZERO
 var interact: Callable          # level hook: returns true if something was talked to / examined
 var gentle_hits := 0            # tutorial: the next N hits only knock back (no damage)
+var stun_t := 0.0               # 처녀귀신의 울음: frozen in place
+var slow_t := 0.0               # 손각시의 붉은 실 / 물귀신: half speed
+var pull_t := 0.0               # dragged toward pull_to (물귀신, 붉은 실)
+var pull_to := Vector2.ZERO
+var _stun_fx: Label
 const SONG_TIME := 1.1
 const SONG_RANGE := 90.0
 
@@ -99,6 +104,18 @@ func _physics_process(delta: float) -> void:
 	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if state == "dead":
 		return
+	slow_t = maxf(0.0, slow_t - delta)
+	pull_t = maxf(0.0, pull_t - delta)
+	if stun_t > 0.0:
+		stun_t -= delta
+		sprite.position.x = sin(t * 60.0) * 0.8
+		if _stun_fx:
+			_stun_fx.visible = stun_t > 0.0
+		if stun_t > 0.0:
+			velocity = _pull_vel()
+			move_and_slide()
+			return
+		sprite.position.x = 0.0
 	if not locked and Input.is_action_just_pressed("talisman") and state == "move":
 		_talisman()
 	if not locked and Input.is_action_just_pressed("song") and state == "move" and Game.flag("flute"):
@@ -121,7 +138,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _move(dir: Vector2) -> void:
-	velocity = dir * SPEED
+	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) + _pull_vel()
 	move_and_slide()
 	if dir != Vector2.ZERO:
 		_face(dir)
@@ -401,6 +418,43 @@ func _ripple(col: Color, delay: float) -> void:
 	tw.tween_callback(ring.queue_free)
 
 
+# ---------------------------------------------------------------- status effects from 요괴
+func stun(sec: float) -> void:
+	if invuln or state == "dead":
+		return
+	_end_attack()
+	if state != "move":
+		state = "move"
+	stun_t = maxf(stun_t, sec)
+	if _stun_fx == null:
+		_stun_fx = Label.new()
+		_stun_fx.text = "~"
+		_stun_fx.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11-Bold.ttf"))
+		_stun_fx.add_theme_font_size_override("font_size", 12)
+		_stun_fx.add_theme_color_override("font_color", Color(0.8, 0.85, 1.0))
+		_stun_fx.position = Vector2(-4, -60)
+		_stun_fx.z_index = 45
+		add_child(_stun_fx)
+	_stun_fx.visible = true
+
+
+func slow(sec: float) -> void:
+	slow_t = maxf(slow_t, sec)
+
+
+## drag toward a point for a while (the hero can still roll to break free)
+func pull(to: Vector2, sec: float) -> void:
+	pull_to = to
+	pull_t = sec
+
+
+func _pull_vel() -> Vector2:
+	if pull_t <= 0.0 or state == "roll":
+		return Vector2.ZERO
+	var d := pull_to - global_position
+	return d.normalized() * minf(70.0, d.length() * 3.0)
+
+
 # ---------------------------------------------------------------- 행낭 items
 ## use one of Game.items; returns false if there is none (or it would do nothing)
 func use_item(id: String) -> bool:
@@ -435,6 +489,8 @@ func _talisman() -> void:
 	stats_changed.emit(hp, max_hp, ki, max_ki)
 	for e in get_tree().get_nodes_in_group("enemy"):
 		var to: Vector2 = e.global_position - global_position
+		if to.length() < 58.0 and e.has_method("absorb_talisman") and e.absorb_talisman():
+			continue  # 해태는 불(부적의 기운)을 먹는다
 		if to.length() < 58.0 and e.has_method("take_hit"):
 			e.take_hit(14, to.normalized(), true)
 	# an expanding ring of pearl light with a paper talisman flaring at the centre
@@ -471,6 +527,7 @@ func _talisman() -> void:
 # ---------------------------------------------------------------- roll (춤 구르기)
 func _start_roll(dir: Vector2) -> void:
 	_end_attack()
+	pull_t = 0.0  # rolling tears free of whatever is dragging him
 	state = "roll"
 	t = 0.0
 	roll_dir = dir.normalized() if dir != Vector2.ZERO else Vector2.from_angle(FACE_ANGLE[facing])
