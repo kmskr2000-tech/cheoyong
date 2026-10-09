@@ -30,10 +30,15 @@ func _ready() -> void:
 
 
 func _place() -> void:
-	var p := get_tree().current_scene.get_node_or_null("Player")
-	if p:
-		p.position = Vector2(float(at.get_slice(",", 0)), float(at.get_slice(",", 1)))
-		p.get_node("Camera").reset_smoothing()
+	# the title scene hands off to the level a few frames in: wait for the hero to exist
+	var p: Node = null
+	while p == null:
+		await get_tree().process_frame
+		var sc := get_tree().current_scene
+		p = sc.get_node_or_null("Player") if sc else null
+	await get_tree().process_frame
+	p.position = Vector2(float(at.get_slice(",", 0)), float(at.get_slice(",", 1)))
+	p.get_node("Camera").reset_smoothing()
 
 
 func _process(_delta: float) -> void:
@@ -52,6 +57,12 @@ func _process(_delta: float) -> void:
 	print("t=", Time.get_ticks_msec(), "ms  captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	var pl = get_tree().current_scene.get_node_or_null("Player")
 	var bs = get_tree().current_scene.get_node_or_null("Boss")
-	if pl: print("player ", pl.position, " ", pl.state, " hp ", pl.hp, " vis ", pl.sprite.modulate)
+	if pl: print("player ", pl.position, " ", pl.state, " hp ", pl.hp, " stun ", snappedf(pl.stun_t, 0.1), " slow ", snappedf(pl.slow_t, 0.1), " pull ", snappedf(pl.pull_t, 0.1))
+	for e in get_tree().get_nodes_in_group("enemy") + get_tree().get_nodes_in_group("downed"):
+		if e is Enemy:
+			print("  ", e.kind, (" clone" if e.is_clone else ""), " ", e.state, " hp ", e.hp, " a ", snappedf(e.alpha, 0.01), " grow ", snappedf(e.grow, 0.01))
+	var lv = get_tree().current_scene
+	if lv.get("_dark") and lv._dark: print("  darkness ", snappedf(lv._dark.color.a, 0.01))
+	print("  hazards/projectiles ", get_tree().current_scene.get_children().filter(func(n): return n is Hazard or n is Projectile or n is Shockwave).size())
 	if bs: print("boss ", bs.position, " ", bs.state, " hp ", bs.hp)
 	get_tree().quit()
