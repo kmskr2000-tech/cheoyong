@@ -4,7 +4,7 @@ extends Node2D
 ## Story beats hook in through Story (story.gd).
 
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
+const OCCLUDE := {"boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
 
 var light_tex: Texture2D
 
@@ -48,16 +48,24 @@ func _ready() -> void:
 		add_child(npc)
 		npcs.append(npc)
 		_blob(npc, 9)
+		if n.size() > 5 and n[5] == "hidden":
+			npc.set_present(false)
 	for it in def.get("interact", []):
-		interact_points.append({"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]})
+		var ip := {"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]}
+		if it.size() > 4 and it[4] == "glint":
+			ip["node"] = _glint(ip["pos"])
+		interact_points.append(ip)
+	for c in def.get("crabs", []):
+		var crab := Crab.new()
+		crab.position = lift(c)
+		add_child(crab)
+	for tr in def.get("triggers", []):
+		add_trigger(tr[0], tr[1])
 	var enemies: Array = def.get("enemies", [])
 	if "--test-enemies" in OS.get_cmdline_user_args():
 		enemies = [["dog", 260, 270], ["ghoul", 330, 300]]
 	for e in enemies:
-		var en := Enemy.new()
-		en.kind = e[0]
-		en.position = lift(Vector2(e[1], e[2]))
-		add_child(en)
+		spawn_enemy(e[0], Vector2(e[1], e[2]))
 	for ex in def.get("exits", []):
 		_exit(ex)
 	hud = Hud.new()
@@ -85,7 +93,7 @@ func nearest_interactable() -> Dictionary:
 	var best := {}
 	var bd := TALK_RANGE
 	for n in npcs:
-		if n.visible and n.global_position.distance_to(p) < bd:
+		if n.visible and n.talkable and n.global_position.distance_to(p) < bd:
 			bd = n.global_position.distance_to(p)
 			best = {"id": n.id, "label": n.display_name, "node": n}
 	for it in interact_points:
@@ -106,6 +114,89 @@ func _try_interact() -> bool:
 		return false
 	Story.interact(self, target["id"])
 	return true
+
+
+func spawn_enemy(kind: String, footprint: Vector2) -> Enemy:
+	var en := Enemy.new()
+	en.kind = kind
+	en.position = lift(footprint)
+	add_child(en)
+	_blob(en, 10)
+	return en
+
+
+func npc(id: String) -> Npc:
+	for n in npcs:
+		if n.id == id:
+			return n
+	return null
+
+
+func remove_interact(id: String) -> void:
+	for it in interact_points.duplicate():
+		if it["id"] == id:
+			if it.has("node"):
+				it["node"].queue_free()
+			interact_points.erase(it)
+
+
+## a twinkle over something worth picking up
+func _glint(at: Vector2) -> Node2D:
+	var n := Node2D.new()
+	n.position = at + Vector2(0, -3)
+	n.z_index = 40
+	var p := CPUParticles2D.new()
+	p.amount = 6
+	p.lifetime = 0.9
+	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	p.emission_rect_extents = Vector2(5, 2)
+	p.direction = Vector2(0, -1)
+	p.gravity = Vector2.ZERO
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 6.0
+	p.scale_amount_min = 1.0
+	p.scale_amount_max = 2.0
+	var ramp := Gradient.new()
+	ramp.colors = PackedColorArray([Color(1, 0.95, 0.7, 0), Color(1, 0.95, 0.75, 1), Color(0.7, 0.85, 1, 0)])
+	ramp.offsets = PackedFloat32Array([0.0, 0.3, 1.0])
+	p.color_ramp = ramp
+	var um := CanvasItemMaterial.new()
+	um.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	um.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	p.material = um
+	n.add_child(p)
+	var l := PointLight2D.new()
+	l.texture = light_tex
+	l.texture_scale = 0.12
+	l.energy = 0.9
+	l.color = Color(0.85, 0.9, 1.0)
+	n.add_child(l)
+	add_child(n)
+	return n
+
+
+## true when a screen position lies over open water
+func is_water(p: Vector2) -> bool:
+	var rows: Array = meta["heights"]
+	var cy := clampi(int(p.y / meta["ts"]), 0, rows.size() - 1)
+	var cx := clampi(int(p.x / meta["ts"]), 0, String(rows[0]).length() - 1)
+	return String(rows[cy])[cx] == "0"
+
+
+## story trigger zone (footprint rect): fires Story.trigger once when the hero walks in
+func add_trigger(r: Rect2, id: String) -> void:
+	var a := Area2D.new()
+	var col := CollisionShape2D.new()
+	var sh := RectangleShape2D.new()
+	sh.size = r.size
+	col.shape = sh
+	a.position = lift(r.get_center())
+	a.add_child(col)
+	a.body_entered.connect(func(b):
+		if b == $Player and is_instance_valid(a) and not a.is_queued_for_deletion():
+			a.queue_free()
+			Story.trigger(self, id))
+	add_child.call_deferred(a)
 
 
 func _exit(ex: Array) -> void:

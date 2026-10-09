@@ -37,7 +37,7 @@ def vnoise(shape, cell, seed):
     return a + (b - a) * tx + (c - a) * ty + (a - b - c + d) * tx * ty
 
 
-def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9):
+def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     """hmap: rows of cell chars; vmap: rows of vertex chars (',' grass '.' dirt '#' stone);
     stairs: {char: (low_tier, high_tier, y_top_px, y_bottom_px)} — stairs rise toward the north."""
     rows, cols = len(hmap), len(hmap[0])
@@ -91,10 +91,11 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9):
         fu = (xx % TS + 0.5) / TS; fv = (yy % TS + 0.5) / TS
         f = (cv[i0, j0] * (1 - fu) * (1 - fv) + cv[i0, j0 + 1] * fu * (1 - fv) + cv[i0 + 1, j0] * (1 - fu) * fv + cv[i0 + 1, j0 + 1] * fu * fv)
         return f + (vnoise((Hf, W), 4, 9) - 0.5) * 0.36 >= 0.5
-    grass = layer(','); stone = layer('#')
-    mat = np.where(stone, 2, np.where(grass, 1, 0))  # 0 dirt, 1 grass, 2 stone
-    texs = {k: np.array(tiles.tone_texture(k, s), np.float32) for k, s in (('dirt', 11), ('grass', 31), ('stone', 23), ('water', 5))}
-    pals = {k: np.array(tiles.PAL[k], np.uint8) for k in ('dirt', 'grass', 'stone', 'water')}
+    grass = layer(','); stone = layer('#'); sand = layer('~')
+    mat = np.where(stone, 2, np.where(grass, 1, np.where(sand, 3, 0)))  # 0 dirt, 1 grass, 2 stone, 3 sand
+    texs = {k: np.array(tiles.tone_texture(k, s), np.float32) for k, s in (('dirt', 11), ('grass', 31), ('stone', 23), ('water', 5), ('sand', 41))}
+    pals = {k: np.array(tiles.PAL[k], np.uint8) for k in ('dirt', 'grass', 'stone', 'water', 'sand')}
+    MATS = ((0, 'dirt'), (1, 'grass'), (2, 'stone'), (3, 'sand'))
 
     # geometric normals of the top surface from the smoothed height field
     hb = h.astype(np.float32)
@@ -113,7 +114,7 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9):
     tx_, ty_ = wx[T], wy[T]
     mt = mat[ty_, tx_]
     tone = np.zeros(len(tx_), np.float32)
-    for mi, name in ((0, 'dirt'), (1, 'grass'), (2, 'stone')):
+    for mi, name in MATS:
         s = mt == mi
         tv = texs[name][ty_[s] % 128, tx_[s] % 128]
         tone[s] = np.where(tv == -9, -9, tv)
@@ -125,8 +126,13 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9):
     lip = (h[np.clip(ty_ + 1, 0, Hf - 1), tx_] < h[ty_, tx_] - 2) * 1.8 + (h[ty_, np.clip(tx_ - 1, 0, W - 1)] < h[ty_, tx_] - 2) * 0.8
     lip -= (h[ty_, np.clip(tx_ + 1, 0, W - 1)] < h[ty_, tx_] - 2) * 0.6
     stair = is_stair[ty_, tx_]
+    if foam:
+        wet = np.zeros(len(tx_), np.float32)
+        for k in range(1, 12):
+            wet = np.maximum(wet, water[np.clip(ty_ + k, 0, Hf - 1), tx_] * (1.4 - k * 0.11))
+        light = light - wet
     cols = np.zeros((len(tx_), 3), np.uint8)
-    for mi, name in ((0, 'dirt'), (1, 'grass'), (2, 'stone')):
+    for mi, name in MATS:
         s = (mt == mi) & ~stair
         t = np.clip(np.round(tone[s] + light[s] - foot[s] + lip[s]), 0, len(pals[name]) - 1).astype(int)
         joint = tone[s] == -9
@@ -173,6 +179,20 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9):
     for k in range(1, 5):
         bank += (~water[np.clip(wy[Wt] - k, 0, Hf - 1), wx[Wt]]) * 0.5
     img[Wt, :3] = pals['water'][np.clip(np.round(wt - bank), 0, 5).astype(int)]
+    if foam:  # surf line: broken foam just off the beach, a second fainter line further out
+        wyy, wxx = wy[Wt], wx[Wt]
+        dist = np.full(Wt.sum(), 99)
+        for k in range(1, 14):
+            land = ~water[np.clip(wyy - k, 0, Hf - 1), wxx]
+            dist = np.where((dist == 99) & land, k, dist)
+        brk = vnoise((Hf, W), 5, 21)[wyy, wxx]
+        f1 = (dist <= 2) & (brk > 0.3)
+        f2 = (dist >= 7) & (dist <= 8) & (brk > 0.55)
+        fc = np.array(tiles.PAL['foam'], np.uint8)
+        cur = img[Wt, :3]
+        cur[f1] = fc
+        cur[f2] = (fc.astype(int) * 2 // 3 + pals['water'][4].astype(int) // 3).astype(np.uint8)
+        img[Wt, :3] = cur
     wimg[Wt] = [255, 255, 255, 255]
 
     # ---- ink where depth jumps (cliff tops against what lies behind/below them)
@@ -273,7 +293,50 @@ def village_vmap():
     return [''.join(r) for r in vm]
 
 
+# ---------------------------------------------------------------- 개운포 (백사장과 해안 마을) — SC1-01~07
+def beach_hmap():
+    import math
+    rows = []
+    for y in range(26):
+        r = []
+        for x in range(40):
+            shore = 17.6 + math.sin(x * 0.31) * 1.3 + math.sin(x * 0.11 + 1.0) * 1.1 - (2 if x < 6 else 0)
+            if y <= 7:
+                c = '3' if x < 4 or (x > 35 and y < 4) else '2'
+            elif y <= 9 and x in (20, 21):
+                c = 'S'
+            elif y >= shore:
+                c = '0'
+            elif (y, x) in {(11, 31), (11, 32), (12, 31), (12, 32), (12, 33), (14, 3), (14, 4), (15, 4), (9, 0), (10, 0), (9, 1)}:
+                c = '3'  # 갯바위
+            else:
+                c = '1'
+            r.append(c)
+        rows.append(''.join(r))
+    return rows
+
+
+def beach_vmap(hm):
+    vm = [['~'] * 41 for _ in range(27)]
+    for y in range(27):
+        for x in range(41):
+            if y <= 8:
+                vm[y][x] = ','
+    def paint(x0, y0, x1, y1, c):
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                vm[y][x] = c
+    paint(4, 5, 36, 8, '.')       # 마을 길 along the terrace front
+    paint(19, 2, 23, 8, '.')      # up from the stair into the village
+    paint(14, 2, 28, 4, '.')      # 마당
+    paint(19, 9, 22, 11, '.')     # trodden path down to the beach
+    paint(0, 0, 4, 9, '.')
+    return [''.join(r) for r in vm]
+
+
 def main():
+    hb = beach_hmap()
+    bake('beach', hb, beach_vmap(hb), {'S': (1, 2, 8 * TS, 10 * TS)}, water_z=TIER - 3, foam=True)
     bake('village', VILLAGE_H, village_vmap(),
          {'S': (1, 2, 7 * TS, 9 * TS), 'T': (1, 3, 5 * TS, 8 * TS)})
 

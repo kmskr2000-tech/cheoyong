@@ -123,9 +123,10 @@ func _process(_d: float) -> void:
 	elif lit == "" and player and player.has_method("can_sing") and player.can_sing():
 		lit = "song"
 	_talk.visible = _talk_on
+	_buttons["song"].visible = Game.flag("flute") == 1
 	_buttons["attack"].modulate.a = 0.0 if _talk_on else 1.0
 	for k in _buttons:
-		var on: bool = k == lit
+		var on: bool = k == lit and _buttons[k].visible
 		_rings[k].visible = on
 		if on:
 			var s := 1.0 + sin(t * 5.0) * 0.08
@@ -133,6 +134,15 @@ func _process(_d: float) -> void:
 			_rings[k].modulate.a = 0.65 + sin(t * 5.0) * 0.3
 		if k != "attack" or not _talk_on:
 			_buttons[k].modulate.a = 1.0 if (_guide == "" or on or k == "menu") else 0.35
+
+
+## fade the whole HUD in (after a cutscene that hid it)
+func reveal(time := 0.8) -> void:
+	visible = true
+	for c in get_children():
+		if c is CanvasItem:
+			c.modulate.a = 0.0
+			c.create_tween().tween_property(c, "modulate:a", 1.0, time)
 
 
 func show_toast(text: String, color: Color) -> void:

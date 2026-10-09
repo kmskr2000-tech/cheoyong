@@ -74,7 +74,7 @@ SEOKGU_P = pal(h='#2a1c16', i='#3a2a20', j='#7a5a3a', J='#a88050',
 
 # 마을 아낙: kerchief, muted indigo
 VILLAGER_F = list(PLAIN)
-VILLAGER_F_P = pal(h='#c8c0b0', i='#a8a094', j='#d8d0c0', J='#ece6d8',
+VILLAGER_F_P = pal(h='#6e6a62', i='#5a5650', j='#86807a', J='#9e988c',
                    d='#121626', e='#1c2238', f='#283050', g='#38426a', G='#4a5682',
                    r='#3a2a2a', R='#5a3e38', q='#7a5a4a', Q='#9a7a62', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
 
@@ -99,6 +99,31 @@ GHOST_P = pal(**{'1': '#4a5a7a', '2': '#7a8ab0', '3': '#a8b8d8', '4': '#d0dcf0'}
               r='#3a4466', R='#4e5a82', q='#6a78a0', Q='#8a98c0', y='#4e5a82', Y='#6a78a0', Z='#aab6d8',
               w='#e0e8f8', W='#a0aac8', B='#3a4466', b='#2a3048')
 
+# 개운포 수령 한기: 사모(紗帽) with side wings, deep green 관복 with a gold 흉배 and belt, trim beard
+SURYEONG = list(PLAIN)
+for y, x, t in ((1, 13, 'ooooo'), (2, 13, 'ojJjio'), (3, 13, 'ojiihho'), (5, 7, 'oJJjj'), (5, 20, 'iihho'), (6, 7, 'ooooo'), (6, 21, 'oooo')):
+    put(SURYEONG, y, x, t)
+for y, x, t in ((13, 14, 'hhh'), (14, 14, 'hh')):
+    put(SURYEONG, y, x, t)
+for y, x, t in ((20, 14, 'ZYZ'), (21, 14, 'YZY')):
+    put(SURYEONG, y, x, t)
+SURYEONG_P = pal(h='#07070c', i='#101018', j='#1e1e2a', J='#34344a',
+                 d='#0a1612', e='#10241c', f='#18382a', g='#225038', G='#2e6a4a',
+                 r='#2a2010', R='#4a3a18', q='#8a6a28', Q='#c9a24a', y='#6a4a1c', Y='#b88a32', Z='#f0cc6a')
+
+# 관아 사람 / 관리: indigo 단령, black hat
+OFFICIAL = list(SURYEONG)
+OFFICIAL_P = pal(h='#07070c', i='#101018', j='#1e1e2a', J='#34344a',
+                 d='#0a0c1e', e='#121834', f='#1c2650', g='#28366c', G='#36488a',
+                 r='#1a1a26', R='#2a2a3a', q='#44445a', Q='#5e5e78', y='#2a2a3a', Y='#44445a', Z='#6a6a84')
+
+# 어부: salt-faded indigo, straw headband, sun-dark skin
+FISHER = list(PLAIN)
+FISHER_P = pal(**{'2': '#6e4438', '3': '#9a6852', '4': '#bc8a70'}, h='#3a3018', i='#5a4a26', j='#7a6838', J='#9a8650',
+               d='#10141c', e='#18202c', f='#22303e', g='#2e4052', G='#3e5468',
+               r='#2a2018', R='#3e3024', q='#5a4834', Q='#7a6448', y='#2a2018', Y='#4a3a28', Z='#6a5a40')
+
+
 # One sheet per character (each has its own palette).
 SHEETS = {
     'npc_elder': (ELDER_P, {'idle': ELDER}),
@@ -108,4 +133,7 @@ SHEETS = {
     'npc_dolsoe': (DOLSOE_P, {'idle': DOLSOE}),
     'npc_sick': (SICK_P, {'idle': SICK}),
     'npc_ghost': (GHOST_P, {'idle': GHOST}),
+    'npc_suryeong': (SURYEONG_P, {'idle': SURYEONG}),
+    'npc_official': (OFFICIAL_P, {'idle': OFFICIAL}),
+    'npc_fisher': (FISHER_P, {'idle': FISHER}),
 }

@@ -101,7 +101,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if not locked and Input.is_action_just_pressed("talisman") and state == "move":
 		_talisman()
-	if not locked and Input.is_action_just_pressed("song") and state == "move":
+	if not locked and Input.is_action_just_pressed("song") and state == "move" and Game.flag("flute"):
 		_start_song()
 	if not locked and Input.is_action_just_pressed("roll") and state != "roll":
 		_start_roll(dir)
@@ -308,6 +308,8 @@ func _respawn() -> void:
 # ---------------------------------------------------------------- 처용가 (the purifying song)
 ## true when something nearby lies in 탁기 waiting to be sung clean
 func can_sing() -> bool:
+	if not Game.flag("flute"):
+		return false
 	for d in get_tree().get_nodes_in_group("downed"):
 		if d.global_position.distance_to(global_position) < SONG_RANGE:
 			return true

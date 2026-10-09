@@ -412,10 +412,54 @@ def stall():
     v.render('stall', contrast=3.2)
 
 
+def boat():
+    """거룻배: a small fishing boat hauled up on the sand, tilted, oar across the thwart, coiled rope."""
+    X, Y, Z = 60, 26, 22
+    v = Vox(X, Y, Z)
+    hull, dark, rope = v.mat(WOOD), v.mat(Mat(['#0a0708', '#120c0c', '#1a1212', '#24181a'])), v.mat(THATCH)
+    gx, gy, gz = v.grid()
+    u = (gx + 0.5 - 30) / 29.0           # -1 stern … 1 bow
+    half = 11.0 * np.clip(1 - np.abs(u), 0, 1) ** np.where(u > 0, 0.45, 0.25)  # pointed bow, blunt stern
+    off = np.abs(gy + 0.5 - 13) - half
+    bottom = 2 + (u * 2.4) ** 2           # keel rocker: ends lift
+    outer = (off < 0) & (gz >= bottom) & (gz < 13 + np.abs(u) * 3)
+    inner = (off < -2) & (gz >= bottom + 2)
+    v.fill(outer & ~inner, hull)
+    v.fill(outer & inner & (gz < bottom + 3), dark)     # bilge
+    v.tone[...] += np.where((gz % 3) == 0, -0.6, 0.15)  # planking strakes
+    v.box(26, 3, 9, 30, 23, 11, hull)                   # thwart
+    v.box(8, 10, 11, 54, 12, 12, hull)                  # oar laid across
+    v.box(50, 8, 11, 56, 14, 12, hull)
+    for a in range(0, 360, 30):                         # coiled rope in the stern
+        r = 3.2
+        x = int(14 + np.cos(np.radians(a)) * r); y = int(13 + np.sin(np.radians(a)) * r)
+        v.box(x, y, 5, x + 1, y + 1, 7, rope)
+    v.render('boat', contrast=3.0)
+
+
+def netrack():
+    """그물 덕장: two posts and a pole hung with drying net and a row of split fish."""
+    X, Y, Z = 64, 11, 46
+    v = Vox(X, Y, Z)
+    wd = v.mat(WOOD)
+    net = v.mat(Mat(['#0a0c12', '#121620', '#1c2230', '#283044', '#36405a']))
+    fish = v.mat(Mat(['#1a1a22', '#2e2e3a', '#4a4a58', '#6e6e7e', '#9a9aa8']))
+    v.box(3, 4, 0, 6, 7, 44, wd); v.box(58, 4, 0, 61, 7, 44, wd)
+    v.box(1, 4, 40, 63, 6, 42, wd)
+    gx, gy, gz = v.grid()
+    sag = 40 - 6 * np.sin(np.clip((gx - 6) / 52.0, 0, 1) * np.pi)
+    mesh = ((gx % 3 == 0) | ((gz + (gx // 3) % 2) % 3 == 0))
+    v.fill((gx >= 6) & (gx < 58) & (gy == 6) & (gz < 41) & (gz > sag - 22 + (gx % 5)) & mesh, net)
+    for x in range(10, 56, 5):                          # fish hung from the pole
+        v.box(x, 8, 30, x + 2, 9, 40, fish)
+        v.tone[x:x + 2, 8, 30:40] = np.linspace(-0.6, 0.6, 10)[None, :]
+    v.render('netrack', contrast=3.0)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     house(); terrace(); lantern(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
-    dodam('dodam', 64); board(); stall()
+    dodam('dodam', 64); board(); stall(); boat(); netrack()
 
 
 if __name__ == '__main__':

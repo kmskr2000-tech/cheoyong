@@ -28,6 +28,7 @@ PAL = {  # dark → light; night-time, cold, desaturated, with violet shadows
     'dirt':  [hx(c) for c in ('#120d10', '#1c1519', '#281e21', '#352829', '#46362f', '#5a4636')],
     'stone': [hx(c) for c in ('#0d0e15', '#171a25', '#222636', '#2f3448', '#41475e', '#59607a')],
     'water': [hx(c) for c in ('#04070e', '#070d18', '#0b1526', '#112036', '#1a2f4c', '#2a4668')],
+    'sand':  [hx(c) for c in ('#1a1b24', '#272832', '#363642', '#474652', '#5a5862', '#706c74')],
     'moss':  [hx(c) for c in ('#0c1610', '#132418', '#1d3422', '#2a4a2c')],
     'foam':  hx('#7d93ad'),
 }
@@ -159,6 +160,8 @@ def tone_texture(kind, seed):
                 v = 0.6 + big(x, y) * 0.8 + mid(x, y) * 0.4
             elif kind == 'dirt':
                 v = 1.7 + big(x, y) * 1.2 + mid(x, y) * 0.9
+            elif kind == 'sand':  # wind ripples
+                v = 2.3 + big(x, y) * 0.9 + math.sin((y + mid(x, y) * 10) * 0.9) * 0.45
             elif kind == 'water':
                 v = 1.2 + big(x, y) * 1.0 + mid(x, y * 2) * 0.6
             else:
@@ -177,6 +180,9 @@ def tone_texture(kind, seed):
             stamp(t, rnd.choice(['pebble', 'pebble_s', 'pebble_s']), x, y)
         for (x, y) in scatter(rnd, 16):
             stamp(t, rnd.choice(['crack', 'root']), x, y)
+    elif kind == 'sand':
+        for (x, y) in scatter(rnd, 22):
+            stamp(t, rnd.choice(['pebble_s', 'pebble_s', 'pebble']), x, y)
     elif kind == 'water':
         for (x, y) in scatter(rnd, 28):  # faint ripple dashes
             L = rnd.randint(3, 6)

@@ -3,6 +3,7 @@ extends CharacterBody2D
 ## Plague creatures. KIND picks the sheet and behaviour:
 ##   dog   — 역병 들개: circles in, crouches (red tell), then lunges with open jaws
 ##   ghoul — 역귀 졸개: shambles closer, raises both arms (tell), rakes down
+##   sea   — 갯귀 (바다 요괴): drags itself forward, lifts its barnacled claw high (long tell), slams
 ## Hit: white flash + knockback. At 0 HP it does not die: it collapses, still wreathed in 탁기
 ## (group "downed"). Only 처용가 purifies it (purify()); left alone it rises again.
 
@@ -13,7 +14,15 @@ const KINDS := {
 	"ghoul": {"sheet": "ghoul", "cell": Vector2i(30, 42), "feet": 40, "hp": 40, "speed": 30.0,
 		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [0]},
 		"range": 22.0, "tell": 0.5, "strike": 0.25, "dmg": 10, "faces_right": false},
+	"sea": {"sheet": "gaetgwi", "cell": Vector2i(44, 54), "feet": 52, "hp": 44, "speed": 24.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
+		"range": 30.0, "tell": 0.9, "strike": 0.3, "dmg": 12, "faces_right": false},
 }
+
+signal telegraph   # wind-up began (tutorial: teach the roll here)
+signal hit_taken
+signal collapsed   # fell into 탁기 (downed)
+signal purified
 
 @export var kind := "dog"
 var cfg: Dictionary
@@ -94,6 +103,7 @@ func _physics_process(delta: float) -> void:
 				state = "tell"; st = 0.0
 				lunge_dir = to.normalized()
 				sprite.play("tell")
+				telegraph.emit()
 		"tell":
 			if st >= cfg["tell"]:
 				state = "strike"; st = 0.0
@@ -121,6 +131,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 		return
 	hp -= dmg
 	flash = 0.08
+	hit_taken.emit()
 	knock = dir * (220.0 if heavy else 130.0)
 	if hp <= 0:
 		_down()
@@ -138,6 +149,7 @@ func _down() -> void:
 	sprite.modulate = Color(0.55, 0.5, 0.65)
 	sprite.rotation = 0.25 if kind == "dog" else 0.0
 	sprite.scale = Vector2(1.0, 0.8)
+	collapsed.emit()
 	miasma = CPUParticles2D.new()
 	miasma.amount = 18
 	miasma.lifetime = 1.6
@@ -178,6 +190,7 @@ func _purify() -> void:
 	state = "dead"
 	remove_from_group("enemy")
 	remove_from_group("downed")
+	purified.emit()
 	var motes := CPUParticles2D.new()
 	motes.amount = 24
 	motes.lifetime = 1.2

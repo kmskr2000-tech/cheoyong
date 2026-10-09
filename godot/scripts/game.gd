@@ -15,10 +15,11 @@ var flags := {}
 var money := 50
 var items := {"insam": 2, "gugija": 1, "jeonghwa": 0}
 var checkpoint := "village"
-var level_id := "gyeongju"
+var level_id := "beach"
 var spawn_name := "start"
 var _fade: ColorRect
 var _busy := false
+var _card: VBoxContainer
 
 
 func _ready() -> void:
@@ -30,6 +31,19 @@ func _ready() -> void:
 	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(_fade)
+	_card = VBoxContainer.new()
+	_card.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_card.alignment = BoxContainer.ALIGNMENT_CENTER
+	_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_card.modulate.a = 0.0
+	for i in 2:
+		var l := Label.new()
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11-Bold.ttf" if i == 0 else "res://assets/fonts/Galmuri11.ttf"))
+		l.add_theme_font_size_override("font_size", 24 if i == 0 else 12)
+		l.add_theme_color_override("font_color", Color(0.93, 0.88, 0.76) if i == 0 else Color(0.62, 0.7, 0.86))
+		_card.add_child(l)
+	layer.add_child(_card)
 	add_child(layer)
 
 
@@ -52,11 +66,24 @@ func fade(to: float, time := 0.4) -> void:
 	await tw.finished
 
 
-func change_level(id: String, spawn: String) -> void:
+## a place / chapter card over black (call with the screen already faded out); awaitable
+func card(title: String, sub := "", hold := 1.6) -> void:
+	_card.get_child(0).text = title
+	_card.get_child(1).text = sub
+	var tw := create_tween()
+	tw.tween_property(_card, "modulate:a", 1.0, 0.6)
+	tw.tween_interval(hold)
+	tw.tween_property(_card, "modulate:a", 0.0, 0.6)
+	await tw.finished
+
+
+func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 	if _busy:
 		return
 	_busy = true
-	await fade(1.0, 0.35)
+	await fade(1.0, 0.35 if title == "" else 1.2)
+	if title != "":
+		await card(title, sub)
 	level_id = id
 	spawn_name = spawn
 	get_tree().change_scene_to_file("res://scenes/level.tscn")
@@ -100,4 +127,4 @@ func new_game() -> void:
 
 ## where a fresh start / continue / death puts you
 func checkpoint_spawn() -> Array:
-	return ["dungeon1", "entrance"] if checkpoint == "dungeon" else ["gyeongju", "start"]
+	return ["dungeon1", "entrance"] if checkpoint == "dungeon" else ["beach", "start"] if not flag("arrived") else ["gyeongju", "start"]

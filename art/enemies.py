@@ -252,11 +252,112 @@ def plague_god(phase, pose='idle'):
     return c
 
 
+# ---------------------------------------------------------------- 갯귀 (바다 요괴, 1장 튜토리얼)
+# 물에 빠져 죽은 자들의 한이 해초·따개비와 엉겨 뭍으로 기어오른 것. 해초 머리채가 얼굴을 덮고
+# 눈 하나만 차갑게 빛난다. 오른팔은 따개비 덮인 거대한 집게. 탁기에 물든 바닷물이 뚝뚝 떨어진다.
+KELP = R('#060c0c', '#0c1816', '#122420', '#1a342c', '#26503e', '#3a7058', '#5a9878')
+KELPD = R('#04080a', '#081210', '#0e1c1a', '#142824', '#1c3630')
+SHELL = R('#14121a', '#24202a', '#38323c', '#504850', '#6c6468', '#8c8480')
+BARN = props.hx('#b8b4a8')
+SEAEYE = props.hx('#9ef0ff')
+BRINE = props.hx('#2a4a6a')
+
+
+def gaetgwi(phase, pose='walk'):
+    W, H = 44, 54
+    c = Canvas(W, H)
+    G = 52
+    bob = (0, 1, 1, 0)[phase] if pose == 'walk' else 0
+    sway = (-1, 0, 1, 0)[phase] if pose == 'walk' else 0
+    up = pose == 'tell'; slam = pose == 'strike'; hurt = pose == 'hurt'
+    cx = 20 + (2 if hurt else 0)
+    # dragging skirt of kelp strands down to the ground
+    for i, x in enumerate(range(cx - 9, cx + 10)):
+        top = 30 + bob + (i * 5) % 3
+        end = G - (i * 7) % 3 + (1 if (i + phase) % 4 == 0 else 0)
+        for y in range(top, end):
+            wav = round(math.sin(y * 0.5 + i + phase) * 0.6) + (sway if y > 44 else 0)
+            ramp = KELP if x < cx else KELPD
+            c.set(x + wav, y, c.ramp_at(ramp, 2.4 - (y - top) * 0.06 + (0.8 if i % 3 == 0 else 0) - (x > cx) * 0.5))
+    # hunched torso, barnacle-crusted shoulders
+    c.dome(cx, 27 + bob, 9, 9, KELP, 2.3, top_only=False)
+    c.dome(cx + 6, 18 + bob, 7, 6, SHELL, 2.4, top_only=False)   # shell pauldron grown over the claw shoulder
+    for (bx, by) in ((cx + 2, 15), (cx + 5, 13), (cx + 8, 14), (cx + 11, 17), (cx + 4, 18), (cx + 9, 20), (cx + 7, 16)):
+        c.set(bx, by + bob, BARN); c.set(bx, by + 1 + bob, SHELL[1])
+    # head bowed forward under a curtain of kelp hair; one cold eye shows through
+    hy = 20 + bob
+    c.dome(cx - 2, hy, 6, 6, KELP, 2.6, top_only=False)
+    for i, x in enumerate(range(cx - 8, cx + 5)):
+        for y in range(hy - 5 + (i % 2), hy + 9 + (i * 3) % 5):
+            t = 3.4 - abs(x - cx + 3) * 0.3 - (y - hy) * 0.1 + (1.2 if i % 3 == 1 and y < hy + 2 else 0)
+            c.set(x + round(math.sin(y * 0.6 + i) * 0.5), y, c.ramp_at(KELP, t))
+    c.set(cx - 4, hy + 1, SEAEYE, outline=False); c.set(cx - 3, hy + 1, SEAEYE, outline=False)
+    c.set(cx - 4, hy + 2, props.hx('#3a8aa8'), outline=False)
+    # left arm: long, drowned, hanging
+    sh = (cx - 8, 22 + bob)
+    if up:
+        el, hand = (cx - 13, 14), (cx - 12, 6)
+    elif slam:
+        el, hand = (cx - 12, 30), (cx - 9, 44)
+    else:
+        el, hand = (cx - 12, 31 + bob), (cx - 11 - sway, 42 + bob)
+    limb(c, *sh, *el, KELP, 3, 2.4)
+    limb(c, *el, *hand, CORPSE, 2, 1.6)
+    for k in (-1, 0, 1):
+        c.set(hand[0] + k, hand[1] + 2, BONE)
+    # right arm: the great barnacled claw
+    sh = (cx + 9, 22 + bob)
+    if up:
+        el, cl = (cx + 15, 12), (cx + 14, 3)
+    elif slam:
+        el, cl = (cx + 16, 34), (cx + 16, 44)
+    else:
+        el, cl = (cx + 15, 29 + bob), (cx + 16 + sway, 37 + bob)
+    limb(c, *sh, *el, SHELL, 3, 2.0)
+    limb(c, *el, *cl, SHELL, 3, 2.0)
+    # claw: a heavy palm and two curved pincers (open, snapping shut on the slam)
+    c.dome(cl[0] + 1, cl[1], 5.5, 4.5, SHELL, 2.7, top_only=False)
+    gap = 0 if slam else 2
+    for k in range(10):  # outer pincer (thick, curling in) and inner pincer
+        ox = cl[0] - 3 - round(math.sin(k * 0.32) * 2.5) + (k > 7)
+        for w in range(3):
+            c.set(ox + w, cl[1] + 3 + k, c.ramp_at(SHELL, 3.8 - w * 0.9 - k * 0.12))
+        if k < 8:
+            ix = cl[0] + 3 + gap + round(math.sin(k * 0.4) * 1.5) - (k > 5) * 2
+            for w in range(2):
+                c.set(ix + w, cl[1] + 3 + k, c.ramp_at(SHELL, 2.4 - w * 0.9))
+    for (bx, by) in ((0, -3), (3, -2), (-2, -1), (5, 1)):
+        c.set(cl[0] + bx, cl[1] + by, BARN)
+    # brine dripping
+    for (dx, dy) in ((cx - 6, 46), (cx + 4, 48), (cx + 16, 44)):
+        c.set(dx, dy + (phase % 2), BRINE, outline=False)
+    return c
+
+
+# ---------------------------------------------------------------- 게 (백사장 생물, SC1-02)
+CRAB = R('#1a0c10', '#3a1418', '#5e2220', '#843426', '#a8503a')
+
+
+def crab(phase):
+    c = Canvas(14, 10)
+    leg = phase % 2
+    c.dome(7, 6, 4.5, 2.6, CRAB, 2.4, top_only=False)
+    for s in (-1, 1):
+        for k in range(3):
+            x0 = 7 + s * (3 + k * 0.6)
+            c.line(x0, 7, x0 + s * 2, 9 - ((k + leg) % 2), CRAB[1])
+        c.set(7 + s * 6, 4, CRAB[3]); c.set(7 + s * 6, 3, CRAB[4]); c.set(7 + s * 5, 3, CRAB[3])
+    c.set(5, 4, props.hx('#e8e0d0'), outline=False); c.set(9, 4, props.hx('#e8e0d0'), outline=False)
+    return c
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     sheet('plague_dog', [dog(i) for i in range(4)] + [dog(1, 'lunge'), dog(0, 'hurt')], (44, 30))
     sheet('ghoul', [ghoul(i) for i in range(4)] + [ghoul(0, 'claw0'), ghoul(0, 'claw1')], (30, 42))
     sheet('plague_god', [plague_god(i) for i in range(4)] + [plague_god(0, p) for p in ('cast', 'swipe', 'hurt', 'human')], (56, 76))
+    sheet('gaetgwi', [gaetgwi(i) for i in range(4)] + [gaetgwi(0, p) for p in ('tell', 'strike', 'hurt')], (44, 54))
+    sheet('crab', [crab(i) for i in range(2)], (14, 10))
     print('enemies: plague_dog (run0-3, lunge, hurt), ghoul (walk0-3, claw0, claw1), plague_god (idle0-3, cast, swipe, hurt, human)')
 
 

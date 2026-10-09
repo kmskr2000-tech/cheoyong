@@ -38,14 +38,15 @@ func _place() -> void:
 func _process(_delta: float) -> void:
 	frame_i += 1
 	for f in seq:
-		if f == frame_i:
-			Input.action_press(seq[f])
-		elif f == frame_i - 3:
-			Input.action_release(seq[f])
+		if f == frame_i or f == frame_i - 3:
+			var ev := InputEventAction.new()  # a real event, so _input handlers (dialogue) see it too
+			ev.action = seq[f]
+			ev.pressed = f == frame_i
+			Input.parse_input_event(ev)
 	frames -= 1
 	if frames > 0:
 		return
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out)
-	print("captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size())
+	print("captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	get_tree().quit()

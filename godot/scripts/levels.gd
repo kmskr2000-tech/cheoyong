@@ -13,6 +13,34 @@ const WARM := Color(1.0, 0.52, 0.18)
 const GHOSTFIRE := Color(0.75, 0.35, 1.0)
 
 const DATA := {
+	# 개운포 — 백사장과 해안 마을 (SC1-01~07). 처용이 바다에서 뭍으로 올라오는 곳.
+	"beach": {
+		"name": "개운포",
+		"ground": "beach",
+		"spawns": {"start": Vector2(100, 262)},
+		"props": [
+			["house", 100, 112, [-6, WARM, 1.0, 0.9]],
+			["house", 548, 112, [-6, WARM, 0.9, 0.9]],
+			["lantern", 232, 120, [-34, WARM, 1.2, 1.0]],
+			["lantern", 430, 120, [-34, WARM, 1.2, 1.0]],
+			["netrack", 250, 70, null], ["netrack", 440, 66, null],
+			["jangseung_m", 304, 124, null], ["jangseung_f", 368, 124, null],
+			["sotdae", 600, 150, null], ["sotdae_s", 614, 146, null],
+			["boat", 440, 246, null], ["boat", 176, 196, null],
+			["cairn", 566, 232, null],
+			["pine", 22, 70, null], ["pine", 40, 110, null], ["pine", 616, 36, null], ["pine", 170, 36, null],
+		],
+		"npcs": [
+			["fisherA", "npc_fisher", 286, 98, "어부", "hidden"],
+			["fisherB", "npc_villager_f", 398, 102, "아낙", "hidden"],
+			["fisherC", "npc_dolsoe", 470, 104, "어부", "hidden"],
+			["suryeong", "npc_suryeong", 630, 100, "수령", "hidden"],
+		],
+		"interact": [["flute", 184, 270, "대나무 피리", "glint"]],
+		"crabs": [Vector2(240, 252), Vector2(290, 230), Vector2(420, 266), Vector2(140, 222), Vector2(520, 256)],
+		"enemies": [],
+		"exits": [],
+	},
 	# 경주 변두리 (서라벌 외곽) — SC1-08~11
 	"gyeongju": {
 		"name": "경주 변두리",

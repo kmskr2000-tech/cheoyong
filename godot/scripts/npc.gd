@@ -4,6 +4,7 @@ extends StaticBody2D
 
 var id := ""
 var display_name := ""
+var talkable := true
 var sprite: Sprite2D
 var _t := 0.0
 
@@ -27,3 +28,16 @@ func setup(npc_id: String, sheet: String, shown_name: String) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	sprite.position.y = -1.0 if fmod(_t, 1.6) < 0.8 else 0.0
+
+
+## hide / show (story beats bring people on and off stage); hidden NPCs are not solid
+func set_present(on: bool) -> void:
+	visible = on
+	collision_layer = 1 if on else 0
+
+
+## walk to a screen position (cutscenes); awaitable
+func walk_to(p: Vector2, speed := 40.0) -> void:
+	var tw := create_tween()
+	tw.tween_property(self, "position", p, position.distance_to(p) / speed)
+	await tw.finished
