@@ -3,7 +3,7 @@ extends CharacterBody2D
 
 const SPEED := 72.0
 const FRAME := Vector2i(32, 48)
-const FEET_ROW := 45 # feet row inside the 48px cell; the node origin sits on it
+const FEET_ROW := 44 # feet row inside the 48px cell; the node origin sits on it
 
 # Sheet order written by art/build.py (art/src/cheoyong.py FRAMES).
 const SHEET := {
@@ -16,7 +16,7 @@ var facing := "down"
 
 
 func _ready() -> void:
-	var tex: Texture2D = load("res://assets/sprites/cheoyong.png")
+	var tex: Texture2D = Tex.lit("res://assets/sprites/cheoyong.png")
 	var frames := SpriteFrames.new()
 	frames.remove_animation("default")
 	for anim in SHEET:

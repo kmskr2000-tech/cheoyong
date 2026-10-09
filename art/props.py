@@ -383,12 +383,91 @@ def pine():
     return c.save('pine')
 
 
+# ---------------------------------------------------------------- 석축 (dry-stone retaining wall), w x 36
+def seokchuk(name, w, stair_at=None):
+    """Big dressed granite blocks in staggered courses, grass lip spilling over the top, dark wet foot.
+    stair_at: x offset of a 32px stone stair cut into the wall."""
+    H = 36
+    c = Canvas(w, H)
+    rnd = random.Random(w * 7 + 1)
+    # courses of blocks (rows of varying height), joints staggered
+    y = 4
+    rows = []
+    while y < H - 2:
+        hgt = rnd.choice((7, 8, 9))
+        rows.append((y, min(hgt, H - 2 - y)))
+        y += hgt
+    for ri, (y0, hh) in enumerate(rows):
+        x = -rnd.randint(0, 10)
+        while x < w:
+            bw = rnd.randint(11, 20)
+            shade = rnd.random()
+            for yy in range(y0, y0 + hh):
+                for xx in range(max(0, x), min(w, x + bw)):
+                    lx, ly = xx - x, yy - y0
+                    if lx == 0 or ly == 0:
+                        col = STONE[0]
+                    else:
+                        t = 2.9 + shade * 1.2 - ly * 0.1 - (yy / H) * 1.1
+                        if ly == 1 or lx == 1: t += 1.2  # lit bevel (upper left)
+                        if ly == hh - 1 or lx == bw - 1: t -= 1.0
+                        if hashf(xx, yy, 41) > 0.93: t -= 0.8  # pitting
+                        col = c.ramp_at(STONE, t)
+                    c.set(xx, yy, col)
+            x += bw
+    # coping: grass lip spilling over the top edge
+    for xx in range(w):
+        drop = 1 + int(hashf(xx // 2, 0, 43) * 3)
+        for yy in range(0, 3 + drop):
+            c.set(xx, yy, PINE[4] if yy < 2 else (PINE[3] if yy < 2 + drop - 1 else PINE[1]))
+        if hashf(xx, 1, 44) > 0.6:
+            c.set(xx, 0, PINE[4])
+    # moss in the joints, dark damp foot
+    for xx in range(w):
+        for yy in range(H - 3, H):
+            if c.get(xx, yy):
+                c.set(xx, yy, STONE[0] if yy > H - 2 else STONE[1])
+        if hashf(xx, 2, 45) > 0.85:
+            for yy in range(4, H - 3):
+                if c.get(xx, yy) == STONE[0] and hashf(xx, yy, 46) > 0.6:
+                    c.set(xx, yy, PINE[2])
+    if stair_at is not None:
+        for xx in range(stair_at, stair_at + 32):
+            for yy in range(H):
+                step = yy // 6
+                lx = xx - stair_at
+                if lx == 0 or lx == 31:
+                    col = STONE[1]
+                else:
+                    t = 1.8 + (yy % 6 == 0) * 1.6 - (yy % 6 == 5) * 0.8 + hashf(xx // 8, step, 47) * 0.6 + step * 0.15
+                    col = c.ramp_at(STONE, t)
+                c.set(xx, yy, col)
+    return c.save(name)
+
+
+def seokchuk_side(name, h):
+    """East end of the terrace seen from above: a narrow column of stacked stones."""
+    c = Canvas(9, h)
+    y = 0
+    k = 0
+    while y < h:
+        bh = 5 + (k * 7) % 4
+        for yy in range(y, min(h, y + bh)):
+            for xx in range(9):
+                t = 2.2 - xx * 0.18 + (1.2 if yy == y + 1 else 0) - (0.9 if yy == y + bh - 1 else 0)
+                c.set(xx, yy, STONE[0] if yy == y else c.ramp_at(STONE, t))
+        y += bh; k += 1
+    for yy in range(h):
+        c.set(0, yy, PINE[2] if hashf(0, yy // 3, 48) > 0.5 else PINE[1])
+    return c.save(name)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     house(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
-    geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); lantern(); pine()
+    seokchuk('seokchuk', 240, stair_at=152); seokchuk_side('seokchuk_side', 118); geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); lantern(); pine()
     # contact sheet for review
-    names = ['house', 'jangseung_m', 'jangseung_f', 'geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'lantern', 'pine']
+    names = ['seokchuk', 'house', 'jangseung_m', 'jangseung_f', 'geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'lantern', 'pine']
     ims = [Image.open(OUT / f'{n}.png') for n in names]
     W = sum(i.width for i in ims) + 6 * len(ims); H = max(i.height for i in ims)
     sheet = Image.new('RGBA', (W, H), (60, 66, 84, 255))

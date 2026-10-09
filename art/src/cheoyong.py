@@ -1,201 +1,215 @@
-# 처용 — 복두(幞頭) + 남색 단령 + 금빛 요대. 32x48 cells, feet on row 45.
-# Light comes from the upper left; shadows shift toward violet, highlights toward warm.
+# 처용 — 퇴마사 재해석: 검푸른 철릭(주름치마), 붉은 댕기·안감·허리띠, 청록 용비늘 숄, 등에 멘 대금,
+# 팔목 토시와 목 긴 신. 32x48 cells, feet (bottom outline) on row 44. Light from the upper left.
 PALETTE = {
-    'o': '#120e1a',  # outline (violet-black)
-    'k': '#0a0810',  # eyes / brows
-    '1': '#5a3436', '2': '#9a6658', '3': '#c99878', '4': '#ecc6a2',  # skin
-    'a': '#14121c', 'b': '#26243a', 'c': '#45436a',  # 복두 black silk
-    'd': '#121a36', 'e': '#1d2a58', 'f': '#2c4180', 'g': '#4862a8',  # robe navy
-    'w': '#e2dacb', 'W': '#9c92a6',  # inner collar
-    'y': '#7a5220', 'Y': '#c8902e', 'Z': '#f2d27a',  # gold belt
-    'R': '#8e3038', 'r': '#5a1c28',  # hem / cuff trim
-    'S': '#4a3430', 's': '#2a1e1e',  # shoes
+    'o': '#0d0a12', 'k': '#08060c',
+    '1': '#4a2a2e', '2': '#8a5a52', '3': '#c08a72', '4': '#e6b896',
+    'h': '#0e0c16', 'i': '#1e1a2c', 'j': '#34304c', 'J': '#5a5a82',
+    'd': '#0d0e1c', 'e': '#171930', 'f': '#232848', 'g': '#363e66', 'G': '#56608e',
+    'r': '#3a0c14', 'R': '#6a1620', 'q': '#a02a2a', 'Q': '#d04838',
+    't': '#0b272b', 'T': '#134046', 'u': '#1f6266', 'U': '#3a9088',
+    'y': '#6a4a1c', 'Y': '#b88a32', 'Z': '#f0cc6a',
+    'b': '#120e16', 'B': '#2a2234',
+    'w': '#d8d2c0', 'W': '#8e8a96',
+    'p': '#5a4420', 'P': '#a08640',
 }
 
 DOWN = [
     '................................',
-    '.............oooooo.............',
-    '............occcbbbo............',
-    '...........ocbbbbbbbo...........',
-    '...........obbbbbbbao...........',
-    '..........oobbbbbbbaoo..........',
-    '..........ocbbbbbbbbao..........',
-    '.oooooooooaaaaaaaaaaaaooooooooo.',
-    '.ocbbbbbbboaaaaaaaaaaobbbbbbbco.',
-    '.ooooooooooa34443333aoooooooooo.',
+    '...............oo...............',
+    '..............ojJo..............',
+    '..............oiho..............',
+    '.............oQqRroRRo..........',
+    '............ojJjiiho.Rro........',
+    '...........ojJjiiiiho..ro.......',
+    '..........ojiiihhiihho..ro......',
+    '..........oih4433332ho..ro......',
     '...........o3kk33kk2o...........',
-    '...........o3Wk33kW2o...........',
-    '...........o43332322o...........',
-    '...........o33322321o...........',
-    '............o311122o............',
-    '.............o3322o.............',
-    '.............o1221o.............',
-    '........oooofw1111weoooo........',
-    '.......ogggffWwwwwWeeeedo.......',
-    '......ogggfffeeeeeefeeeddo......',
-    '......ogggffffffffdeeeeedo......',
-    '......ogggfffffffffdeeeedo......',
-    '.....ogffogfffffffffdeoeddo.....',
-    '.....ogffogffffffffffdoeddo.....',
-    '.....ogffogfffffffffeeoeddo.....',
-    '....oggffogfffffffffeeoeeddo....',
-    '....oggffoYZYYYZZYYYYyoeeddo....',
-    '....oggffoyYyyyYYyyyyyoeeddo....',
-    '....oggffogfgeffffdeedoeeddo....',
-    '...ogggffogfgeffffdeedoeedddo...',
-    '...oggffeogfgeffffdeedoeedddo...',
-    '...oRRRRRogfgeffffdeedoRrrrro...',
-    '....o43oogffgefffffdeedoo32o....',
-    '.....oo.ogffgefffffdeedo.oo.....',
-    '........ogffgefffffdeedo........',
-    '.......ogfffgeffffffdeedo.......',
-    '.......ogfffgeffffffdeedo.......',
-    '.......ogfffgeffffffdeedo.......',
-    '......ogffffgefffffffdeedo......',
-    '......ogffffgefffffffdeedo......',
-    '......ogffffgefffffffdeedo......',
-    '.....ogfffffgeffffffffdeedo.....',
-    '.....oRRRRRRRRRRRRRRRRrrrro.....',
+    '...........o3wk33kW2o...........',
+    '.......o...o33332322o...........',
+    '......oPo..o43332321o...........',
+    '......oPpo..o331122o............',
+    '.......oPo...o3221o.............',
+    '.......opo....o21o..............',
+    '........ooooowQqqRwooooo........',
+    '.......oGgfffwqRRwuUuTTo........',
+    '......oGggfffwRRwuUuTTTto.......',
+    '......oGgffffwRwuUuTTTtdo.......',
+    '......oGgfffffwuUuTTtTtddo......',
+    '.....oGgofffwuUuTTteddoedo......',
+    '.....oGgoffwuUuTTteeddoedo......',
+    '.....oGgoQQqRYZYRRRrrroedo......',
+    '.....oGgoqqRRyYyRrrrrroedo......',
+    '.....owWogfegfYfedfdedoWwo......',
+    '.....owWogfegfyfedfdedoWwo......',
+    '.....o43ogfegfefedfdedo32o......',
+    '......ooogfegfYfedfdedooo.......',
+    '........ogfegfegfedfdddo........',
+    '.......ogfegfegfedfdeddo........',
+    '.......ogfegfegfeedfdeddo.......',
+    '......ogfegfegfefedfdeddo.......',
+    '......ogfegfegfefedfdedddo......',
+    '......ogfegfegfefedfdedddo......',
+    '.....ogfegfegfefefedfdeddo......',
+    '.....ogfegfegfefefedfdedddo.....',
+    '.....oQqQqQqqRqRRrRrRrrrrro.....',
     '.....oooooooooooooooooooooo.....',
-    '.........oSSso....oSsso.........',
-    '.........ooooo....ooooo.........',
+    '..........oBBbo..oBbbo..........',
+    '..........oBBbo..oBbbo..........',
+    '..........oYyyo..oYyyo..........',
+    '..........oBBbo..oBbbo..........',
+    '.........oBBBbo..oBbbbo.........',
+    '.........oooooo..oooooo.........',
+    '................................',
     '................................',
     '................................',
 ]
 UP = [
     '................................',
-    '.............oooooo.............',
-    '............occcbbbo............',
-    '...........ocbbbbbbbo...........',
-    '...........obbbbbbbao...........',
-    '..........oobbbbbbbaoo..........',
-    '..........ocbbbbbbbbao..........',
-    '.oooooooooaaaaaaaaaaaaooooooooo.',
-    '.ocbbbbbbboaaaaaaaaaaobbbbbbbco.',
-    '.ooooooooooaaaaaaaaaaoooooooooo.',
-    '...........oaaaaaaaao...........',
-    '...........o2aaaaaa2o...........',
-    '...........o32aaaa22o...........',
-    '...........o33222211o...........',
-    '............o322211o............',
-    '.............o3221o.............',
-    '.............o2211o.............',
-    '........ooooffffffffoooo........',
-    '.......ogggfffffffffeeedo.......',
-    '......ogggffffffffeeeeeddo......',
-    '......ogggffffffffeeeeeddo......',
-    '......ogggffffffffeeeeeddo......',
-    '.....ogffogffffeffffeeoeddo.....',
-    '.....ogffogffffeffffeeoeddo.....',
-    '.....ogffogffffeffffeeoeddo.....',
-    '....oggffogffffeffffeeoeeddo....',
-    '....oggffoYYYYYYYYYYYyoeeddo....',
-    '....oggffoyyyyyyyyyyyyoeeddo....',
-    '....oggffogfgeffffdeedoeeddo....',
-    '...ogggffogfgeffffdeedoeedddo...',
-    '...oggffeogfgeffffdeedoeedddo...',
-    '...oRRRRRogfgeffffdeedoRrrrro...',
-    '....o43oogffgefffffdeedoo32o....',
-    '.....oo.ogffgefffffdeedo.oo.....',
-    '........ogffgefffffdeedo........',
-    '.......ogfffgeffffffdeedo.......',
-    '.......ogfffgeffffffdeedo.......',
-    '.......ogfffgeffffffdeedo.......',
-    '......ogffffgefffffffdeedo......',
-    '......ogffffgefffffffdeedo......',
-    '......ogffffgefffffffdeedo......',
-    '.....ogfffffgeffffffffdeedo.....',
-    '.....oRRRRRRRRRRRRRRRRrrrro.....',
+    '...............oo...............',
+    '..............ojJo..............',
+    '..............oiho..............',
+    '.............oQqRroRRo..........',
+    '............ojJjiiho.Rro........',
+    '...........ojJjiiiiho..ro.......',
+    '..........ojiiihhiihho..ro......',
+    '..........oiiihhhhihho..ro......',
+    '...........oihhhhhhho...........',
+    '...........oihhhhhhho...........',
+    '...........o2hhhhhh1o.ooo.......',
+    '...........o3hhhhhh1o.oPo.......',
+    '............o32hh21o...Po.......',
+    '.............o3221o..oPo........',
+    '..............o21o...oPo........',
+    '........oooooooooooooPoo........',
+    '.......oUuTTffffffffPpeo........',
+    '......oUuTTtfffffffPpeedo.......',
+    '......oUuTtfffffffPpeeedo.......',
+    '......oGuTtffffffPpffeeddo......',
+    '.....oGgofffffffPpfeddoedo......',
+    '.....oGgoffffffPpffeddoedo......',
+    '.....oGgoQQqRRPpRRRrrroedo......',
+    '.....oGgoqqRRPpRRrrrrroedo......',
+    '.....owWogfePpYfedfdedoWwo......',
+    '.....owWogfepfyfedfdedoWwo......',
+    '.....o43ogfegfefedfdedo32o......',
+    '......ooogfegfYfedfdedooo.......',
+    '........ogfegfegfedfdddo........',
+    '.......ogfegfegfedfdeddo........',
+    '.......ogfegfegfeedfdeddo.......',
+    '......ogfegfegfefedfdeddo.......',
+    '......ogfegfegfefedfdedddo......',
+    '......ogfegfegfefedfdedddo......',
+    '.....ogfegfegfefefedfdeddo......',
+    '.....ogfegfegfefefedfdedddo.....',
+    '.....oQqQqQqqRqRRrRrRrrrrro.....',
     '.....oooooooooooooooooooooo.....',
-    '.........oSSso....oSsso.........',
-    '.........ooooo....ooooo.........',
+    '..........oBBbo..oBbbo..........',
+    '..........oBBbo..oBbbo..........',
+    '..........oYyyo..oYyyo..........',
+    '..........oBBbo..oBbbo..........',
+    '.........oBBBbo..oBbbbo.........',
+    '.........oooooo..oooooo.........',
+    '................................',
     '................................',
     '................................',
 ]
 SIDE = [
     '................................',
-    '..............ooooo.............',
-    '.............occbbbo............',
-    '...........oocbbbbbbo...........',
-    '..........obbbbbbbbbo...........',
-    '..........obbbbbbbbbao..........',
-    '..........obbbbbbbbbao..........',
-    '.......ooooaaaaaaaaaao..........',
-    '.......ocbbaaaaaaaaaao..........',
-    '.......ooooaa3444333o...........',
-    '..........oaa3333kk3o...........',
-    '..........oa213333k3o...........',
-    '..........oa223333333o..........',
-    '...........oa3333332o...........',
-    '...........oa333331o............',
-    '...........o233332o.............',
-    '............o1221o..............',
-    '..........ooooffwWoo............',
-    '.........ogggfffwWeeo...........',
-    '.........ogggffffeeedo..........',
-    '.........oggogffffoedo..........',
-    '.........oggogffffoedo..........',
-    '.........ofgogffffoedo..........',
-    '.........ofgogfffffoedo.........',
-    '.........ofgogfffffoedo.........',
-    '.........ofgogfffffoeeo.........',
-    '.........oYYogfffffoYyo.........',
-    '.........oyyogfffffoyyo.........',
-    '.........ofgogfffffoedo.........',
-    '.........ofgogffffffoedo........',
-    '.........ofgogffffffoedo........',
-    '.........ofgoRRRRRrroedo........',
-    '.........ofgffo43oeedo..........',
-    '.........ofgfffooffeddo.........',
-    '........ofgfffffffeeddo.........',
-    '.......ofgffffgefffeeddo........',
-    '.......ofgffffgefffeeddo........',
-    '.......ofgffffgefffeeddo........',
-    '.......ofgfffffgeffffeddo.......',
-    '.......ofgfffffgeffffeddo.......',
-    '.......ofgfffffgeffffeddo.......',
-    '......ofgffffffgefffffeddo......',
-    '......oRRRRRRRRRRRRRRrrrro......',
-    '......oooooooooooooooooooo......',
-    '..........osSSo..oSSSSSo........',
-    '..........ooooo..ooooooo........',
+    '..............oo................',
+    '.............ojJo...............',
+    '.............oiho...............',
+    '.........oRRoQqRro..............',
+    '.......orRo.ojJjiiho............',
+    '......oro..ojJjiiiiho...........',
+    '......o...ojiiihh443o...........',
+    '..........oiiihh4433o...........',
+    '..........oihh233kk33o..........',
+    '..........oihh1233k33o..........',
+    '......o...oihh23333333o.........',
+    '.....oPo..oihh3333332o..........',
+    '.....oPpo..oih333312o...........',
+    '......oPo...oh33332o............',
+    '......opo....oh221o.............',
+    '.........ooooowRooo.............',
+    '........oGgfffwqRuUo............',
+    '........oGgffffwRuUuo...........',
+    '........oGgfffffwuUuTo..........',
+    '........oGgofgfouUuTo...........',
+    '........oGgofgfotTuTo...........',
+    '........oGgogffotTTdo...........',
+    '........oQqoggfoRrrro...........',
+    '........oqRoggfoRYrro...........',
+    '........ofeowWWoeYfdo...........',
+    '........ofeowWWofyddo...........',
+    '........ogfeo43ofeddo...........',
+    '........ogfefoofedddo...........',
+    '........ogfegfegfeddo...........',
+    '.......ogfegfegfedddo...........',
+    '.......ogfegfegfefdddo..........',
+    '......ogfegfegfefedddo..........',
+    '......ogfegfegfefefdddo.........',
+    '......ogfegfegfefefdddo.........',
+    '.....ogfegfegfefefedddo.........',
+    '.....ogfegfegfefefefdddo........',
+    '.....oQqQqQqqRqRRrRrrrro........',
+    '.....ooooooooooooooooooo........',
+    '.........oBbo.oBBbo.............',
+    '.........oBbo.oBBbo.............',
+    '.........oYyo.oYYyo.............',
+    '.........oBbo.oBBbo.............',
+    '........oBBbo.oBBBBBo...........',
+    '........ooooo.ooooooo...........',
+    '................................',
     '................................',
     '................................',
 ]
 
 EMPTY = '.' * 32
+LEGS = range(39, 45)  # boots/legs rows; the hem sits right above
+HEM = range(35, 39)
 
 
 def shift_x(r, d):
     return ('.' * d + r[:len(r) - d]) if d > 0 else (r[-d:] + '.' * -d) if d < 0 else r
 
 
-def walk(idle, feet):
-    """4-frame walk from an idle frame: contact, pass (body up 1px), other contact, pass.
-    feet = (contactA_rows, contactB_rows) replacing rows 43.. of the idle frame; hem rows sway with the step."""
-    hem = range(38, 44)
-    out = []
-    for k, (fr, sway) in enumerate([(feet[0], 1), (None, 0), (feet[1], -1), (None, 0)]):
-        f = list(idle)
-        if fr is None:  # passing pose: whole body rises a pixel
-            f = f[1:] + [EMPTY]
-        else:
-            for i in hem: f[i] = shift_x(f[i], sway)
-            f[44:44 + len(fr)] = fr
-        out.append(f)
+def move_cols(rows, x0, x1, dx, dy):
+    """Move the pixels of columns x0..x1 within the leg rows by (dx, dy)."""
+    out = list(rows)
+    patch = {}
+    for y in LEGS:
+        for x in range(x0, x1 + 1):
+            if rows[y][x] != '.':
+                patch[(x + dx, y + dy)] = rows[y][x]
+            out[y] = out[y][:x] + '.' + out[y][x + 1:]
+    for (x, y), c in patch.items():
+        if 0 <= y < len(out):
+            out[y] = out[y][:x] + c + out[y][x + 1:]
     return out
 
 
-FEET_FB = (
-    ['.........oSSso.....oooo.........', '.........oSSso..................', '.........ooooo..................'],
-    ['.........oooo.....oSsso.........', '..................oSsso.........', '..................ooooo.........'],
-)
-FEET_SIDE = (
-    ['........osSo.......oSSSSSo......', '........ooo........ooooooo......'],
-    ['.........oSSSSo..osso...........', '.........oooooo..oooo...........'],
-)
+def walk(idle, legs_a, legs_b):
+    """contact A, passing (body up 1px), contact B, passing. legs_* = list of (x0, x1, dx, dy)."""
+    frames = []
+    for legs, sway in ((legs_a, 1), (None, 0), (legs_b, -1), (None, 0)):
+        f = list(idle)
+        if legs is None:
+            f = f[1:] + [EMPTY]
+        else:
+            for (x0, x1, dx, dy) in legs:
+                f = move_cols(f, x0, x1, dx, dy)
+            for i in HEM:
+                f[i] = shift_x(f[i], sway)
+        frames.append(f)
+    return frames
+
+
+FB_A = [(9, 15, 0, 1), (16, 23, 0, -1)]
+FB_B = [(9, 15, 0, -1), (16, 23, 0, 1)]
+SIDE_A = [(8, 13, -2, 0), (14, 21, 2, 0)]
+SIDE_B = [(8, 13, 1, 0), (14, 21, -2, 0)]
 
 FRAMES = {'down_idle': DOWN, 'up_idle': UP, 'right_idle': SIDE}
-for name, base, feet in (('down', DOWN, FEET_FB), ('up', UP, FEET_FB), ('right', SIDE, FEET_SIDE)):
-    for i, f in enumerate(walk(base, feet)):
+for name, base, a, b in (('down', DOWN, FB_A, FB_B), ('up', UP, FB_A, FB_B), ('right', SIDE, SIDE_A, SIDE_B)):
+    for i, f in enumerate(walk(base, a, b)):
         FRAMES[f'{name}_walk{i}'] = f

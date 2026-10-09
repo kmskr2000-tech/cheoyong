@@ -50,7 +50,7 @@ static func _tileset(layer: String) -> TileSet:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(TS, TS)
 	var src := TileSetAtlasSource.new()
-	src.texture = load("res://assets/tiles/%s.png" % layer)
+	src.texture = Tex.lit("res://assets/tiles/%s.png" % layer)
 	src.texture_region_size = Vector2i(TS, TS)
 	for y in 16:
 		for x in WIN * WIN:

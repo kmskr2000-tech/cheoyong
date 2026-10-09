@@ -31,16 +31,16 @@ const MAP := [
 
 ## [prop, x, y, light] — x,y = ground contact point; light = [offset_y, colour, energy, scale] or null
 const PROPS := [
-	["house", 150, 136, [-30, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
+	["house", 120, 100, [-30, Color(1.0, 0.62, 0.3), 1.1, 0.9]],
 	["house", 520, 116, [-30, Color(1.0, 0.62, 0.3), 0.9, 0.8]],
-	["lantern", 278, 140, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
+	["lantern", 284, 150, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
 	["lantern", 436, 196, [-26, Color(1.0, 0.7, 0.38), 1.05, 1.1]],
 	["jangseung_m", 592, 156, null], ["jangseung_f", 592, 196, null],
 	["geumjul", 296, 300, null],
 	["seonang", 470, 300, [-60, Color(0.55, 1.0, 0.45), 0.55, 1.4]],
 	["cairn", 432, 312, null],
 	["sotdae", 252, 52, null], ["sotdae_s", 264, 58, null], ["sotdae", 276, 50, null],
-	["pine", 40, 96, null], ["pine", 86, 330, null], ["pine", 612, 334, null], ["pine", 620, 70, null],
+	["pine", 210, 64, null], ["pine", 86, 330, null], ["pine", 612, 334, null], ["pine", 620, 70, null],
 	["pine", 390, 44, null], ["pine", 20, 230, null], ["pine", 360, 350, null],
 ]
 ## occluder half-width / height for props that cast lantern shadows
@@ -58,14 +58,20 @@ func _ready() -> void:
 	light_tex = _radial(256)
 	for p in PROPS:
 		_prop(p[0], Vector2(p[1], p[2]), p[3])
+	_terrace()
 	_atmosphere()
+	var cam: Camera2D = $Player/Camera
+	cam.limit_left = 0
+	cam.limit_top = 0
+	cam.limit_right = (MAP[0].length() - 1) * 16
+	cam.limit_bottom = (MAP.size() - 1) * 16
 	for i in 4:
 		_wisp(Vector2(470, 260) + Vector2(cos(i * 1.7), sin(i * 2.3)) * 46, i)
 	_blob($Player, 10)
 
 
 func _prop(name: String, at: Vector2, light) -> void:
-	var tex: Texture2D = load("res://assets/props/%s.png" % name)
+	var tex: Texture2D = Tex.lit("res://assets/props/%s.png" % name)
 	var body := StaticBody2D.new()
 	body.position = at
 	add_child(body)
@@ -76,6 +82,7 @@ func _prop(name: String, at: Vector2, light) -> void:
 	body.add_child(spr)
 	var half: Vector2 = OCCLUDE.get(name, Vector2(3, 3))
 	_blob(body, maxf(half.x + 4, 6))
+	_cast_shadow(body, tex)
 	var col := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
 	shape.size = Vector2(half.x * 2, half.y * 2)
@@ -106,6 +113,7 @@ func _prop(name: String, at: Vector2, light) -> void:
 		l.color = light[1]
 		l.energy = light[2]
 		l.texture_scale = light[3]
+		l.height = 24.0
 		l.shadow_enabled = true
 		l.shadow_color = Color(0, 0, 0, 0.75)
 		l.shadow_filter = PointLight2D.SHADOW_FILTER_PCF5
@@ -115,6 +123,63 @@ func _prop(name: String, at: Vector2, light) -> void:
 
 
 var flicker: Array[PointLight2D] = []
+
+
+## 석축 terrace: the north-west corner sits a storey higher, held up by a dry-stone wall with steps.
+const TERRACE_FOOT := 150.0 # y where the wall meets the lower ground
+const STAIR := Vector2(152, 184)
+
+
+func _terrace() -> void:
+	var wall_tex := Tex.lit("res://assets/props/seokchuk.png")
+	var body := StaticBody2D.new()
+	body.position = Vector2(0, TERRACE_FOOT)
+	add_child(body)
+	var spr := Sprite2D.new()
+	spr.texture = wall_tex
+	spr.centered = false
+	spr.offset = Vector2(0, -wall_tex.get_height() + 1)
+	body.add_child(spr)
+	var side_tex := Tex.lit("res://assets/props/seokchuk_side.png")
+	var side := Sprite2D.new()
+	side.texture = side_tex
+	side.centered = false
+	side.position = Vector2(240, -TERRACE_FOOT)
+	side.z_index = -9
+	body.add_child(side)
+	# walls block everywhere except the stair gap; the side column blocks the east edge
+	for r in [Rect2(0, -36, STAIR.x, 34), Rect2(STAIR.y, -36, 240 - STAIR.y, 34), Rect2(240, -TERRACE_FOOT, 9, TERRACE_FOOT - 2)]:
+		var col := CollisionShape2D.new()
+		var sh := RectangleShape2D.new()
+		sh.size = r.size
+		col.shape = sh
+		col.position = r.position + r.size / 2.0
+		body.add_child(col)
+	# the raised top catches more moonlight than the ground below: a soft rectangular light over it
+	var top := PointLight2D.new()
+	var gi := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	for y in 64:
+		for x in 64:
+			var e := minf(minf(x, 63 - x), minf(y, 63 - y)) / 10.0
+			gi.set_pixel(x, y, Color(1, 1, 1, clampf(e, 0, 1)))
+	top.texture = ImageTexture.create_from_image(gi)
+	top.position = Vector2(124, -TERRACE_FOOT / 2.0 - 18)
+	top.scale = Vector2(250 / 64.0, (TERRACE_FOOT - 20) / 64.0)
+	top.color = Color(0.6, 0.68, 0.95)
+	top.energy = 0.45
+	top.height = 40.0
+	body.add_child(top)
+	# the lower ground at the wall foot sits in the terrace's shadow
+	var ao := Sprite2D.new()
+	var img := Image.create(250, 10, false, Image.FORMAT_RGBA8)
+	for y in 10:
+		for x in 250:
+			img.set_pixel(x, y, Color(0, 0, 0.02, 0.55 * (1.0 - y / 10.0)))
+	ao.texture = ImageTexture.create_from_image(img)
+	ao.centered = false
+	ao.z_index = -6
+	ao.z_as_relative = false
+	body.add_child(ao)
 
 
 var wisps: Array[Node2D] = []
@@ -144,9 +209,25 @@ func _wisp(home: Vector2, i: int) -> void:
 	l.color = Color(0.35, 0.95, 0.85)
 	l.energy = 0.9
 	l.texture_scale = 0.45
+	l.height = 16.0
 	n.add_child(l)
 	add_child(n)
 	wisps.append(n)
+
+
+## moon shadow: the silhouette laid flat on the ground, falling to the lower right (moon is upper left)
+func _cast_shadow(parent: Node2D, tex: Texture2D) -> void:
+	var s := Sprite2D.new()
+	s.texture = tex.diffuse_texture if tex is CanvasTexture else tex
+	s.centered = false
+	s.offset = Vector2(-tex.get_width() / 2.0, -tex.get_height() + 1)
+	s.scale = Vector2(1, -0.42)
+	s.skew = deg_to_rad(-38)
+	s.modulate = Color(0, 0, 0.03, 0.42)
+	s.z_index = -6
+	s.z_as_relative = false
+	parent.add_child(s)
+	parent.move_child(s, 0)
 
 
 ## soft contact shadow under anything standing on the ground
@@ -182,8 +263,16 @@ func _process(_d: float) -> void:
 func _atmosphere() -> void:
 	# moonlit night: everything unlit sinks into cold violet-blue
 	var cm := CanvasModulate.new()
-	cm.color = Color(0.25, 0.28, 0.43)
+	cm.color = Color(0.17, 0.19, 0.3)
 	add_child(cm)
+	# the moon: a cold key light from the upper left that rakes across every normal map and casts
+	# long diagonal shadows from houses and trees
+	var moon := DirectionalLight2D.new()
+	moon.color = Color(0.55, 0.62, 0.9)
+	moon.energy = 0.8
+	moon.height = 0.45
+	moon.rotation = deg_to_rad(35)
+	add_child(moon)
 	# a faint cold aura around the hero so he never vanishes in the dark
 	var pl := PointLight2D.new()
 	pl.texture = light_tex
@@ -191,6 +280,7 @@ func _atmosphere() -> void:
 	pl.energy = 0.55
 	pl.texture_scale = 0.55
 	pl.position = Vector2(0, -16)
+	pl.height = 30.0
 	$Player.add_child(pl)
 	# fog over the ground, lit by the lanterns it drifts through
 	var fog := ColorRect.new()
