@@ -272,6 +272,8 @@ func _prop(name: String, at: Vector2, light) -> void:
 	spr.centered = false
 	spr.offset = Vector2(-tex.get_width() / 2.0, -tex.get_height() + 1)
 	body.add_child(spr)
+	if tex.get_height() > 40:
+		fade_props.append([body, spr, Rect2(spr.offset, tex.get_size())])
 	var half: Vector2 = OCCLUDE.get(name, Vector2(3, 3))
 	_blob(body, maxf(half.x + 4, 6))
 	_cast_shadow(body, tex)
@@ -315,6 +317,7 @@ func _prop(name: String, at: Vector2, light) -> void:
 
 
 var flicker: Array[PointLight2D] = []
+var fade_props: Array = []   # [body, sprite, local rect] — tall props turn see-through when the hero is behind
 
 
 var wisps: Array[Node2D] = []
@@ -384,7 +387,13 @@ func _blob(parent: Node2D, half_w: float) -> void:
 	parent.move_child(s, 0)
 
 
-func _process(_d: float) -> void:
+func _process(d: float) -> void:
+	var pp: Vector2 = $Player.global_position + Vector2(0, -16)
+	for fp in fade_props:
+		var body: Node2D = fp[0]
+		var behind: bool = pp.y < body.global_position.y and (fp[2] as Rect2).grow(-2).has_point(pp - body.global_position)
+		var spr: Sprite2D = fp[1]
+		spr.modulate.a = move_toward(spr.modulate.a, 0.45 if behind else 1.0, d * 4.0)
 	var t := Time.get_ticks_msec() / 1000.0
 	for w in wisps:
 		var ph: float = w.get_meta("ph")
@@ -397,8 +406,10 @@ func _process(_d: float) -> void:
 
 func _atmosphere() -> void:
 	# moonlit night: everything unlit sinks into cold violet-blue
+	# 해질녘 (dusk) for daily life in 경주; full night otherwise
+	var dusk: bool = def.get("time", "night") == "dusk" and not Game.flag("night")
 	var cm := CanvasModulate.new()
-	cm.color = Color(0.2, 0.26, 0.42)
+	cm.color = Color(0.34, 0.37, 0.52) if dusk else Color(0.2, 0.26, 0.42)
 	add_child(cm)
 	# the moon: a cold key light from the upper left that rakes across every normal map and casts
 	# long diagonal shadows from houses and trees

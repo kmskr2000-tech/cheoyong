@@ -84,15 +84,12 @@ func _ready() -> void:
 	_toast.modulate.a = 0.0
 	root.add_child(_toast)
 	Game.toast.connect(show_toast)
-	_pause_panel = _make_pause()
-	add_child(_pause_panel)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_touch_root.visible = DisplayServer.is_touchscreen_available() or "--touch" in OS.get_cmdline_user_args()
 	if _touch_root.visible:
 		_show_stick(Vector2(70, 214))  # resting position hint
 
 
-var _pause_panel: Control
 var _buttons := {}
 var _rings := {}
 var _talk: Sprite2D
@@ -156,41 +153,33 @@ func show_toast(text: String, color: Color) -> void:
 	_toast_tw.tween_property(_toast, "modulate:a", 0.0, 0.5)
 
 
-func _make_pause() -> Control:
-	var c := Control.new()
-	c.set_anchors_preset(Control.PRESET_FULL_RECT)
-	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	c.visible = false
-	var dim := ColorRect.new()
-	dim.color = Color(0.01, 0.02, 0.06, 0.6)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	c.add_child(dim)
-	var p := NinePatchRect.new()
-	p.texture = load("res://assets/ui/panel.png")
-	p.patch_margin_left = 14; p.patch_margin_right = 14; p.patch_margin_top = 14; p.patch_margin_bottom = 14
-	p.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE
-	p.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
-	p.position = Vector2(160, 100)
-	p.size = Vector2(160, 64)
-	c.add_child(p)
-	var l := Label.new()
-	l.text = "일시정지\n메뉴를 다시 누르면 계속"
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
-	l.add_theme_font_size_override("font_size", 12)
-	l.add_theme_color_override("font_color", Color(0.93, 0.88, 0.76))
-	l.position = Vector2(0, 16)
-	l.size = Vector2(160, 40)
-	p.add_child(l)
-	return c
-
-
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause"):
-		get_tree().paused = not get_tree().paused
-		_pause_panel.visible = get_tree().paused
+	if event.is_action_pressed("pause") and not get_tree().paused and not player.locked:
 		get_viewport().set_input_as_handled()
+		_open_bag()
+
+
+## 행낭: the pause menu is a list of what he carries; picking a remedy uses it
+func _open_bag() -> void:
+	var dialog: DialogBox = get_parent().dialog
+	get_tree().paused = true
+	while true:
+		var opts := []
+		var ids := []
+		for it in Game.SHOP:
+			opts.append("%s ×%d" % [it["name"], int(Game.items.get(it["id"], 0))])
+			ids.append(it["id"])
+		opts.append("닫기")
+		var i: int = await dialog.choose({"name": "행낭", "text": "엽전 %d냥. 무엇을 꺼내겠소?" % Game.money}, opts)
+		if i >= ids.size():
+			break
+		if player.use_item(ids[i]):
+			Game.say_toast("%s을(를) 썼다." % Game.SHOP[i]["name"])
+			if ids[i] == "jeonghwa":
+				break
+		else:
+			Game.say_toast("지금은 쓸 수 없다.", Color(0.7, 0.72, 0.8))
+	get_tree().paused = false
 
 
 func _gauge(root: Control, at: Vector2, w: float, fill: String) -> TextureRect:

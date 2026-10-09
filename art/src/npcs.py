@@ -124,6 +124,12 @@ FISHER_P = pal(**{'2': '#6e4438', '3': '#9a6852', '4': '#bc8a70'}, h='#3a3018', 
                r='#2a2018', R='#3e3024', q='#5a4834', Q='#7a6448', y='#2a2018', Y='#4a3a28', Z='#6a5a40')
 
 
+# 역병 걸린 아이: the child's short body, sallow fevered skin, faded undyed hemp
+CHILD = list(GHOST)
+CHILD_P = pal(**{'1': '#4a3a34', '2': '#7e6658', '3': '#a88e7a', '4': '#c4ac94'}, h='#100c10', i='#1e1820', j='#342c34', J='#4a4048',
+              d='#1e1c1a', e='#2c2a26', f='#3e3a34', g='#524c44', G='#686058',
+              r='#2a2420', R='#3e3630', q='#5a5046', Q='#7a6e60', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
+
 # One sheet per character (each has its own palette).
 SHEETS = {
     'npc_elder': (ELDER_P, {'idle': ELDER}),
@@ -136,4 +142,5 @@ SHEETS = {
     'npc_suryeong': (SURYEONG_P, {'idle': SURYEONG}),
     'npc_official': (OFFICIAL_P, {'idle': OFFICIAL}),
     'npc_fisher': (FISHER_P, {'idle': FISHER}),
+    'npc_child': (CHILD_P, {'idle': CHILD}),
 }

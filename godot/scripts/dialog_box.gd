@@ -28,6 +28,7 @@ var _knot_frames: Array[AtlasTexture] = []
 
 func _ready() -> void:
 	layer = 20
+	process_mode = Node.PROCESS_MODE_ALWAYS  # the 행낭 menu runs while the game is paused
 	var font := _pixel_font("res://assets/fonts/Galmuri11.ttf")
 	var bold := _pixel_font("res://assets/fonts/Galmuri11-Bold.ttf")
 	_root = Control.new()
@@ -138,7 +139,88 @@ func _process(delta: float) -> void:
 		_knot.position.y = _panel.size.y - 16 + roundf(sin(_t * 4.0))
 
 
+# ---------------------------------------------------------------- choices (상점, 예/아니오)
+signal chosen(index: int)
+var _menu: NinePatchRect
+var _opts: Array[Label] = []
+var _sel := 0
+var _choosing := false
+
+
+## show a prompt line and a list of options above the box; returns the picked index
+##   var i := await dialog.choose({"name": "약방 주인", "text": "무엇을 드릴까?"}, ["인삼정기탕 30냥", "그만두겠소"])
+func choose(line, options: Array) -> int:
+	_lines = [line]
+	_i = 0
+	_active = false
+	_root.visible = true
+	_show_line()
+	_shown = _body.get_total_character_count()
+	_body.visible_characters = -1
+	_knot.visible = false
+	if _menu:
+		_menu.queue_free()
+	_opts.clear()
+	_menu = NinePatchRect.new()
+	_menu.texture = _panel.texture
+	_menu.patch_margin_left = 14; _menu.patch_margin_right = 14; _menu.patch_margin_top = 14; _menu.patch_margin_bottom = 14
+	_menu.axis_stretch_horizontal = NinePatchRect.AXIS_STRETCH_MODE_TILE
+	_menu.axis_stretch_vertical = NinePatchRect.AXIS_STRETCH_MODE_TILE
+	var font := _pixel_font("res://assets/fonts/Galmuri11.ttf")
+	var w := 0.0
+	for i in options.size():
+		var l := Label.new()
+		l.text = options[i]
+		l.add_theme_font_override("font", font)
+		l.add_theme_font_size_override("font_size", FONT_SIZE)
+		l.position = Vector2(16, 12 + i * 18)
+		l.mouse_filter = Control.MOUSE_FILTER_STOP
+		l.gui_input.connect(func(ev):
+			if (ev is InputEventScreenTouch or ev is InputEventMouseButton) and ev.pressed:
+				_sel = i
+				_pick())
+		_menu.add_child(l)
+		_opts.append(l)
+		w = maxf(w, l.get_minimum_size().x)
+	_menu.size = Vector2(w + 44, options.size() * 18 + 24)
+	_menu.position = Vector2(460 - _menu.size.x, 184 - _menu.size.y)
+	_root.add_child(_menu)
+	_sel = 0
+	_paint_menu()
+	_choosing = true
+	var idx: int = await chosen
+	return idx
+
+
+func _paint_menu() -> void:
+	for i in _opts.size():
+		var on := i == _sel
+		_opts[i].add_theme_color_override("font_color", CREAM if on else Color(0.6, 0.6, 0.66))
+		_opts[i].text = ("▶ " if on else "   ") + _opts[i].text.trim_prefix("▶ ").trim_prefix("   ")
+
+
+func _pick() -> void:
+	if not _choosing:
+		return
+	_choosing = false
+	_menu.queue_free()
+	_menu = null
+	_root.visible = false
+	chosen.emit(_sel)
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if _choosing:
+		if event.is_action_pressed("move_up"):
+			_sel = (_sel - 1 + _opts.size()) % _opts.size(); _paint_menu()
+		elif event.is_action_pressed("move_down"):
+			_sel = (_sel + 1) % _opts.size(); _paint_menu()
+		elif event.is_action_pressed("confirm"):
+			_pick()
+		else:
+			return
+		get_viewport().set_input_as_handled()
+		return
 	if not _active:
 		return
 	var press: bool = event.is_action_pressed("confirm") or (event is InputEventScreenTouch and event.pressed) \

@@ -395,6 +395,32 @@ func _ripple(col: Color, delay: float) -> void:
 	tw.tween_callback(ring.queue_free)
 
 
+# ---------------------------------------------------------------- 행낭 items
+## use one of Game.items; returns false if there is none (or it would do nothing)
+func use_item(id: String) -> bool:
+	if int(Game.items.get(id, 0)) <= 0:
+		return false
+	match id:
+		"insam":
+			if hp >= max_hp:
+				return false
+			hp = minf(max_hp, hp + 60.0)
+		"gugija":
+			if ki >= max_ki:
+				return false
+			ki = minf(max_ki, ki + 50.0)
+		"jeonghwa":
+			for e in get_tree().get_nodes_in_group("enemy"):
+				var to: Vector2 = e.global_position - global_position
+				if to.length() < 80.0 and e.has_method("take_hit"):
+					e.take_hit(40, to.normalized(), true)
+			for i in 5:
+				_ripple(OBANG[i], i * 0.05)
+	Game.items[id] = int(Game.items[id]) - 1
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+	return true
+
+
 # ---------------------------------------------------------------- 정화부 (talisman burst)
 func _talisman() -> void:
 	if ki < TALISMAN_COST:

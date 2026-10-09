@@ -24,6 +24,12 @@ var _card: VBoxContainer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	for a in OS.get_cmdline_user_args():  # test hooks: --level=gyeongju --spawn=home --flags=met_nanyeong,night
+		if a.begins_with("--level="): level_id = a.get_slice("=", 1)
+		elif a.begins_with("--spawn="): spawn_name = a.get_slice("=", 1)
+		elif a.begins_with("--flags="):
+			for f in a.get_slice("=", 1).split(","):
+				flags[f] = 1
 	var layer := CanvasLayer.new()
 	layer.layer = 30
 	_fade = ColorRect.new()
