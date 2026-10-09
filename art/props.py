@@ -269,9 +269,75 @@ def pine():
     return c.save('pine')
 
 
+def tal():
+    """처용탈 걸린 대문 기둥: a short gate post with the red 처용 mask hung on a nail — people hang it
+    on their doors against plague (SC1-21)."""
+    c = Canvas(18, 40)
+    c.cylinder(6, 2, 6, 38, WOOD, 2.0, rings=9)
+    MASK = R('#3a0a0c', '#6a1416', '#9a2420', '#c4382a', '#e05a3a')
+    cx, cy = 9, 15
+    c.dome(cx, cy, 6.5, 7.5, MASK, 2.6, top_only=False)
+    for x in range(cx - 6, cx + 7):           # black 사모 brim on top, peony blossoms either side
+        c.set(x, cy - 7, INK)
+    for x in range(cx - 4, cx + 5):
+        c.set(x, cy - 8, INK); c.set(x, cy - 9, INK)
+    c.set(cx - 7, cy - 6, RED[4]); c.set(cx + 7, cy - 6, RED[4])
+    for (x, y) in ((cx - 3, cy - 1), (cx + 2, cy - 1)):   # wide eyes
+        c.set(x, y, INK); c.set(x + 1, y, INK)
+    c.set(cx - 2, cy - 2, PAPER[4], outline=False); c.set(cx + 3, cy - 2, PAPER[4], outline=False)
+    for x in range(cx - 3, cx + 4):            # broad grin with white teeth
+        c.set(x, cy + 3, INK)
+        c.set(x, cy + 4, PAPER[4] if x % 2 else PAPER[3])
+    c.set(cx, cy + 1, MASK[1])
+    c.line(cx, cy - 10, cx, cy - 12, INK)     # string to the nail
+    c.save('tal')
+
+
+def irworobong():
+    """일월오봉도: the royal folding screen — red sun, white moon, five peaks, pines, waterfalls, waves.
+    Drawn in deep night-dimmed colours; it stands behind the throne."""
+    W, H = 104, 60
+    c = Canvas(W, H)
+    FRAME = R('#2a0a0e', '#4e1218', '#7a1e20', '#a32e28')
+    SKY = R('#0a1430', '#122048', '#1a2c5e')
+    PEAK = R('#0c2418', '#143a26', '#1e5234', '#2c6e44', '#3e8a56')
+    WAVE = R('#0e1e3a', '#1a3460', '#3a5a8a', '#8aa8c8')
+    for y in range(H):
+        for x in range(W):
+            panel = x // 26
+            if y < 2 or y >= H - 2 or x % 26 in (0, 25):
+                c.set(x, y, FRAME[2] if (y < 2 or x % 26 == 0) else FRAME[1])
+                continue
+            t = 1.2 + (y / H) * 1.2
+            col = SKY[min(2, int(t))]
+            # five peaks: one big centre, two each side
+            peaks = [(52, 14, 20), (26, 24, 14), (78, 24, 14), (10, 32, 10), (94, 32, 10)]
+            for (px, top, hw) in peaks:
+                if y >= top + abs(x - px) * (H - 18 - top) / hw * 0.9 and y < H - 16:
+                    col = PEAK[max(0, min(4, int(3.6 - (x - px) / hw * 1.4 - (y - top) * 0.05)))]
+            if y >= H - 16:                    # waves
+                k = (x + (y % 4) * 3) % 9
+                col = WAVE[3] if k == 0 and y % 4 == 0 else WAVE[1 + (y % 4 == 1)]
+            c.set(x, y, col)
+    for (sx, sy, r, cl) in ((20, 10, 4, RED[4]), (84, 10, 4, PAPER[4])):    # sun (red) and moon (white)
+        for y in range(sy - r, sy + r + 1):
+            for x in range(sx - r, sx + r + 1):
+                if (x - sx) ** 2 + (y - sy) ** 2 <= r * r:
+                    c.set(x, y, cl, outline=False)
+    for wx in (38, 66):                        # waterfalls
+        for y in range(28, H - 16):
+            c.set(wx, y, WAVE[3]); c.set(wx + 1, y, WAVE[2])
+    for (tx, ty) in ((6, 40), (98, 40)):       # red-trunked pines at the edges
+        c.line(tx, ty, tx, H - 16, RED[2])
+        for k in range(3):
+            for x in range(tx - 3 + k, tx + 4 - k):
+                c.set(x, ty - 2 + k * 3, PEAK[3])
+    c.save('irworobong')
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); pine()
+    geumjul(); sotdae('sotdae', 52); sotdae('sotdae_s', 40); seonang(); cairn(); pine(); tal(); irworobong()
     # contact sheet for review
     names = ['geumjul', 'sotdae', 'sotdae_s', 'seonang', 'cairn', 'pine']
     ims = [Image.open(OUT / f'{n}.png') for n in names]

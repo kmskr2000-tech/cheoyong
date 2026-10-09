@@ -130,6 +130,18 @@ CHILD_P = pal(**{'1': '#4a3a34', '2': '#7e6658', '3': '#a88e7a', '4': '#c4ac94'}
               d='#1e1c1a', e='#2c2a26', f='#3e3a34', g='#524c44', G='#686058',
               r='#2a2420', R='#3e3630', q='#5a5046', Q='#7a6e60', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
 
+# 왕: 익선관 (wings standing up behind), deep red 곤룡포 with a gold dragon roundel, jade belt
+KING = list(PLAIN)
+for y, x, t in ((1, 13, 'ooooo'), (2, 13, 'ojJjio'), (3, 13, 'ojiihho'), (0, 11, 'oo'), (1, 10, 'ojo'), (0, 20, 'oo'), (1, 20, 'ojo'), (2, 10, 'oo'), (2, 21, 'oo')):
+    put(KING, y, x, t)
+for y, x, t in ((13, 14, 'hhh'),):
+    put(KING, y, x, t)
+for y, x, t in ((18, 14, 'YZZY'), (19, 13, 'YZYYZY'), (20, 14, 'YZZY')):
+    put(KING, y, x, t)
+KING_P = pal(h='#07070c', i='#101018', j='#1e1e2a', J='#34344a',
+             d='#2a060a', e='#4a0e14', f='#6a161c', g='#8e2026', G='#b0302e',
+             r='#1a3a30', R='#2a5a4a', q='#4a8a72', Q='#7ab89a', y='#6a4a1c', Y='#b88a32', Z='#f0cc6a')
+
 # One sheet per character (each has its own palette).
 SHEETS = {
     'npc_elder': (ELDER_P, {'idle': ELDER}),
@@ -143,4 +155,5 @@ SHEETS = {
     'npc_official': (OFFICIAL_P, {'idle': OFFICIAL}),
     'npc_fisher': (FISHER_P, {'idle': FISHER}),
     'npc_child': (CHILD_P, {'idle': CHILD}),
+    'npc_king': (KING_P, {'idle': KING}),
 }

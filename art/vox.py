@@ -552,10 +552,39 @@ def altar():
     v.render('altar', contrast=3.0)
 
 
+def pillar():
+    """편전 기둥: a round red column on a stone base, a 단청 bracket band at the top."""
+    X, Y, Z = 16, 16, 96
+    v = Vox(X, Y, Z)
+    st, red, dan = v.mat(STONE), v.mat(REDWOOD), v.mat(DANCHEONG)
+    gx, gy, gz = v.grid()
+    d = np.sqrt((gx + 0.5 - 8) ** 2 + (gy + 0.5 - 8) ** 2)
+    v.fill((d < 7.5) & (gz < 5), st, 0.3)
+    v.fill((d < 5) & (gz >= 5) & (gz < 84), red)
+    v.fill((d < 6.5) & (gz >= 84), dan, np.where((gz % 4) == 0, 0.8, -0.2))
+    v.render('pillar', contrast=3.2)
+
+
+def chotdae():
+    """촛대: a tall brass candle stand with a burning candle."""
+    X, Y, Z = 12, 12, 40
+    v = Vox(X, Y, Z)
+    brass = v.mat(Mat(['#2a1e0c', '#4a3618', '#7a5a28', '#b08a40', '#d8b464']))
+    wax, fl = v.mat(PAPER), v.mat(GLOW)
+    gx, gy, gz = v.grid()
+    d = np.sqrt((gx + 0.5 - 6) ** 2 + (gy + 0.5 - 6) ** 2)
+    v.fill((d < 5 - gz * 0.8) & (gz < 4), brass)
+    v.fill((d < 1.2) & (gz >= 3) & (gz < 28), brass)
+    v.fill((d < 3.5) & (gz >= 28) & (gz < 30), brass, 0.5)
+    v.fill((d < 1.5) & (gz >= 30) & (gz < 35), wax)
+    v.fill((d < 1.0) & (gz >= 35) & (gz < 38), fl, 1)
+    v.render('chotdae', contrast=3.0)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     house(); terrace(); lantern(); jangseung('jangseung_m', False); jangseung('jangseung_f', True)
-    dodam('dodam', 64); board(); stall(); boat(); netrack(); hall(); jars(); beam(); altar()
+    dodam('dodam', 64); board(); stall(); boat(); netrack(); hall(); jars(); beam(); altar(); pillar(); chotdae()
 
 
 if __name__ == '__main__':

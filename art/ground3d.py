@@ -448,8 +448,31 @@ def pyega2():
     bake('pyega2', rows, [''.join(r) for r in vm], {})
 
 
+# ---------------------------------------------------------------- 월성 편전 (SC1-22~23)
+def palace():
+    rows = []
+    for y in range(22):
+        r = ''
+        for x in range(32):
+            if y <= 2:
+                c = 'W'
+            elif y <= 7 and 9 <= x <= 22:
+                c = '2'                                  # 어좌 단 (the raised dais)
+            elif y in (8, 9) and x in (15, 16):
+                c = 'S'
+            else:
+                c = '1'
+            r += c
+        rows.append(r)
+    vm = [['#'] * 33 for _ in range(23)]
+    for y in range(3, 9):
+        for x in range(9, 24):
+            vm[y][x] = '='
+    bake('palace', rows, [''.join(r) for r in vm], {'S': (1, 2, 8 * TS, 10 * TS)})
+
+
 def main():
-    gwana(); pyega1(); pyega2()
+    gwana(); pyega1(); pyega2(); palace()
     hb = beach_hmap()
     bake('beach', hb, beach_vmap(hb), {'S': (1, 2, 8 * TS, 10 * TS)}, water_z=TIER - 3, foam=True)
     bake('village', VILLAGE_H, village_vmap(),

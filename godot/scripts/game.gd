@@ -99,6 +99,15 @@ func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 	_busy = false
 
 
+## back to the title screen (after the chapter ends, or from the menu)
+func to_title() -> void:
+	await fade(1.0, 0.8)
+	if ResourceLoader.exists("res://scenes/title.tscn"):
+		get_tree().change_scene_to_file("res://scenes/title.tscn")
+	await get_tree().process_frame
+	await fade(0.0, 0.8)
+
+
 # ---------------------------------------------------------------- save / load
 func save() -> void:
 	var data := {"flags": flags, "money": money, "items": items, "checkpoint": checkpoint}

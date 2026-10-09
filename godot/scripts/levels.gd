@@ -15,6 +15,24 @@ const GHOSTFIRE := Color(0.75, 0.35, 1.0)
 const CANDLE := Color(0.7, 0.55, 1.0)
 
 const DATA := {
+	# 월성 편전 — SC1-22~23 왕의 부름과 퇴마어사 임명
+	"palace": {
+		"name": "월성 편전",
+		"ground": "palace",
+		"ambient": Color(0.3, 0.29, 0.42),
+		"spawns": {"start": Vector2(256, 318)},
+		"props": [
+			["irworobong", 256, 58, null],
+			["chotdae", 196, 100, [-38, WARM, 1.1, 0.9]], ["chotdae", 316, 100, [-38, WARM, 1.1, 0.9]],
+			["pillar", 80, 150, null], ["pillar", 432, 150, null], ["pillar", 80, 290, null], ["pillar", 432, 290, null],
+			["chotdae", 120, 220, [-38, WARM, 0.9, 0.9]], ["chotdae", 392, 220, [-38, WARM, 0.9, 0.9]],
+		],
+		"npcs": [["king", "npc_king", 256, 92, "왕"]],
+		"interact": [],
+		"enemies": [],
+		"triggers": [[Rect2(150, 176, 212, 40), "audience"]],
+		"exits": [],
+	},
 	# 경주 관아 — SC1-12 의뢰
 	"gwana": {
 		"name": "경주 관아",
@@ -122,6 +140,8 @@ const DATA := {
 			["seonang", 470, 330, [-60, GHOSTFIRE, 0.7, 1.5]],
 			["cairn", 432, 344, null],
 			["sotdae", 580, 40, null], ["sotdae_s", 594, 36, null], ["sotdae", 608, 42, null],
+			# SC1-21: 소문이 돌자 대문마다 처용탈이 걸린다
+			["tal", 132, 116, null, "rumor"], ["tal", 506, 304, null, "rumor"], ["tal", 400, 236, null, "rumor"], ["tal", 250, 290, null, "rumor"],
 			["pine", 18, 60, null], ["pine", 236, 30, null], ["pine", 630, 60, null], ["pine", 520, 26, null],
 			["pine", 60, 340, null], ["pine", 630, 350, null], ["pine", 380, 356, null], ["pine", 220, 300, null],
 		],

@@ -35,7 +35,21 @@ func on_enter(level: Node) -> void:
 			_gyeongju_enter(level)
 
 
+const RUMOR := {
+	"villagerA": [{"name": "마을 아낙", "text": "탈을 쓴 어사님이오! 그분 얼굴을 깎아 문에 걸면 역병이 비켜 간다오."}],
+	"villagerB": [{"name": "나무꾼", "text": "그날 밤 서쪽 하늘이 오색으로 물들었다지 뭐요. 노랫소리도 들렸다고."}],
+	"elder": [{"name": "노인", "text": "노래로 역신을 물리친 자가 있다더군. …살다 보니 별일을 다 듣네."}],
+	"apothecary": [{"name": "약방 주인", "text": "약재가 다시 돌기 시작했소. 사위 덕이오. …허허."}],
+	"child": [{"name": "아이", "text": "형, 어젯밤에 이상한 노래가 들렸어!"}],
+	"villagerC": [{"name": "사내", "text": "기침이 멎었소. 탈을 문에 건 날부터."}],
+	"nanyeong": [{"name": "난영", "text": "사람들이 당신 얼굴을 탈로 깎아 문에 거오. …닮지는 않았소."}],
+}
+
+
 func interact(level: Node, id: String) -> void:
+	if Game.flag("rumor") and RUMOR.has(id) and not Game.flag("appointed"):
+		await level.talk(RUMOR[id])
+		return
 	match id:
 		"flute": _pick_flute(level)
 		"nanyeong": _talk_nanyeong(level)
@@ -59,6 +73,7 @@ func trigger(level: Node, id: String) -> void:
 		"fight": _fight(level)
 		"close": _close(level)
 		"inner": _inner_room(level)
+		"audience": _audience(level)
 
 
 # ================================================================ 1장 1-1 백사장 (SC1-01~04)
@@ -192,6 +207,9 @@ const DAY_PEOPLE := ["nanyeong", "apothecary", "elder", "villagerA", "villagerB"
 
 
 func _gyeongju_enter(level: Node) -> void:
+	if Game.flag("rumor"):
+		_gyeongju_after(level)
+		return
 	if Game.flag("met_nanyeong") and not Game.flag("sang_child"):
 		_show_sick_child(level)
 	elif Game.flag("sang_child"):
@@ -300,6 +318,12 @@ func _rest(level: Node) -> void:
 	p.ki = p.max_ki
 	p.stats_changed.emit(p.hp, p.max_hp, p.ki, p.max_ki)
 	Game.checkpoint = "gyeongju"
+	if Game.flag("rumor") and not Game.flag("king_call"):
+		Game.set_flag("king_call")
+		Game.set_flag("night")
+		Game.save()
+		Game.change_level("gyeongju", "home", "그날 밤", "")
+		return
 	if Game.flag("sang_child") and not Game.flag("night"):
 		# 바이블 장면 5: 혼례까지는 길게 그리지 않는다 — 몇 개의 일상 컷
 		await Game.fade(1.0, 1.2)
@@ -490,6 +514,113 @@ func _nanyeong_wakes(level: Node) -> void:
 	tw.tween_property(nan.sprite, "modulate", Color.WHITE, 0.9)
 	await tw.finished
 	await level.talk([{"name": "난영", "text": "…노래가 들렸소."}])
-	nan.talkable = true
+	p.locked = true
 	Game.set_flag("nanyeong_woke")
+	await level.get_tree().create_timer(1.0).timeout
+	# SC1-21: 소문 확산 — 며칠 뒤, 대문마다 처용탈
+	Game.set_flag("rumor")
+	Game.flags.erase("night")
+	Game.save()
+	Game.change_level("gyeongju", "start", "며칠 뒤", "")
+
+
+# ================================================================ 1장 1-6 임명과 작별 (SC1-21~25)
+func _gyeongju_after(level: Node) -> void:
+	var nan: Npc = level.npc("nanyeong")
+	nan.position = level.lift(Vector2(196, 166))   # 이제 처용의 집에 산다
+	level.npc("child").set_present(true)
+	if Game.flag("appointed"):
+		for id in DAY_PEOPLE + ["child", "villagerC"]:
+			if id != "nanyeong":
+				level.npc(id).set_present(false)
+		_farewell(level)
+	elif Game.flag("king_call"):
+		for id in DAY_PEOPLE + ["child"]:
+			if id != "nanyeong":
+				level.npc(id).set_present(false)
+		_royal_summons(level)
+
+
+## SC1-22: 밤중, 왕의 부름
+func _royal_summons(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().create_timer(1.2).timeout
+	var off: Npc = level.npc("official")
+	off.display_name = "내관"
+	off.set_present(true)
+	off.talkable = false
+	await off.walk_to(p.position + Vector2(34, 4), 70.0)
+	await level.talk([{"name": "내관", "text": "어명이오. 급간 처용은 지금 입궐하시오. …아무도 모르게."}])
+	p.locked = true
+	Game.change_level("palace", "start", "월성", "왕의 편전")
+
+
+## SC1-22~23: 편전. 왕은 알고 있었다.
+func _audience(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	p.facing = "up"
+	p.sprite.play("up_idle")
+	var cam: Camera2D = p.get_node("Camera")
+	var king: Npc = level.npc("king")
+	king.talkable = false
+	var ct := cam.create_tween()
+	ct.tween_property(cam, "offset", Vector2(0, (king.global_position.y - p.global_position.y) * 0.55), 1.2).set_trans(Tween.TRANS_SINE)
+	await ct.finished
+	await level.talk([
+		{"name": "왕", "text": "네가 용궁의 셋째라는 것을 안다."},
+		{"name": "처용", "text": "…!"},
+		{"name": "왕", "text": "왕실에는 대대로 '밤의 일'을 기록하는 비기가 있다. 용패를 가져온 자가 처음은 아니다."},
+		{"name": "왕", "text": "군대는 요괴를 죽일 수 있으나, 탁기는 흩어질 뿐이다. 죽이지 않고 풀어주는 자가 필요하다."},
+		{"name": "왕", "text": "낮에는 급간, 밤에는 탈을 쓰고 전국을 돌아라."},
+		{"name": "왕", "text": "처용. 너를 퇴마어사에 임명한다."},
+	])
+	p.locked = true
+	var tw := p.create_tween()   # 말없이 엎드려 받는다
+	tw.tween_property(p.sprite, "position:y", 3.0, 0.3)
+	tw.tween_interval(0.6)
+	tw.tween_property(p.sprite, "position:y", 0.0, 0.3)
+	await tw.finished
+	Game.set_flag("appointed")
+	Game.flags.erase("night")
+	Game.save()
+	Game.change_level("gyeongju", "home", "떠나는 날", "")
+
+
+## SC1-24: 난영과 작별. SC1-25: 1절 완성.
+func _farewell(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	var nan: Npc = level.npc("nanyeong")
+	nan.talkable = false
+	p.locked = true
+	p.position = nan.position + Vector2(-28, 6)
+	p.facing = "right"
+	p.sprite.flip_h = false
+	p.sprite.play("right_idle")
+	await level.get_tree().create_timer(1.2).timeout
+	await level.talk([
+		{"name": "난영", "text": "언제 돌아오오?"},
+		{"name": "처용", "text": "노래가 완성되면."},
+		{"name": "난영", "text": "그게 언제요?"},
+	])
+	# 대답하지 않는다. 대신 짧게 노래 한 구절을 부르고 떠난다.
 	p.locked = false
+	p.sing()
+	await level.get_tree().create_timer(1.6).timeout
+	p.locked = true
+	p.facing = "right"
+	p.sprite.play("right_walk")
+	var tw := p.create_tween()
+	tw.tween_property(p, "position", p.position + Vector2(170, 20), 3.2)
+	await level.get_tree().create_timer(1.8).timeout
+	await Game.fade(1.0, 1.4)
+	tw.kill()
+	for line in ["동경 밝은 달 아래\n기침 소리 잦아들고",
+			"스러진 이들의 숨결을\n바람에 실어 보내노라"]:
+		await Game.card("", line, 2.4)
+	await Game.card("1절", "역병에 스러진 자들의 구절", 2.6)
+	await Game.card("1장 「처용가」", "끝", 1.8)
+	Game.set_flag("chapter1_done")
+	Game.save()
+	Game.to_title()

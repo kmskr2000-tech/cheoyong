@@ -4,7 +4,7 @@ extends Node2D
 ## Story beats hook in through Story (story.gd).
 
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
+const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
 
 var light_tex: Texture2D
 
@@ -23,6 +23,8 @@ func _ready() -> void:
 	light_tex = _radial(256)
 	_ground()
 	for p in def.get("props", []):
+		if p.size() > 4 and not Game.flag(p[4]):
+			continue  # story-gated prop
 		_prop(p[0], lift(Vector2(p[1], p[2])), p[3])
 	_atmosphere()
 	var size: Array = meta["size"]
