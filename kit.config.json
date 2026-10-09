@@ -1,0 +1,28 @@
+{
+  "board": {
+    "gen": "art/_gen",
+    "assets": "godot/assets",
+    "flow": [
+      { "name": "타이틀·인트로", "about": "「떠나는 자」 — 바닷속에서 백사장까지", "sections": ["1"],
+        "assets": ["title_bg", "intro_*", "npc_dragonking", "npc_brother*", "music_title"], "image": "art/out/board/stage1.png" },
+      { "name": "백사장·해안 마을", "about": "SC1-01~07 깨어남 · 갯귀 · 천거", "sections": ["2"],
+        "assets": ["beach", "crab", "gaetgwi", "boat", "netrack", "npc_fisher", "npc_suryeong", "amb_waves", "sfx_splash"], "image": "art/out/board/stage2.png" },
+      { "name": "경주 일상", "about": "SC1-08~11 난영 · 아이 · 그날 밤", "sections": ["3"],
+        "assets": ["village", "house", "terrace", "lantern", "stall", "board", "jangseung_m", "jangseung_f", "dodam", "geumjul", "seonang", "cairn", "sotdae*", "pine", "npc_nanyeong", "npc_seokgu", "npc_elder", "npc_villager_f", "npc_dolsoe", "npc_sick", "npc_child", "npc_ghost", "npc_official", "music_night", "amb_wind"],
+        "image": "art/out/board/stage3.png" },
+      { "name": "관아·서쪽 폐가", "about": "SC1-12~15 의뢰 · 폐가 · 독기 함정", "sections": ["4"],
+        "assets": ["gwana", "hall", "pyega1", "pyega2", "jars", "beam", "plague_dog", "ghoul", "mama", "mama_boil", "egg_ghost", "maiden_ghost", "mulgwi", "music_dread", "sfx_wail", "sfx_throw"], "image": "art/out/board/stage4.png" },
+      { "name": "역신 보스전", "about": "SC1-16~20 처용가 · 무릎 · 왕이… 오신다", "sections": ["5"],
+        "assets": ["altar", "plague_god", "music_boss"], "image": "art/out/board/stage5.png" },
+      { "name": "임명·작별·1절", "about": "SC1-21~25 처용탈 · 편전 · 노래가 완성되면", "sections": ["6"],
+        "assets": ["palace", "irworobong", "pillar", "chotdae", "npc_king", "tal"], "image": "art/out/board/stage6.png" },
+      { "name": "공통: 전투·소리·조작", "about": "베기·구르기·처용가 · 기믹 · 음악 · 터치", "sections": ["7", "9", "10"],
+        "assets": ["cheoyong", "cheoyong_arm", "slash", "spark", "btn_*", "emblem", "gauge_*", "glow_ring", "knot", "panel", "seal", "stick_*", "music_battle", "sfx_*"],
+        "words": ["밸런스", "난이도", "실기기", "빌드"] },
+      { "name": "공통: 성장", "about": "정기 · 덕망 · 도감 · 탈 · 장비", "sections": ["8"], "words": ["스킬", "피리", "퇴치향", "재화", "정기"] },
+      { "name": "2~5장 준비", "about": "요괴는 있다 — 지도와 장면이 남았다", "sections": ["11"],
+        "assets": ["bulgae", "dokkaebi_*", "eodukssini", "fire_patch", "fireball", "fox_minion", "foxfire", "haetae", "jangsanbeom", "jangseung_taki", "jeoseung_guard", "mangja", "pado", "sangun", "songaksi", "thread_knot", "npc_sansin"],
+        "words": ["2장", "도깨비골", "화개"] }
+    ]
+  }
+}
