@@ -354,7 +354,16 @@ func _wet_feet(d: float) -> void:
 ## run a dialogue with the hero frozen
 func talk(lines: Array) -> void:
 	$Player.locked = true
+	# the world holds its breath while someone speaks: 요괴 don't get free hits during dialogue
+	var frozen: Array = []
+	for e in get_tree().get_nodes_in_group("enemy") + get_tree().get_nodes_in_group("downed"):
+		if e.is_physics_processing():
+			e.set_physics_process(false)
+			frozen.append(e)
 	await dialog.say(lines)
+	for e in frozen:
+		if is_instance_valid(e):
+			e.set_physics_process(true)
 	$Player.locked = false
 
 

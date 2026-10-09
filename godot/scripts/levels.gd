@@ -69,7 +69,9 @@ const DATA := {
 		],
 		"npcs": [],
 		"interact": [],
-		"enemies": [["dog", 200, 310], ["ghoul", 340, 262], ["dog", 470, 330], ["ghoul", 250, 90]],
+		# SC1-13: 무너진 마당 — 역병 들개·역귀, 우물엔 물귀신, 서낭나무 아래 처녀귀신
+		"enemies": [["dog", 200, 310], ["ghoul", 340, 262], ["dog", 420, 210], ["ghoul", 250, 90],
+			["mulgwi", 488, 312], ["maiden_ghost", 140, 300]],
 		"exits": [[Rect2(0, 196, 6, 56), "gyeongju", "fromPyega"], [Rect2(296, 34, 48, 10), "pyega2", "start"]],
 		"wisps": Vector2(320, 70),
 	},
@@ -87,7 +89,9 @@ const DATA := {
 		],
 		"npcs": [["soul", "npc_nanyeong", 690, 132, "난영의 넋"]],
 		"interact": [],
-		"enemies": [["ghoul", 150, 150], ["dog", 330, 200]],
+		# SC1-14: 다락 — 어둠 속 달걀귀신, 울음 우는 처녀귀신, 최심부 문 앞을 지키는 정예 마마귀신
+		"enemies": [["ghoul", 150, 150], ["egg_ghost", 160, 300], ["dog", 330, 200], ["maiden_ghost", 300, 110],
+			["egg_ghost", 340, 300], ["mama", 452, 200]],
 		"vents": [Vector2(290, 110), Vector2(300, 290), Vector2(230, 210), Vector2(430, 120), Vector2(440, 300), Vector2(470, 210)],
 		"triggers": [[Rect2(400, 48, 40, 290), "close"], [Rect2(530, 48, 30, 330), "inner"]],
 		"exits": [[Rect2(0, 60, 6, 270), "pyega1", "fromUp"]],
