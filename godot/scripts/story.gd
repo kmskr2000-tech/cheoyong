@@ -49,6 +49,10 @@ const RUMOR := {
 func interact(level: Node, id: String) -> void:
 	if Game.flag("rumor") and RUMOR.has(id) and not Game.flag("appointed"):
 		await level.talk(RUMOR[id])
+		if not "cheoyong" in Game.tals and id in ["villagerA", "elder", "villagerB", "villagerC", "apothecary"]:
+			# SC1-21 → 처용탈 (growth-system §3): the mask they hang on gates, carved for him to wear
+			await level.talk([{"name": RUMOR[id][0]["name"], "text": "어사님 것도 하나 깎아 왔소. 문에 거는 것 말고, 쓰시라고."}])
+			Game.give_tal("cheoyong")
 		return
 	match id:
 		"flute": _pick_flute(level)

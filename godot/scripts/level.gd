@@ -262,6 +262,25 @@ var _guide_t := 0.0
 var _splash_cd := 0.0
 
 
+# ---------------------------------------------------------------- 한풀이: every 원혼 here sung clean
+var _earned_j := 0
+var _earned_d := 0
+var _purified_n := 0
+
+
+func on_purified(r: Dictionary, where: Vector2) -> void:
+	_earned_j += r["jeonggi"]
+	_earned_d += r["deok"]
+	_purified_n += 1
+	var left := get_tree().get_nodes_in_group("enemy").filter(func(e): return not e.get("is_clone")).size() \
+		+ get_tree().get_nodes_in_group("downed").size()
+	var key := "hanpuri_" + Game.level_id
+	if left == 0 and _purified_n >= 3 and not Game.flag(key):
+		Game.set_flag(key)
+		Game.say_toast("한풀이 — 이곳의 원혼이 모두 풀렸다", Color(0.75, 0.9, 1.0))
+		Game.reward_bonus(_earned_j / 2, _earned_d / 2, where, self)   # 정화율 100%: ×1.5 in total
+
+
 # ---------------------------------------------------------------- darkness (어둑시니, 불개의 일식)
 var _dark: ColorRect
 var _dark_req := {}

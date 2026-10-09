@@ -345,6 +345,10 @@ func _defeat() -> void:
 	state = "dead"
 	_clear_tells()
 	remove_from_group("enemy")
+	Game.reward_purify("plague_god", global_position, get_parent())
+	if not "역신의 눈물" in Game.accessories:
+		Game.accessories.append("역신의 눈물")
+		Game.say_toast("장신구 「역신의 눈물」을 얻었다", Color(0.75, 0.95, 0.7))
 	for e in get_tree().get_nodes_in_group("downed"):
 		e.purify()
 	defeated.emit()

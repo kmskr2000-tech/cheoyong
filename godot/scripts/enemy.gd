@@ -680,6 +680,11 @@ func _purify() -> void:
 	remove_from_group("enemy")
 	remove_from_group("downed")
 	purified.emit()
+	if not is_clone:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
+		var lv: Node = get_tree().current_scene
+		var r := Game.reward_purify(kind, global_position, get_parent())
+		if lv.has_method("on_purified"):
+			lv.on_purified(r, global_position)
 	var motes := CPUParticles2D.new()
 	motes.amount = 24
 	motes.lifetime = 1.2
