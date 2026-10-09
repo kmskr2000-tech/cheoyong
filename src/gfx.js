@@ -1,5 +1,6 @@
-// All art is drawn in code: string pixel maps for characters, procedural drawing for
-// tiles and large props. No external image assets.
+// All art is drawn in code: characters come from the shading painter (chars.js / paint.js),
+// tiles and large props are drawn procedurally here. No external image assets.
+import { human, humanSet, CHEOYONG, plagueDog, ghoul, plagueGod, portrait, plagueGodPortrait } from './chars.js';
 
 export const C = {
   ink: '#0b0c14', ink2: '#1a1b26', ink3: '#272836',
@@ -63,210 +64,32 @@ export function tint(src, color, alpha = 1) {
   return c;
 }
 
-// ---------- player (처용: 복두 + 남색 단령 + 금빛 요대) ----------
-const PPAL = {
-  k: C.ink, h: '#17171f', H: '#34344a', s: C.skin, S: C.skinD,
-  n: C.navy, N: C.navy2, g: C.gold, w: C.white, b: '#2a1a12',
+// ---------- characters (HD-2D painter: see chars.js) ----------
+const NPC_SPECS = {
+  elder: { head: 'boktu', robe: '#4a4a52', trim: '#6a5a3a', belt: '#5a4a32', beard: 'white', hair: '#8a8680', staff: true, outfit: 'longrobe', skin: '#b89880' },
+  nanyeong: { head: 'bun', female: true, outfit: 'skirt', robe: '#5a2638', inner: '#d6c8aa', trim: '#b8923e', pin: true, skin: '#cfac98' },
+  villager: { head: 'topknot', outfit: 'jeogori', robe: '#5e5444', pants: '#7a7262', trim: '#3a3226', skin: '#b48e74' },
+  villager2: { head: 'scarf', female: true, outfit: 'skirt', robe: '#44465a', inner: '#7e705c', trim: '#6e6050', skin: '#c09c86' },
+  villagerSick: { head: 'topknot', outfit: 'rags', robe: '#4e5444', pants: '#626454', trim: '#3a3a30', skin: '#a2a88a', sick: true },
+  merchant: { head: 'bald', outfit: 'jeogori', robe: '#5e4430', pants: '#706048', trim: '#4a3a26', beard: 'short', skin: '#b08870' },
+  king: { head: 'crown', robe: '#5e1a26', trim: '#c9a24a', belt: '#c9a24a', beard: 'long', outfit: 'longrobe' },
+  dragonKing: { head: 'dragon', robe: '#1a4252', trim: '#c9a24a', belt: '#c9a24a', beard: 'white', hair: '#bcc4c0', skin: '#b4bca6', outfit: 'longrobe' },
+  official: { head: 'boktu', robe: '#2a4430', trim: '#8a7a4a', belt: '#b8923e' },
+  ghostChild: { head: 'child', child: true, outfit: 'jeogori', robe: '#c8c8d0', pants: '#a0a0b0', trim: '#8a8a9a', skin: '#d8dce8', ghost: true, mood: 'soft' },
 };
-const P_DOWN = [
-  '.....kkkkkk.....',
-  '....khhhhhhk....',
-  '....khHHhhhk....',
-  '.k..khhhhhhk..k.',
-  '.hk.khhhhhhk.kh.',
-  '..hkkhhhhhhkkh..',
-  '....kssssssk....',
-  '....kskssksk....',
-  '....kssSSssk....',
-  '.....kssssk.....',
-  '...kkwnnnnwkk...',
-  '..knnnwnnwnnnk..',
-  '..knnnnwwnnnnk..',
-  '..kSnggggggnSk..',
-  '..knnnnnnnnnnk..',
-  '..kNnnnnnnnnNk..',
-  '...kNNnkknNNk...',
-  '...kbbk..kbbk...',
-];
-const P_UP = [
-  '.....kkkkkk.....',
-  '....khhhhhhk....',
-  '....khhhhhhk....',
-  '.k..khhhhhhk..k.',
-  '.hk.khhhhhhk.kh.',
-  '..hkkhhhhhhkkh..',
-  '....khhhhhhk....',
-  '....khhhhhhk....',
-  '....kSssssSk....',
-  '.....kssssk.....',
-  '...kknnnnnnkk...',
-  '..knnnnnnnnnnk..',
-  '..knnnnnnnnnnk..',
-  '..kSnggggggnSk..',
-  '..knnnnnnnnnnk..',
-  '..kNnnnnnnnnNk..',
-  '...kNNnkknNNk...',
-  '...kbbk..kbbk...',
-];
-const P_SIDE = [
-  '.....kkkkk......',
-  '....khhhhhk.....',
-  '...khhHHhhhk....',
-  'k..khhhhhhhk....',
-  'hk.khhhhhhhk....',
-  '.hkkhhhhhhhk....',
-  '.....ksssssk....',
-  '.....ksssksk....',
-  '.....ksssssSk...',
-  '......kssssk....',
-  '....kknnnnwk....',
-  '...knnnnnnwnk...',
-  '...knnnnnnnnk...',
-  '...knggggggSk...',
-  '...knnnnnnnnk...',
-  '...kNnnnnnnNk...',
-  '....kNnkknNk....',
-  '....kbbk.kbbk...',
-];
-const LEGS_FB = [
-  ['...kNNnkknNNk...', '...kbbk..kbbk...'],
-  ['...kNNnkknNNk...', '...kbbk...kk....'],
-  ['...kNNnkknNNk...', '....kk...kbbk...'],
-];
-const LEGS_S = [
-  ['....kNnkknNk....', '....kbbk.kbbk...'],
-  ['....kNnkknNk....', '...kbbk...kbbk..'],
-  ['....kNnkknNk....', '.....kbbkbbk....'],
-];
-function withLegs(rows, legs) { return rows.slice(0, 16).concat(legs); }
-
-// ---------- generic person builder for NPCs ----------
-const HEADS = {
-  boktu: () => [
-    '.....kkkkkk.....', '....khhhhhhk....', '....khHHhhhk....',
-    '.k..khhhhhhk..k.', '.hk.khhhhhhk.kh.', '..hkkhhhhhhkkh..',
-  ],
-  topknot: () => [
-    '.......kk.......', '......khhk......', '.....kkhhkk.....',
-    '....khhhhhhk....', '....khwwwwhk....', '....khhhhhhk....',
-  ],
-  bun: () => [
-    '......kkkk......', '.....khhhhk.....', '....kkhhhhkk....',
-    '...khhhhhhhhk...', '...khhgHHhhhk...', '...khhhhhhhhk...',
-  ],
-  crown: () => [ // 신라 금관 (出자형 세움장식)
-    '..g..g.gg.g..g..', '..gg.g.gg.g.gg..', '..gggggggggggg..',
-    '...kGgGgGgGgk...', '...kggggggggk...', '...khhhhhhhhk...',
-  ],
-  dragon: () => [ // 용왕: 뿔 + 관
-    '.k...........k..', '.kk..kkkkk..kk..', '..kkkggggGkkk...',
-    '....kgGggGgk....', '....kggggggk....', '....khhhhhhk....',
-  ],
-  bald: () => [
-    '................', '................', '......kkkk......',
-    '....kkssssk.....', '....kssssssk....', '....kssssssk....',
-  ],
-  ghost: () => [
-    '................', '......kkkk......', '....kkhhhhkk....',
-    '...khhhhhhhhk...', '...khhhhhhhhk...', '...khhhhhhhhk...',
-  ],
-};
-function personRows(opt) {
-  const head = HEADS[opt.head || 'topknot']();
-  const hairSide = opt.head === 'bun' || opt.head === 'ghost';
-  const face = [
-    hairSide ? '...khssssssShk..' : '....kssssssk....',
-    hairSide ? '...khskssksShk..' : '....kskssksk....',
-    opt.beard ? '....kssSSssk....' : (hairSide ? '...khssSSssShk..' : '....kssSSssk....'),
-    opt.beard ? '....kwwwwwwk....' : (hairSide ? '...kh.kssssk.hk.' : '.....kssssk.....'),
-  ];
-  let body;
-  if (opt.skirt) {
-    body = [
-      '...kkwrrrrwkk...', '..krrrwrrwrrrk..', '..kSrrrrrrrrSk..', '..kggggggggggk..',
-      '..knnnnnnnnnnk..', '.knnnnnnnnnnnnk.', '.knnNnnnnnnNnnk.', '.kkkkkkkkkkkkkk.',
-    ];
-  } else {
-    body = [
-      opt.beard ? '...kkwwwwwwkk...' : '...kkwnnnnwkk...',
-      '..knnnwnnwnnnk..', '..knnnnwwnnnnk..', '..kSnggggggnSk..',
-      '..knnnnnnnnnnk..', '..kNnnnnnnnnNk..', '...kNNnkknNNk...', '...kbbk..kbbk...',
-    ];
-  }
-  if (opt.ghostTail) {
-    body[6] = '...knnnnnnnnk...';
-    body[7] = '....kn.kn.kn....';
-  }
-  return head.concat(face, body);
-}
-export function makePerson(opt) {
-  const pal = {
-    k: opt.outline || C.ink, h: opt.hair || '#17171f', H: '#3a3a4a',
-    s: opt.skin || C.skin, S: opt.skinD || C.skinD,
-    n: opt.robe || '#5a5048', N: opt.robeD || '#3e362f',
-    r: opt.top || '#8a3a3a', g: opt.trim || '#6a5a3a', G: '#7a6128',
-    w: opt.white || C.white, b: '#2a1a12',
-  };
-  return fromRows(personRows(opt), pal);
-}
-
-// ---------- enemies ----------
-const DOG = [
-  '................',
-  '...........kk...',
-  '..........kddk..',
-  'k........kddddk.',
-  'dk..kkkkkdddeddk',
-  '.dkkdddddddddddk',
-  '..kddddddddddkk.',
-  '..kddDDddDDddk..',
-  '..kdddddddddk...',
-  '..kdk.kdk.kdk...',
-  '..kdk.kdk..kdk..',
-  '..kk..kk...kk...',
-];
-const DOG_B = DOG.slice(0, 9).concat(['..kdk.kdk.kdk...', '.kdk...kdk.kdk..', '.kk....kk...kk..']);
-const DOGPAL = { k: C.ink, d: '#5b5248', D: '#4f8a35', e: C.plagueL };
-
-const IMP = [
-  '...k......k...',
-  '..kgk....kgk..',
-  '..kggkkkkggk..',
-  '.kggggggggggk.',
-  '.kggeggggeggk.',
-  '.kgggkkkkgggk.',
-  '..kggwkwkggk..',
-  '...kkggggkk...',
-  '..kttggggttk..',
-  '.kgktyttytkgk.',
-  'kgk.ktyytk.kgk',
-  'kk..kttttk..kk',
-  '....kttttk....',
-  '....kgkkgk....',
-  '...kgk..kgk...',
-  '...kk....kk...',
-];
-const IMP_B = IMP.slice(0, 13).concat(['....kgkkgk....', '....kgk.kgk...', '....kk...kk...']);
-const IMPPAL = { k: C.ink, g: '#6b7d5a', e: C.plagueL, w: C.white, t: '#3b3a40', y: '#c9a64a' };
 
 // ---------- sprite registry ----------
 export const SPR = {};
+// dialogue portraits keyed like SPR (line.p)
+export const PORTRAIT = {};
 
 export function buildSprites() {
-  const mk = (rows) => fromRows(rows, PPAL);
-  SPR.player = { down: [], up: [], right: [], left: [] };
-  for (let i = 0; i < 3; i++) {
-    SPR.player.down.push(mk(withLegs(P_DOWN, LEGS_FB[i])));
-    SPR.player.up.push(mk(withLegs(P_UP, LEGS_FB[i])));
-    const s = mk(withLegs(P_SIDE, LEGS_S[i]));
-    SPR.player.right.push(s);
-    SPR.player.left.push(flipH(s));
-  }
+  SPR.player = humanSet(CHEOYONG);
   SPR.playerFlash = tint(SPR.player.down[0], '#ffffff');
 
-  SPR.dog = [fromRows(DOG, DOGPAL), fromRows(DOG_B, DOGPAL)];
+  SPR.dog = [plagueDog(0), plagueDog(1)];
   SPR.dogL = SPR.dog.map(flipH);
-  SPR.imp = [fromRows(IMP, IMPPAL), fromRows(IMP_B, IMPPAL)];
+  SPR.imp = [ghoul(0), ghoul(1)];
   for (const k of ['dog', 'dogL', 'imp']) {
     SPR[k + 'White'] = SPR[k].map((s) => tint(s, '#ffffff'));
     SPR[k + 'Red'] = SPR[k].map((s) => tint(s, '#ff4030', 0.55));
@@ -275,97 +98,47 @@ export function buildSprites() {
   SPR.dogPure = tint(SPR.dog[0], '#c8b090', 0.6);
   SPR.impPure = tint(SPR.imp[0], '#e8d8a0', 0.7);
 
-  SPR.villager = makePerson({ head: 'topknot', robe: '#6a5f4c', robeD: '#4a4234', trim: '#3a3226' });
-  SPR.villagerSick = makePerson({ head: 'topknot', robe: '#5a5f4c', robeD: '#3a4234', skin: '#b8c49a', skinD: '#8a9a6a' });
-  SPR.villager2 = makePerson({ head: 'bun', skirt: true, robe: '#5a5a6a', robeD: '#3a3a4a', top: '#7a6a5a', trim: '#5a4a3a' });
-  SPR.elder = makePerson({ head: 'boktu', robe: '#4a4a52', robeD: '#33333a', trim: '#7a6a4a', beard: true, hair: '#2a2a2a' });
-  SPR.merchant = makePerson({ head: 'bald', robe: '#7a5a3a', robeD: '#5a4028', trim: '#a08050' });
-  SPR.nanyeong = makePerson({ head: 'bun', skirt: true, robe: '#6a3a4a', robeD: '#4a2834', top: '#c8b8a0', trim: C.gold });
+  for (const [k, o] of Object.entries(NPC_SPECS)) SPR[k] = human(o, 'down', 0);
   SPR.nanyeongSpirit = tint(SPR.nanyeong, '#a0e0ff', 0.45);
-  SPR.ghostChild = tint(makePerson({ head: 'ghost', robe: '#c8c8d0', robeD: '#a0a0b0', ghostTail: true, skin: '#d8dce8' }), '#9fd8ff', 0.35);
-  SPR.king = makePerson({ head: 'crown', robe: '#6a1e2a', robeD: '#4a141e', trim: C.gold, beard: true });
-  SPR.dragonKing = makePerson({ head: 'dragon', robe: '#1e4a5a', robeD: '#12323e', trim: C.gold, beard: true, skin: '#c8d0b0' });
-  SPR.official = makePerson({ head: 'boktu', robe: '#3a5a3a', robeD: '#26402a', trim: C.gold });
+  SPR.ghostChild = tint(SPR.ghostChild, '#9fd8ff', 0.35);
+
+  for (const [k, o] of Object.entries(NPC_SPECS)) PORTRAIT[k] = portrait(o);
+  PORTRAIT.cheoyong = portrait({ ...CHEOYONG, trim: CHEOYONG.trim });
+  PORTRAIT.nanyeongSpirit = tint(PORTRAIT.nanyeong, '#a0e0ff', 0.4);
+  PORTRAIT.ghostChild = tint(PORTRAIT.ghostChild, '#9fd8ff', 0.3);
+  PORTRAIT.yeoksin = plagueGodPortrait();
+  PORTRAIT.yeoksinHuman = portrait({ head: 'long', hair: '#121018', robe: '#9a9080', inner: '#cfc8b8', skin: '#cdbca4', mood: 'sinister' });
 }
 
-// ---------- 역신 (boss), procedural with animation ----------
-// state: 'idle' | 'tele' | 'human' ; t: time for sway
+// ---------- 역신 (boss): pre-rendered sway frames ----------
+// opt: { tele, human, flash, alpha }
+const BOSS_FRAMES = 8;
+const bossCache = new Map();
+function bossFrame(variant, i) {
+  const k = variant + i;
+  let c = bossCache.get(k);
+  if (!c) { c = plagueGod(variant, i / BOSS_FRAMES); bossCache.set(k, c); }
+  return c;
+}
+const bossFlash = new Map();
 export function drawBoss(ctx, x, y, t, opt = {}) {
-  const sway = Math.sin(t * 2) * 1.5;
   const human = opt.human;
+  const variant = human ? 'human' : opt.tele ? 'tele' : 'idle';
+  const i = ((Math.floor((t * 2 / (Math.PI * 2)) * BOSS_FRAMES) % BOSS_FRAMES) + BOSS_FRAMES) % BOSS_FRAMES;
+  let img = bossFrame(variant, i);
+  if (opt.flash) { let f = bossFlash.get(img); if (!f) { f = tint(img, '#ffffff', 0.8); bossFlash.set(img, f); } img = f; }
   ctx.save();
-  ctx.translate(Math.round(x), Math.round(y));
   ctx.globalAlpha = opt.alpha ?? 1;
-  const robe = human ? '#cfc8b8' : '#8a9478';
-  const robeD = human ? '#9a9080' : '#56604a';
-  const H = human ? 34 : 40;
-  // miasma aura
+  const bx = Math.round(x - img.width / 2), by = Math.round(y - img.height + 2);
+  // miasma motes orbiting the body
   if (!human) {
-    for (let i = 0; i < 6; i++) {
-      const a = t * 1.3 + i;
-      ctx.fillStyle = 'rgba(111,191,74,0.18)';
-      ctx.fillRect(Math.round(Math.cos(a) * 14 - 3), Math.round(-H / 2 + Math.sin(a * 1.4) * 10 - 3), 6, 6);
+    for (let j = 0; j < 7; j++) {
+      const a = t * 1.3 + j * 0.9;
+      ctx.fillStyle = j % 2 ? 'rgba(111,191,74,0.22)' : 'rgba(182,255,106,0.16)';
+      ctx.fillRect(Math.round(x + Math.cos(a) * 17 - 2), Math.round(y - 30 + Math.sin(a * 1.4) * 14 - 2), 4, 4);
     }
   }
-  // robe body: trapezoid
-  for (let r = 0; r < H - 12; r++) {
-    const yy = -H + 12 + r;
-    const half = 4 + Math.floor(r * (human ? 0.32 : 0.42)) + (r > H - 16 ? Math.round(Math.sin(t * 6 + r) * 1) : 0);
-    const off = Math.round(sway * (r / H));
-    ctx.fillStyle = C.ink;
-    ctx.fillRect(-half - 1 + off, yy, half * 2 + 2, 1);
-    ctx.fillStyle = r % 7 === 3 ? robeD : robe;
-    ctx.fillRect(-half + off, yy, half * 2, 1);
-    if (!human && r > H - 22 && (r + Math.floor(t * 8)) % 3 === 0) {
-      ctx.fillStyle = C.plagueD; ctx.fillRect(-half + off + 2, yy, 2, 1); ctx.fillRect(half + off - 4, yy, 2, 1);
-    }
-  }
-  // tattered hem
-  if (!human) {
-    ctx.fillStyle = robe;
-    for (let i = -12; i < 12; i += 3) {
-      const len = 1 + ((i * 7 + Math.floor(t * 5)) % 3 + 3) % 3;
-      ctx.fillRect(i + Math.round(sway), -1, 2, len);
-    }
-  }
-  // sleeves / arms
-  const armLift = opt.tele ? -6 : 0;
-  ctx.fillStyle = C.ink;
-  ctx.fillRect(-12 + Math.round(sway), -H + 15 + armLift, 5, 12);
-  ctx.fillRect(7 + Math.round(sway), -H + 15 + armLift, 5, 12);
-  ctx.fillStyle = robeD;
-  ctx.fillRect(-11 + Math.round(sway), -H + 16 + armLift, 3, 10);
-  ctx.fillRect(8 + Math.round(sway), -H + 16 + armLift, 3, 10);
-  // claw hands
-  ctx.fillStyle = human ? C.skin : '#c8d8a8';
-  ctx.fillRect(-11 + Math.round(sway), -H + 26 + armLift, 3, 3);
-  ctx.fillRect(8 + Math.round(sway), -H + 26 + armLift, 3, 3);
-  // head
-  const hx = Math.round(sway * 1.2);
-  ctx.fillStyle = C.ink; ctx.fillRect(hx - 6, -H, 12, 13);
-  ctx.fillStyle = human ? '#e6d6c0' : '#dfe6cf'; ctx.fillRect(hx - 5, -H + 2, 10, 10);
-  // long black hair
-  ctx.fillStyle = '#121218';
-  ctx.fillRect(hx - 6, -H - 1, 12, 4);
-  ctx.fillRect(hx - 7, -H + 1, 3, 16);
-  ctx.fillRect(hx + 4, -H + 1, 3, 16);
-  if (human) {
-    // 복두-like dark cap so the human disguise reads as a 신라 man
-    ctx.fillStyle = '#1a1a22'; ctx.fillRect(hx - 6, -H - 3, 12, 4); ctx.fillRect(hx - 10, -H - 1, 20, 2);
-    ctx.fillStyle = C.ink; ctx.fillRect(hx - 3, -H + 6, 2, 1); ctx.fillRect(hx + 1, -H + 6, 2, 1);
-    ctx.fillRect(hx - 1, -H + 9, 3, 1);
-  } else {
-    // eyes glow, mouth
-    ctx.fillStyle = opt.tele ? C.redL : C.plagueL;
-    ctx.fillRect(hx - 4, -H + 5, 3, 2); ctx.fillRect(hx + 1, -H + 5, 3, 2);
-    ctx.fillStyle = C.ink; ctx.fillRect(hx - 2, -H + 9, 5, 2);
-    if (opt.tele) { ctx.fillStyle = '#3a0a0a'; ctx.fillRect(hx - 1, -H + 9, 3, 3); }
-  }
-  if (opt.flash) {
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = 'rgba(255,255,255,0.8)';
-    ctx.fillRect(-16, -H - 4, 32, H + 6);
-  }
+  ctx.drawImage(img, bx, by);
   ctx.restore();
 }
 

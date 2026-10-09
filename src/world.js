@@ -4,6 +4,7 @@ import { LEVELS } from './maps.js';
 import { T, SOLID, getTile, PROPS, PROP_INFO, SPR, makeCanvas, C } from './gfx.js';
 import { Player, Dog, Imp, Boss, NPC, Particle, Ring, TextPop, Zone, dist } from './entities.js';
 import { sfx } from './audio.js';
+import { paintGround, tileOverlay } from './ground.js';
 import { renderLightmap, redrawTelegraphs, finish, shadow, frameDt, worldTarget } from './post.js';
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -219,24 +220,14 @@ export class Level {
 
   // ---------------------------------------------------------------- render
   buildGround() {
-    const [c, g] = makeCanvas(this.w * TS, this.h * TS);
-    const floorish = (t) => t !== T.VOID && t !== T.WALL;
+    this.ground = paintGround(this);
+    // boulders and fence posts stand up out of the ground; they join the y-sorted pass
+    this.overlays = [];
     for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
-      let id = this.tiles[y * this.w + x];
-      const face = id === T.WALL && floorish(this.tileAt(x, y + 1));
-      g.drawImage(getTile(id, x, y, face), x * TS, y * TS);
-      // soft edge between path and grass
-      if (id === T.GRASS || id === T.GRASS2) {
-        g.fillStyle = 'rgba(74,64,51,0.5)';
-        if (this.tileAt(x, y - 1) === T.PATH) g.fillRect(x * TS, y * TS, TS, 2);
-        if (this.tileAt(x, y + 1) === T.PATH) g.fillRect(x * TS, y * TS + TS - 2, TS, 2);
-        if (this.tileAt(x - 1, y) === T.PATH) g.fillRect(x * TS, y * TS, 2, TS);
-        if (this.tileAt(x + 1, y) === T.PATH) g.fillRect(x * TS + TS - 2, y * TS, 2, TS);
-      }
-      // shadow under wall faces
-      if (floorish(id) && this.tileAt(x, y - 1) === T.WALL) { g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(x * TS, y * TS, TS, 4); }
+      const id = this.tiles[y * this.w + x];
+      const o = tileOverlay(id, x, y);
+      if (o) this.overlays.push({ ...o, x: x * TS + 8, y: y * TS + 15, rock: id === T.ROCK });
     }
-    this.ground = c;
   }
 
   // The world is drawn at logical resolution (480x270) into an offscreen canvas, post-processed there,
@@ -257,6 +248,7 @@ export class Level {
     for (const p of this.props) if (p.info.flat && inView(p.x, p.y)) ctx.drawImage(p.img, Math.round(p.x - p.info.ax), Math.round(p.y - p.info.ay));
     // soft contact shadows for standing props (drawn on the ground pass so they never cover actors)
     for (const p of this.props) if (!p.info.flat && p.info.foot[0] && inView(p.x, p.y)) shadow(ctx, p.x, p.y, Math.min(70, p.info.foot[0] * 16 + 6));
+    for (const o of this.overlays) if (o.rock && inView(o.x, o.y)) shadow(ctx, o.x, o.y + 1, 20);
     // vents glow
     for (const v of this.vents) {
       if (!inView(v.x, v.y)) continue;
@@ -268,7 +260,16 @@ export class Level {
 
     // y-sorted drawables
     const list = [];
-    for (const p of this.props) if (!p.info.flat && inView(p.x, p.y)) list.push({ y: p.y, d: () => ctx.drawImage(p.img, Math.round(p.x - p.info.ax), Math.round(p.y - p.info.ay)) });
+    const pl = this.player;
+    for (const p of this.props) {
+      if (p.info.flat || !inView(p.x, p.y)) continue;
+      const x0 = Math.round(p.x - p.info.ax), y0 = Math.round(p.y - p.info.ay);
+      // tall props turn see-through while the hero is hidden behind them
+      const hides = pl && !pl.dead && pl.y < p.y - 2 && pl.x > x0 + 4 && pl.x < x0 + p.img.width - 4 && pl.y - 20 > y0 + 4;
+      p.fade = Math.max(hides ? 0.45 : 1, Math.min(1, (p.fade ?? 1) + (hides ? -0.08 : 0.08)));
+      list.push({ y: p.y, d: () => { ctx.globalAlpha = p.fade; ctx.drawImage(p.img, x0, y0); ctx.globalAlpha = 1; } });
+    }
+    for (const o of this.overlays) if (inView(o.x, o.y)) list.push({ y: o.y, d: () => ctx.drawImage(o.img, o.x - o.ax, o.y - o.ay) });
     for (const it of this.items) if (this.itemVisible(it)) list.push({ y: it.y, d: () => this.drawItem(ctx, it) });
     for (const n of this.npcs) list.push({ y: n.y, d: () => n.draw(ctx) });
     for (const e of this.enemies) if (!e.dead) list.push({ y: e.y, d: () => e.draw(ctx) });
