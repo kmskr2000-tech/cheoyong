@@ -44,7 +44,13 @@ RAMPS = {
     'boot':    R('#141116', '#1d181e', '#272027', '#322a31', '#3f363d', '#4f454b'),
     'wood':    R('#261c14', '#382a1c', '#4c3a26', '#614c32', '#775f40', '#8c7350'),
     'eye':     R('#0e0c12', '#0e0c12', '#16131c', '#16131c', '#e8e2d6', '#e8e2d6'),
+    'hat':     R('#0c0b10', '#141219', '#1c1a23', '#26232f', '#322f3c', '#413d4c'),
+    'beard':   R('#4a4a50', '#68686e', '#86868c', '#a2a2a6', '#bcbcbe', '#d2d2d2'),
+    'gold':    R('#3e2e16', '#5e4620', '#82632e', '#a5833f', '#c2a258', '#d8bc78'),
+    'coral':   R('#3a1416', '#5a1f20', '#7a2e2a', '#9a4036', '#b45646', '#c87060'),
+    'gourd':   R('#3a2a12', '#5a421c', '#7a5c28', '#987636', '#b29048', '#c8a860'),
 }
+RAMPS['top'] = RAMPS['robe_in']
 L_KEY = np.array([-0.55, 0.62, 0.56]); L_KEY /= np.linalg.norm(L_KEY)    # camera space: left, up, front
 L_RIM = np.array([0.8, 0.35, -0.5]); L_RIM /= np.linalg.norm(L_RIM)      # moon from behind-right
 RIM_COL = np.array([118, 136, 178], np.float32)
@@ -119,8 +125,12 @@ class Cone:
 
 
 # ---------------------------------------------------------------- the figure
-def figure(pose):
-    """pose: walk (0-3 or None), breath (bool), armless (None | 'L' | 'R'), flute (bool)."""
+HERO = {'shawl': True, 'flute': True, 'ribbon': True}
+
+
+def figure(pose, sp=HERO):
+    """pose: walk (0-3 or None), breath (bool), armless (None | 'L' | 'R'), flute (bool).
+    sp: the character (art/people.py) — hat, hair, beard, chima, badge, staff, shawl, flute, ribbon."""
     walk, breath = pose.get('walk'), pose.get('breath', False)
     lf = lz = rz = rf = 0.0
     bob = 0.0
@@ -139,19 +149,26 @@ def figure(pose):
         P.append(Ell((x, 0.9 + f, z + 1.1), (1.8, 1.0, 2.2), 'boot'))
     # 철릭 skirt (pleated), its red hem, the belt and brass buckle
     sway = (lz - rz) * 0.12
-    P.append(Cone((sway, 4.5 + up * 0.3, 0), (0, 17.5 + up, 0), 8.6, 6.4, 'robe', kz=0.78, tag='skirt'))
-    P.append(Cone((0, 16.6 + up, 0), (0, 18.8 + up, 0), 6.7, 6.7, 'red', kz=0.72, tag='belt'))
-    # torso and shoulders
-    P.append(Cone((0, 18.5 + up, 0), (0, 26.2 + up, 0), 6.2, 6.9, 'robe', kz=0.62, tag='torso'))
-    for side in (-1, 1):
-        P.append(Ell((side * 5.9, 25.2 + up, 0), (2.9, 2.2, 2.6), 'robe', tag='torso'))
+    if sp.get('chima'):   # 치마 from high under the arms, a short 저고리 above
+        P.append(Cone((sway, 4.2 + up * 0.3, 0), (0, 22.0 + up, 0), 9.6, 6.0, 'robe', kz=0.8, tag='skirt'))
+        P.append(Cone((0, 21.5 + up, 0), (0, 26.2 + up, 0), 6.0, 6.7, 'top', kz=0.62, tag='jeogori'))
+        for side in (-1, 1):
+            P.append(Ell((side * 5.7, 25.2 + up, 0), (2.8, 2.1, 2.5), 'top', tag='jeogori'))
+    else:
+        P.append(Cone((sway, 4.5 + up * 0.3, 0), (0, 17.5 + up, 0), 8.6, 6.4, 'robe', kz=0.78, tag='skirt'))
+        P.append(Cone((0, 16.6 + up, 0), (0, 18.8 + up, 0), 6.7, 6.7, 'red', kz=0.72, tag='belt'))
+        # torso and shoulders
+        P.append(Cone((0, 18.5 + up, 0), (0, 26.2 + up, 0), 6.2, 6.9, 'robe', kz=0.62, tag='torso'))
+        for side in (-1, 1):
+            P.append(Ell((side * 5.9, 25.2 + up, 0), (2.9, 2.2, 2.6), 'robe', tag='torso'))
+    sleeve = 'top' if sp.get('chima') else 'robe'
     # arms: wide 도포 sleeves, dark 토시 cuffs, hands
     for side, swing in ((-1, -lz * 0.6), (1, -rz * 0.6)):
         if pose.get('armless') == ('L' if side < 0 else 'R'):
             continue
         sh = np.array([side * 7.4, 25.0 + up, 0.0])
         wr = np.array([side * 8.6, 16.2 + up, 0.6 + swing])
-        P.append(Cone(sh, wr, 2.0, 2.7, 'robe', kz=1.0, tag='sleeve'))
+        P.append(Cone(sh, wr, 2.0, 2.7, sleeve, kz=1.0, tag='sleeve'))
         cf = wr + (wr - sh) / np.linalg.norm(wr - sh) * 1.4
         P.append(Cone(wr, cf, 1.5, 1.5, 'cuff', caps=True))
         P.append(Ell(cf + np.array([0, -1.0, 0.2]), (1.4, 1.5, 1.3), 'skin', tag='hand'))
@@ -162,17 +179,50 @@ def figure(pose):
     for side in (-1, 1):
         P.append(Ell((side * 6.1, 32.6 + up, -0.6), (0.9, 1.4, 1.1), 'skin'))
     P.append(Ell((0, 31.6 + up, 5.7), (0.8, 1.1, 0.9), 'skin'))                                   # nose (the profile needs it)
-    P.append(Ell((0, 40.4 + up, -0.9), (2.2, 2.3, 2.1), 'hair', tag='knot'))
-    P.append(Cone((0, 38.3 + up, -0.9), (0, 39.3 + up, -0.9), 2.5, 2.4, 'red'))
-    P.append(Cone((1.4, 39.4 + up, -2.0), (6.2, 35.0 + up, -3.0), 0.7, 0.9, 'red', caps=True))   # 댕기 tails
-    P.append(Cone((1.0, 39.2 + up, -2.2), (5.0, 33.8 + up, -3.6), 0.6, 0.8, 'red', caps=True))
+    hat = sp.get('hat')
+    if sp.get('long_hair'):   # 쪽진 머리: a low bun, the hair drawn smooth to the back
+        P.append(Ell((0, 31.5 + up, -5.6), (2.6, 2.2, 2.0), 'hair', tag='knot'))
+        P.append(Ell((2.6, 31.8 + up, -5.4), (1.6, 0.5, 0.5), 'gold'))                              # 비녀
+    elif hat not in ('samo', 'ikseon', 'kerchief'):
+        P.append(Ell((0, 40.4 + up, -0.9), (2.2, 2.3, 2.1), 'hair', tag='knot'))
+    if sp.get('ribbon'):
+        P.append(Cone((0, 38.3 + up, -0.9), (0, 39.3 + up, -0.9), 2.5, 2.4, 'red'))
+        P.append(Cone((1.4, 39.4 + up, -2.0), (6.2, 35.0 + up, -3.0), 0.7, 0.9, 'red', caps=True))   # 댕기 tails
+        P.append(Cone((1.0, 39.2 + up, -2.2), (5.0, 33.8 + up, -3.6), 0.6, 0.8, 'red', caps=True))
+    if hat in ('samo', 'ikseon'):   # 사모 / 익선관: a black gauze crown, a raised back, two wings
+        P.append(Cone((0, 37.0 + up, -0.4), (0, 41.0 + up, -0.6), 5.6, 4.6, 'hat', kz=0.95))
+        P.append(Ell((0, 41.6 + up, -2.0), (3.6, 2.6, 2.4), 'hat'))
+        if hat == 'samo':
+            for side in (-1, 1):
+                P.append(Ell((side * 6.6, 40.2 + up, -2.2), (2.6, 1.0, 0.45), 'hat'))
+        else:
+            for side in (-1, 1):
+                P.append(Ell((side * 2.6, 44.0 + up, -3.0), (1.6, 2.3, 0.5), 'hat'))
+    elif hat == 'crown':            # 용왕의 관: gold band, coral points
+        P.append(Cone((0, 38.0 + up, -0.5), (0, 40.6 + up, -0.5), 5.3, 5.6, 'gold', kz=0.95, caps=False))
+        for k in range(5):
+            a = (k - 2) * 0.55
+            P.append(Ell((math.sin(a) * 5.0, 41.4 + up, math.cos(a) * 4.6 - 0.5), (0.7, 1.3, 0.7), 'coral'))
+    elif hat == 'kerchief':         # 머릿수건
+        P.append(Ell((0, 35.6 + up, -0.6), (6.8, 5.6, 6.4), 'hat', tag='kerchief'))
+    elif hat == 'headband':         # 머리띠 / 짚 띠
+        P.append(Cone((0, 35.4 + up, 0), (0, 36.8 + up, 0), 6.55, 6.45, 'hat', kz=0.96, caps=False))
+    beard = sp.get('beard')
+    if beard == 'long':
+        P.append(Ell((0, 28.6 + up, 4.6), (3.4, 4.4, 2.0), 'beard'))
+        P.append(Ell((0, 25.2 + up, 5.0), (2.0, 3.0, 1.4), 'beard'))
+    elif beard == 'short':
+        P.append(Ell((0, 29.6 + up, 4.7), (2.8, 1.9, 1.6), 'beard'))
+    if sp.get('staff'):             # 산신의 지팡이, 끝에 호리병
+        P.append(Cone((10.2, 0, 1.2), (10.2, 39.0, 1.2), 0.7, 0.6, 'wood'))
+        P.append(Ell((10.2, 40.6, 1.2), (1.5, 1.9, 1.5), 'gourd'))
     # the 대금 slung across his back
-    if pose.get('flute', True):
+    if sp.get('flute') and pose.get('flute', True):
         P.append(Cone((-8.2, 36.0 + up, -3.6), (5.4, 13.5 + up, -3.9), 0.9, 0.9, 'wood', tag='flute'))
     return P
 
 
-def render(facing_deg, pose):
+def render(facing_deg, pose, sp=HERO):
     th, ph = math.radians(facing_deg), PITCH
     # camera = pitch · yaw · model;   yaw turns his front (+z) toward screen right as the angle grows
     Ry = np.array([[math.cos(th), 0, math.sin(th)], [0, 1, 0], [-math.sin(th), 0, math.cos(th)]])
@@ -183,12 +233,14 @@ def render(facing_deg, pose):
     xc = (xs + 0.5 - W / 2).ravel().astype(float)
     yc = (FEET - ys - 0.5).ravel().astype(float) + 1.0
     oc = np.stack([xc, yc, np.full_like(xc, 80.0)], -1)
-    o = oc @ Minv.T
+    o = oc @ Minv.T / sp.get('scale', 1.0)       # a child is the same figure, smaller
     d = np.tile(np.array([0, 0, -1.0]) @ Minv.T, (len(xc), 1))
     best = np.full(len(xc), np.inf)
     hitp = np.zeros((len(xc), 3)); hitn = np.zeros((len(xc), 3))
     owner = np.full(len(xc), -1)
-    parts = figure(pose)
+    parts = figure(pose, sp)
+    ramps = dict(RAMPS)
+    ramps.update(sp.get('ramps', {}))
     for i, pr in enumerate(parts):
         t, p, n = pr.hit(o, d)
         win = t < best
@@ -206,12 +258,12 @@ def render(facing_deg, pose):
         rim = np.clip(nc @ L_RIM, 0, 1)
         tone = 0.9 + lam * 4.2 + {'skin': 0.8, 'hair': -1.4}.get(pr.mat, 0.0)
         mat = np.full(len(p), pr.mat, object)
-        tone, mat = details(pr, p, n, tone, mat, lam)
+        tone, mat = details(pr, p, n, tone, mat, lam, sp)
         idx = np.clip(np.round(tone), 0, 5).astype(int)
         col = np.zeros((len(p), 3), np.float32)
         for mname in set(mat):
             s = mat == mname
-            col[s] = RAMPS[mname][idx[s]]
+            col[s] = ramps[mname][idx[s]]
         rimk = (rim > 0.55) & (mat != 'eye')
         col[rimk] = col[rimk] * 0.62 + RIM_COL * 0.38 * (rim[rimk, None] + 0.2)
         img[m, :3] = col
@@ -220,7 +272,7 @@ def render(facing_deg, pose):
     return outline(img, depth)
 
 
-def details(pr, p, n, tone, mat, lam):
+def details(pr, p, n, tone, mat, lam, sp=HERO):
     """Surface details in model space, so they turn with him."""
     x, y, z = p[:, 0], p[:, 1], p[:, 2]
     if pr.tag == 'head':
@@ -247,7 +299,7 @@ def details(pr, p, n, tone, mat, lam):
         az = np.arctan2(x, z)
         pleat = np.floor((az + np.pi) / (2 * np.pi) * 22).astype(int) % 2
         tone = tone + np.where(pleat == 0, 0.35, -0.45)
-        hem = y < 6.4
+        hem = (y < 6.4) & (not sp.get('chima'))
         mat = np.where(hem, 'red', mat)
         tone = np.where(hem & (y < 5.4), tone - 0.6, tone)
         tone = tone - np.clip((17 - y) / 12, 0, 1) * 0.6                            # darker toward the hem
@@ -261,12 +313,22 @@ def details(pr, p, n, tone, mat, lam):
         mat = np.where(collar, 'collar', mat)
         inner = (z > 0) & (np.abs(x) < (y - 21.5) * 0.55 - 0.7) & (y > 21.5)
         mat = np.where(inner, 'robe_in', mat)
+        if sp.get('badge'):   # 흉배: the rank square on the chest
+            badge = (z > 0) & (np.abs(x) < 2.4) & (y > 19.6) & (y < 23.6)
+            mat = np.where(badge, sp['badge'], mat)
         # 용비늘 shawl: a band from his left shoulder down across the chest to the right hip
         band = np.abs((x - 0.5) - (y - 22.0) * 0.95) < 2.4
-        shawl = band & (y > 18.5)
+        shawl = band & (y > 18.5) & bool(sp.get('shawl'))
         mat = np.where(shawl, 'shawl', mat)
         scale = shawl & (((np.floor(y * 1.0) + np.floor(x * 0.7)) % 2) == 0)          # scales
         tone = np.where(scale, tone + 0.5, tone)
+    elif pr.tag == 'jeogori':   # 저고리: pale collar line and the 고름 ribbon
+        collar = (z > 0) & (np.abs(np.abs(x) - (26.4 - y) * 0.55) < 0.7) & (y > 22.5)
+        mat = np.where(collar, 'collar', mat)
+        goreum = (z > 0) & (x > 0.3) & (x < 1.8) & (y > 20.0) & (y < 23.2)
+        mat = np.where(goreum, 'red', mat)
+    elif pr.tag == 'kerchief':
+        tone = tone + np.where(((np.floor(x) + np.floor(y)) % 3) == 0, -0.4, 0.0)
     elif pr.tag == 'sleeve':
         tone = tone - np.clip((26 - y) / 9, 0, 1) * 0.4
     elif pr.tag == 'flute':

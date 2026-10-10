@@ -4,6 +4,10 @@
 # breathes between the two and mirrors them to face whoever comes near. 32x48 cells, feet on row 44.
 from cheoyong import DOWN, _diag, breathe
 
+# Superseded: the village is now rendered by art/people.py with the same 3D figure as 처용 (one style).
+# Kept for reference; it no longer writes sheets.
+EMIT = False
+
 BASE = {
     'o': '#0d0a12', 'k': '#08060c',
     '1': '#4a2a2e', '2': '#8a5a52', '3': '#c08a72', '4': '#e6b896',
