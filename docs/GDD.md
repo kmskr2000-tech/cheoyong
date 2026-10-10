@@ -87,7 +87,9 @@ SC1-21~25 — 처용탈 소문, 왕의 부름, 퇴마어사 임명, 작별, 1절
 | END.SC1_25 | 1절 가사 자막 → 1장 끝 → 타이틀 | 6 | story.gd | 동기 | |
 | COMBAT.COMBO | 대금 3타 콤보, 자동 조준 | 7 | player.gd | 동기 | |
 | COMBAT.ROLL | 구르기 (무적, 끌림 해제) | 7 | player.gd | 동기 | |
-| COMBAT.TALISMAN | 부적(정화부 파동) | 7 | player.gd | 동기 | |
+| COMBAT.TALISMAN | 부적 3종: 화염·결박·수호 (+파동부), 전환 버튼 | 7 | player.gd, fx/talisman_zone.gd | 동기 | 웹판 이식 |
+| COMBAT.SINMYEONG | 신명 게이지 → 처용무(6초 무적 난무) | 7 | player.gd, hud.gd | 동기 | 웹판 이식, 보스는 12% 피해 |
+| COMBAT.PARRY | 받아넘기기 (춤 1단 수): 슬로우·다음 베기 ×2·신명 고조 | 7 | player.gd | 동기 | 웹판 이식 |
 | COMBAT.SONG | 처용가: 쓰러진 요괴 정화 | 7 | player.gd | 동기 | |
 | COMBAT.DOWNED | 쓰러진 요괴는 탁기에 덮여 기다리다 다시 일어남 | 7 | enemy.gd | 동기 | |
 | COMBAT.GUIDE | 해야 할 버튼 하나만 빛남 | 7 | hud.gd | 동기 | |
@@ -102,7 +104,7 @@ SC1-21~25 — 처용탈 소문, 왕의 부름, 퇴마어사 임명, 작별, 1절
 | GROW.TAL_CHEOYONG | 처용탈 (받는 피해 -10%) | 8 | story.gd · game.gd | 동기 | |
 | GROW.TAL_REST | 오방탈·여우탈·용탈·신선탈 | 8 | — | 미구현 | 2~5장 |
 | GROW.ACCESSORY | 장신구 효과 (역신의 눈물 등) | 8 | — | 미구현 | 획득만 됨 |
-| GROW.SKILLTREE | 스킬 트리 (소리·춤·가호) | 8 | skills.gd, hud.gd, player.gd | 임시 | 28수·비용·선행·화면 완료, 동작 9수 (나머지는 처용무·신명·부적 여럿 이식 후) |
+| GROW.SKILLTREE | 스킬 트리 (소리·춤·가호) | 8 | skills.gd, hud.gd, player.gd | 임시 | 28수·비용·선행·화면 완료, 동작 20수 (남은 8수는 분신·아군화·속성·탐지 체계 이후) |
 | GROW.MASTERY | 마스터리 (피리·부적·춤·노래) | 8 | — | 미구현 | |
 | GROW.PIRI | 피리 5단계·강화 (정기) | 8 | — | 미구현 | |
 | GROW.TALISMAN_CRAFT | 부적 제작 (화염·결박·수호) | 8 | — | 미구현 | |

@@ -185,7 +185,7 @@ def gauge():
                 p[x, y] = hx('#07070c', 230)
     fr.save(OUT / 'gauge_frame.png')
     rnd = random.Random(5)
-    for name, ramp in (('gauge_hp', VERM), ('gauge_ki', JADE)):
+    for name, ramp in (('gauge_hp', VERM), ('gauge_ki', JADE), ('gauge_sin', BRASS + [hx('#fff4c0')])):
         im = Image.new('RGBA', (W, 6), (0, 0, 0, 0))
         q = im.load()
         for x in range(W):
@@ -335,6 +335,36 @@ ICON_TALK = [  # speech bubble with three dots
     '................',
     '................',
 ]
+ICON_DANCE = [  # 처용무: the 처용탈 face, sleeves flung out
+    '................',
+    'c..............c',
+    '.c....oooo....c.',
+    '..c..oRRRRo..c..',
+    '...coRwRRwRoc...',
+    '....oRRRRRRo....',
+    '....oRRwwRRo....',
+    '.....oRRRRo.....',
+    '......oooo......',
+    '.....GGGGGG.....',
+    '....GyyyyyyG....',
+    '...Gy......yG...',
+    '..G..........G..',
+    '................',
+    '................',
+    '................',
+]
+ICON_SWAP = [  # 부적 전환: two papers, turning
+    '..........',
+    '.oooo.....',
+    '.oPPo.....',
+    '.oPro.oooo',
+    '.oPPo.oPPo',
+    '.oooo.oPro',
+    '......oPPo',
+    '..C...oooo',
+    '.CCC......',
+    '..........',
+]
 
 
 def glow_ring(size=56):
@@ -398,6 +428,8 @@ def hud():
     button('menu', ICON_MENU, ICON_PAL, 24)
     button('song', ICON_SONG, ICON_PAL, 34)
     button('talk', ICON_TALK, ICON_PAL, 44)
+    button('dance', ICON_DANCE, ICON_PAL, 34)
+    button('swap', ICON_SWAP, ICON_PAL, 22)
     glow_ring()
 
 

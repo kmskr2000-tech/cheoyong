@@ -23,6 +23,7 @@ var deok := 0                # 덕망: 다음 레벨까지 모은 양
 var lv := 1
 var skill_points := 0
 var skills: Array = []       # 익힌 수 (Skills.LIST id)
+var tal_idx := 0             # 고른 부적
 var mats := {}               # 재료 이름 → 개수
 var dogam := {}              # 요괴 키 → 정화한 횟수
 var tal := ""                # 쓰고 있는 탈 ("" 무탈, "cheoyong" 처용탈 …)
