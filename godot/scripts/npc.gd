@@ -1,12 +1,15 @@
 class_name Npc
 extends StaticBody2D
-## A villager standing in the world: lit sprite (normal-mapped), a slow breathing bob, solid feet.
+## A villager standing in the world: a 3/4 relaxed stance that breathes, turns to face 처용 when he
+## comes near, solid feet. Sheet frames: 0 front, 1-2 3/4 stance + breath facing right, 3-4 facing
+## left (baked separately so the light stays on the upper left; art/src/npcs.py).
 
 var id := ""
 var display_name := ""
 var talkable := true
 var sprite: Sprite2D
 var _t := 0.0
+var _left := false
 
 
 func setup(npc_id: String, sheet: String, shown_name: String) -> void:
@@ -14,7 +17,10 @@ func setup(npc_id: String, sheet: String, shown_name: String) -> void:
 	display_name = shown_name
 	sprite = Sprite2D.new()
 	sprite.texture = Tex.lit("res://assets/sprites/%s.png" % sheet)
+	sprite.hframes = maxi(1, sprite.texture.get_width() / 32)
+	sprite.frame = 1 if sprite.hframes >= 5 else 0
 	sprite.offset = Vector2(0, 24 - 44) # 32x48 cell, feet on row 44
+	_left = randf() < 0.5   # people stand turned one way or the other, not square to us
 	add_child(sprite)
 	var col := CollisionShape2D.new()
 	var sh := RectangleShape2D.new()
@@ -27,7 +33,12 @@ func setup(npc_id: String, sheet: String, shown_name: String) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	sprite.position.y = -1.0 if fmod(_t, 1.6) < 0.8 else 0.0
+	if sprite.hframes < 5 or sprite.rotation != 0.0:
+		return
+	var p := get_tree().current_scene.get_node_or_null("Player") as Node2D
+	if p and p.global_position.distance_to(global_position) < 56.0 and absf(p.global_position.x - global_position.x) > 3.0:
+		_left = p.global_position.x < global_position.x   # turn toward him
+	sprite.frame = (3 if _left else 1) + (1 if fmod(_t, 2.4) > 1.5 else 0)   # 숨: in slowly, out
 
 
 ## hide / show (story beats bring people on and off stage); hidden NPCs are not solid

@@ -103,6 +103,9 @@ func _sprite(path: String, at: Vector2, region := Rect2()) -> Sprite2D:
 		s.texture = at_
 	else:
 		s.texture = load(path)
+		if s.texture.get_width() >= 96:   # NPC sheets: front, then 3/4 stances — stand turned
+			s.hframes = s.texture.get_width() / 32
+			s.frame = 1
 	s.position = at
 	s.offset = Vector2(0, -20)
 	_shot.add_child(s)
@@ -186,6 +189,7 @@ func _shot_hall() -> void:
 	king.modulate = Color(0.82, 0.86, 0.92)
 	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(176, 196))
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(304, 196))
+	b2.frame = 3   # the brothers turn in toward the bed
 	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 214), Rect2(32, 0, 32, 48))  # back view (up_idle)
 	await _fade_in()
 	await dialog.say([
