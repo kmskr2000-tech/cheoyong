@@ -49,7 +49,7 @@ PEOPLE = {
     # 기침하는 사내: sickly green-grey skin, threadbare clothes
     'npc_sick': {'ramps': P(robe='#545a48', red='#3e4236', skin='#8e9a7a', cuff='#3e4236')},
     # 보리 (아이 원혼): a small child, pale and blue
-    'npc_ghost': {'scale': 0.72, 'ramps': P(robe='#8a9ac0', red='#6a7aa0', skin='#b4c0dc', hair='#4a5478', cuff='#6a7aa0', boot='#5a6488')},
+    'npc_ghost': {'scale': 0.6, 'ramps': P(robe='#8a9ac0', red='#6a7aa0', skin='#b4c0dc', hair='#4a5478', cuff='#6a7aa0', boot='#5a6488')},
     # 개운포 수령 한기: 사모, deep green 관복, gold 흉배, trim beard
     'npc_suryeong': {'hat': 'samo', 'beard': 'short', 'badge': 'gold', 'ramps': P(robe='#2e5a46', red='#3a3020', skin=SKIN, cuff='#1e3a2e')},
     # 관아 사람 / 관리: indigo 단령, black 사모
@@ -57,7 +57,7 @@ PEOPLE = {
     # 어부: salt-faded indigo, straw headband, sun-dark skin
     'npc_fisher': {'hat': 'headband', 'ramps': P(robe='#3a5068', red='#4a3e30', hat='#b8a070', skin=DARK_SKIN, cuff='#2a3a4c')},
     # 역병 걸린 아이: the child's short body, sallow fevered skin, undyed hemp
-    'npc_child': {'scale': 0.72, 'ramps': P(robe='#7a7464', red='#5a5446', skin='#b0967a', cuff='#5a5446')},
+    'npc_child': {'scale': 0.6, 'ramps': P(robe='#7a7464', red='#5a5446', skin='#b0967a', cuff='#5a5446')},
     # 왕: 익선관, deep red 곤룡포, gold roundel, jade belt
     'npc_king': {'hat': 'ikseon', 'badge': 'gold', 'ramps': P(robe='#8a2e2e', red='#4a7a66', skin=SKIN, cuff='#6a2020')},
     # 산신령: long white beard, faded white 도포, staff with a gourd
@@ -72,6 +72,7 @@ PEOPLE = {
 
 
 def sheet(name, sp):
+    sp = dict({'scale': 0.82}, **sp)   # the same height as 처용 (~36px); children are smaller
     frames = [hero.render(hero.DOWN, {}, sp),
               hero.render(hero.DIAG, {}, sp), hero.render(hero.DIAG, {'breath': True}, sp),
               hero.render(-hero.DIAG, {}, sp), hero.render(-hero.DIAG, {'breath': True}, sp)]

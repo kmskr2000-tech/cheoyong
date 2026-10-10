@@ -102,7 +102,7 @@ def god_details(pr, p, n, tone, mat, lam, sp):
 
 SPEC = {'parts': god, 'details': god_details, 'scale': SCALE, 'ramps': RAMPS}
 # the disguise: a pale scholar in a black 사모, a man's size
-DISGUISE = {'hat': 'samo', 'beard': 'short', 'ramps': {
+DISGUISE = {'hat': 'samo', 'beard': 'short', 'scale': 0.82, 'ramps': {
     'robe': hero.R('#1c1a22', '#28252f', '#36323d', '#45404c', '#55505c', '#67626e'),
     'red': hero.R('#1a1a1e', '#26262c', '#33333a', '#404048', '#4e4e56', '#5e5e66'),
     'skin': hero.R('#4a4844', '#6e6a62', '#8e897e', '#aaa498', '#c2bcae', '#d6d0c2'),

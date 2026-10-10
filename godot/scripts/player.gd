@@ -111,6 +111,13 @@ func _ready() -> void:
 			at.atlas = tex
 			at.region = Rect2(i * FRAME.x, 0, FRAME.x, FRAME.y)
 			frames.add_frame(anim, at)
+	# rendered motion (art/hero.py): attacks per facing and combo hit, the 춤 turn, the song
+	var dirs := ["down", "up", "right", "left"]
+	for d in 4:
+		for c in 3:
+			_add_anim(frames, tex, "%s_atk%d" % [dirs[d], c], [22 + d * 9 + c * 3, 23 + d * 9 + c * 3, 24 + d * 9 + c * 3])
+		_add_anim(frames, tex, dirs[d] + "_song", [66 + d])
+	_add_anim(frames, tex, "spin", [58, 59, 60, 61, 62, 63, 64, 65])
 	sprite.sprite_frames = frames
 	sprite.offset = Vector2(0, FRAME.y / 2.0 - FEET_ROW)
 	sprite.play("down_idle")
@@ -132,6 +139,25 @@ func _ready() -> void:
 	slash.z_index = 40 # effects draw over the y-sorted world
 	slash.z_as_relative = false
 	add_child(slash)
+
+
+func _add_anim(frames: SpriteFrames, tex: Texture2D, anim: String, idx: Array) -> void:
+	frames.add_animation(anim)
+	frames.set_animation_loop(anim, false)
+	for i in idx:
+		var at := AtlasTexture.new()
+		at.atlas = tex
+		at.region = Rect2(i * FRAME.x, 0, FRAME.x, FRAME.y)
+		frames.add_frame(anim, at)
+
+
+## show one frame of a rendered pose (attack, turn, song) — no playback, the state machine drives it
+func _pose(anim: String, f: int) -> void:
+	if sprite.animation != anim:
+		sprite.animation = anim
+	sprite.pause()
+	sprite.frame = f
+	sprite.flip_h = false
 
 
 func _physics_process(delta: float) -> void:
@@ -240,13 +266,8 @@ func _start_attack() -> void:
 	t = 0.0
 	queued = false
 	hit_done = false
-	var row := "right" if facing == "left" else facing
-	sprite.play(row + "_attack")
-	sprite.flip_h = facing == "left"
-	var sh: Array = SHOULDER[facing]
-	arm.position = sh[0]
-	arm.z_index = sh[1]
-	arm.visible = true
+	_pose("%s_atk%d" % [facing, combo], 0)
+	arm.visible = false
 	slash.visible = false
 
 
@@ -256,22 +277,11 @@ func _attack(delta: float) -> void:
 	var k := clampf(t / dur, 0.0, 1.0)
 	var base: float = FACE_ANGLE[facing]
 	var mirror := -1.0 if facing == "left" or facing == "up" else 1.0
-	var a: float
 	var lunge := 0.0
+	# wind-up 0-25%, strike 25-55%, follow-through: rendered poses (art/hero.py ATTACK)
+	_pose("%s_atk%d" % [facing, combo], 0 if k < 0.25 else (1 if k < 0.55 else 2))
 	if c.get("thrust", false):
-		# pull back, then drive the flute straight out with a short lunge
-		a = base
-		var reach := -3.0 if k < 0.3 else lerpf(-3.0, 6.0, smoothstep(0.3, 0.5, k)) if k < 0.6 else lerpf(6.0, 0.0, (k - 0.6) / 0.4)
-		arm.position = (SHOULDER[facing][0] as Vector2) + Vector2.from_angle(base) * reach
 		lunge = 110.0 if k > 0.3 and k < 0.55 else 0.0
-	else:
-		# wind-up 0-25%, fast sweep 25-55%, follow-through hold
-		var from: float = c["from"] * mirror
-		var to: float = c["to"] * mirror
-		var s := 0.0 if k < 0.25 else smoothstep(0.25, 0.55, k)
-		a = base + lerpf(from, to, s)
-	arm.rotation = a
-	arm.flip_v = cos(a) < -0.05 # keep the sleeve's lit side on top when pointing left
 	velocity = Vector2.from_angle(base) * lunge
 	_slide()
 	# spirit-wind crescent during the sweep
@@ -280,9 +290,9 @@ func _attack(delta: float) -> void:
 	if swing:
 		var fk := (k - 0.25) / 0.55
 		slash.frame = mini(3, int(fk * 4.0))
-		slash.position = Vector2(0, -20) + Vector2.from_angle(base) * (12.0 + (6.0 if c.get("thrust", false) else 0.0))
+		slash.position = Vector2(0, -16) + Vector2.from_angle(base) * (10.0 + (5.0 if c.get("thrust", false) else 0.0))
 		slash.rotation = base
-		slash.scale = Vector2(0.8, 0.45) if c.get("thrust", false) else Vector2.ONE
+		slash.scale = Vector2(0.65, 0.4) if c.get("thrust", false) else Vector2(0.8, 0.8)   # sized to the ~36px figure
 		slash.flip_v = (c["to"] < c["from"]) != (mirror < 0)
 	if not hit_done and k > 0.4:
 		hit_done = true
@@ -474,14 +484,8 @@ func _start_song() -> void:
 	state = "song"
 	t = 0.0
 	velocity = Vector2.ZERO
-	var row := "right" if facing == "left" else facing
-	sprite.play(row + "_attack")
-	# the 대금 held level at the lips
-	arm.visible = true
-	arm.position = (SHOULDER[facing][0] as Vector2) + Vector2(0, -4)
-	arm.rotation = 0.0 if facing != "left" else PI
-	arm.flip_v = facing == "left"
-	arm.z_index = SHOULDER[facing][1]
+	_pose(facing + "_song", 0)   # the 대금 held level at the lips
+	arm.visible = false
 	_song_t = 0.0
 
 
@@ -807,9 +811,7 @@ func _ult(delta: float, dir: Vector2) -> void:
 	velocity = dir * 60.0
 	_slide()
 	sprite.rotation = 0.0
-	var row := "right" if facing == "left" else facing
-	sprite.play(row + "_attack")
-	sprite.flip_h = fmod(ult_t * 4.0, 1.0) < 0.5   # turning in the dance
+	_pose("spin", int(ult_t * 14.0) % 8)   # 처용무: turning and turning
 	if _ult_tick <= 0.0:
 		_ult_tick = 0.2
 		var strikes := 2 if Game.has_skill("obang") else 1   # 오방신장 join in
@@ -845,13 +847,10 @@ func _roll(delta: float) -> void:
 	var k := clampf(t / ROLL_TIME, 0.0, 1.0)
 	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (2.0 if _dash else 1.0) * (1.0 - k * 0.6)
 	_slide()
-	# a spinning dance step: full turn, squashed low in the middle
-	var spin := (1.0 if roll_dir.x >= 0 else -1.0) * TAU * smoothstep(0.0, 1.0, k)
-	# spin around the body's centre, not the feet
-	sprite.position = Vector2(0, -20)
-	sprite.offset = Vector2(0, FRAME.y / 2.0 - FEET_ROW + 20)
-	sprite.rotation = spin
-	sprite.scale = Vector2(1.0 + sin(k * PI) * 0.12, 1.0 - sin(k * PI) * 0.18)
+	# 춤 구르기: one full turn on the spot of the step, the robe flaring (rendered, art/hero.py)
+	var start := {"down": 0, "right": 2, "up": 4, "left": 6}[facing] as int
+	var turn := 1 if roll_dir.x >= 0 else -1
+	_pose("spin", posmod(start + turn * int(round(smoothstep(0.0, 1.0, k) * 8.0)), 8))
 	ghost_t -= delta
 	if ghost_t <= 0.0:
 		ghost_t = 0.05
@@ -891,6 +890,6 @@ func _ghost() -> void:
 ## screen covers fewer pixels than going sideways (velocity itself stays in footprint units)
 func _slide() -> void:
 	var vy := velocity.y
-	velocity.y *= Game.depth_k
+	velocity.y *= 1.0 - (1.0 - Game.depth_k) * 0.4   # 0.75 felt too slow on a phone: about 0.9
 	move_and_slide()
 	velocity.y = vy

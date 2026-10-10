@@ -125,7 +125,7 @@ class Cone:
 
 
 # ---------------------------------------------------------------- the figure
-HERO = {'shawl': True, 'flute': True, 'ribbon': True}
+HERO = {'shawl': True, 'flute': True, 'ribbon': True, 'scale': 0.82}   # ~36px tall
 
 
 def figure(pose, sp=HERO):
@@ -155,7 +155,8 @@ def figure(pose, sp=HERO):
         for side in (-1, 1):
             P.append(Ell((side * 5.7, 25.2 + up, 0), (2.8, 2.1, 2.5), 'top', tag='jeogori'))
     else:
-        P.append(Cone((sway, 4.5 + up * 0.3, 0), (0, 17.5 + up, 0), 8.6, 6.4, 'robe', kz=0.78, tag='skirt'))
+        flare = pose.get('flare', 0.0)   # the robe swings out in a turn
+        P.append(Cone((sway, 4.5 + up * 0.3 + flare * 0.5, 0), (0, 17.5 + up, 0), 8.6 + flare, 6.4, 'robe', kz=0.78, tag='skirt'))
         P.append(Cone((0, 16.6 + up, 0), (0, 18.8 + up, 0), 6.7, 6.7, 'red', kz=0.72, tag='belt'))
         # torso and shoulders
         P.append(Cone((0, 18.5 + up, 0), (0, 26.2 + up, 0), 6.2, 6.9, 'robe', kz=0.62, tag='torso'))
@@ -168,10 +169,15 @@ def figure(pose, sp=HERO):
             continue
         sh = np.array([side * 7.4, 25.0 + up, 0.0])
         wr = np.array([side * 8.6, 16.2 + up, 0.6 + swing])
+        target = pose.get('hand' if side < 0 else 'hand2')
+        if target is not None:   # a posed hand: the arm reaches from the shoulder to it
+            hand = np.array(target, float)
+            dv = hand - sh
+            wr = sh + dv * max(0.2, (np.linalg.norm(dv) - 2.2) / np.linalg.norm(dv))
         P.append(Cone(sh, wr, 2.0, 2.7, sleeve, kz=1.0, tag='sleeve'))
         cf = wr + (wr - sh) / np.linalg.norm(wr - sh) * 1.4
         P.append(Cone(wr, cf, 1.5, 1.5, 'cuff', caps=True))
-        P.append(Ell(cf + np.array([0, -1.0, 0.2]), (1.4, 1.5, 1.3), 'skin', tag='hand'))
+        P.append(Ell(cf + (np.array([0, -1.0, 0.2]) if target is None else (wr - sh) / np.linalg.norm(wr - sh) * 0.9), (1.4, 1.5, 1.3), 'skin', tag='hand'))
     # neck, head, ears, hair knot and ribbon
     P.append(Cone((0, 25.5 + up, -0.2), (0, 28.6 + up, -0.2), 1.9, 1.8, 'skin'))
     hc = (0, 33.4 + up, 0.0)
@@ -216,9 +222,28 @@ def figure(pose, sp=HERO):
     if sp.get('staff'):             # 산신의 지팡이, 끝에 호리병
         P.append(Cone((10.2, 0, 1.2), (10.2, 39.0, 1.2), 0.7, 0.6, 'wood'))
         P.append(Ell((10.2, 40.6, 1.2), (1.5, 1.9, 1.5), 'gourd'))
-    # the 대금 slung across his back
-    if sp.get('flute') and pose.get('flute', True):
+    # the 대금: slung across his back, or in hand (attacks, the song)
+    if pose.get('flute_dir') is not None:
+        hd = np.array(pose['hand'], float)
+        fd = np.array(pose['flute_dir'], float); fd /= np.linalg.norm(fd)
+        P.append(Cone(hd - fd * 3.0, hd + fd * 15.0, 0.85, 0.85, 'wood', tag='flute'))
+    elif sp.get('flute') and pose.get('flute', True):
         P.append(Cone((-8.2, 36.0 + up, -3.6), (5.4, 13.5 + up, -3.9), 0.9, 0.9, 'wood', tag='flute'))
+    # whole-body motion: lean the upper body forward, crouch, twist
+    lean, crouch = pose.get('lean', 0.0), pose.get('crouch', 0.0)
+    if lean or crouch:
+        for pr in P:
+            pts = [pr.c] if isinstance(pr, Ell) else [pr.a, pr.b]
+            for q in pts:
+                if q[1] > 16.0 or crouch:
+                    if q[1] > 6.0 or not isinstance(pr, Cone) or pr.mat != 'boot':
+                        q[1] -= crouch * (1.0 if q[1] > 6.0 else 0.0)
+                    if q[1] > 16.0:
+                        q[2] += lean * min(1.0, (q[1] - 16.0) / 18.0)
+            if isinstance(pr, Cone):   # keep the frame consistent after moving ends
+                w = pr.b - pr.a; pr.L = np.linalg.norm(w); pr.w = w / pr.L
+                ref = np.array([0, 0, 1.0]) if abs(pr.w[2]) < 0.9 else np.array([1.0, 0, 0])
+                pr.v = ref - pr.w * (ref @ pr.w); pr.v /= np.linalg.norm(pr.v); pr.u = np.cross(pr.w, pr.v)
     return P
 
 
@@ -373,7 +398,26 @@ def outline(img, depth):
 
 
 # ---------------------------------------------------------------- the sheet (order = player.gd SHEET)
-DOWN, UP, RIGHT, DIAG = 0, 180, 90, 38
+DOWN, UP, RIGHT, DIAG, LEFT = 0, 180, 90, 38, -90
+# attack poses in model space (he faces +z; his right hand, the flute hand, is on -x)
+ATTACK = [
+    [   # 1: a sweep from his right shoulder across to the left
+        {'hand': (-8.5, 30.5, -1.5), 'flute_dir': (-0.35, 0.75, -0.55), 'lean': -0.6, 'flute': False},
+        {'hand': (1.0, 23.5, 8.5), 'flute_dir': (0.75, 0.05, 0.65), 'lean': 1.8, 'flute': False},
+        {'hand': (6.5, 20.5, 5.0), 'flute_dir': (0.85, -0.35, -0.2), 'lean': 1.2, 'flute': False},
+    ],
+    [   # 2: back the other way
+        {'hand': (6.0, 29.5, 2.0), 'flute_dir': (0.6, 0.6, -0.4), 'lean': 0.4, 'flute': False},
+        {'hand': (-1.5, 23.5, 8.5), 'flute_dir': (-0.75, 0.0, 0.65), 'lean': 1.8, 'flute': False},
+        {'hand': (-7.5, 20.0, 4.0), 'flute_dir': (-0.85, -0.3, -0.25), 'lean': 1.2, 'flute': False},
+    ],
+    [   # 3: drawn back, then a straight thrust
+        {'hand': (-5.5, 24.0, -3.5), 'flute_dir': (0.15, 0.0, 1.0), 'lean': -1.0, 'crouch': 0.6, 'flute': False},
+        {'hand': (-1.0, 24.0, 10.5), 'flute_dir': (0.42, 0.0, 1.0), 'lean': 3.0, 'flute': False},
+        {'hand': (-1.5, 23.5, 9.0), 'flute_dir': (0.42, -0.1, 1.0), 'lean': 2.4, 'flute': False},
+    ],
+]
+SONG = {'hand': (-3.5, 30.0, 5.6), 'hand2': (3.0, 29.6, 5.4), 'flute_dir': (-1.0, -0.05, -0.15), 'flute': False}
 
 
 def main():
@@ -392,6 +436,18 @@ def main():
     frames.append(render(DIAG, {'breath': True}))
     frames.append(render(-DIAG, {}))
     frames.append(render(-DIAG, {'breath': True}))
+    # 22..57: attacks — for each facing (down, up, right, left), each combo hit, wind-up / strike / follow
+    for ang in (DOWN, UP, RIGHT, LEFT):
+        for c in range(3):
+            for k in range(3):
+                frames.append(render(ang, ATTACK[c][k]))
+    # 58..65: 춤 구르기 — a full turn in eight steps, the robe flaring out
+    for i in range(8):
+        frames.append(render(i * 45, {'flare': 2.6, 'crouch': 1.2, 'flute': False,
+                                       'hand': (-11.5, 23.5, -1.0), 'hand2': (11.5, 23.5, -1.0)}))
+    # 66..69: 처용가 — the 대금 held level at the lips, per facing
+    for ang in (DOWN, UP, RIGHT, LEFT):
+        frames.append(render(ang, SONG))
     sheet = Image.new('RGBA', (W * len(frames), H), (0, 0, 0, 0))
     for i, f in enumerate(frames):
         sheet.paste(Image.fromarray(f, 'RGBA'), (i * W, 0))
