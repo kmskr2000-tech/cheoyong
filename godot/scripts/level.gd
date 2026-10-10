@@ -94,6 +94,7 @@ func _ready() -> void:
 	player.interact = _try_interact
 	if "--boss" in OS.get_cmdline_user_args():
 		var boss := PlagueGod.new()
+		boss.name = "Boss"
 		boss.position = lift(Vector2(370, 190))
 		add_child(boss)
 		hud.show_boss(boss, "역신(疫神)")

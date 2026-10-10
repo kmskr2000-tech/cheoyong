@@ -24,6 +24,7 @@ var pat_i := 0
 var close_t := 0.0
 var flash := 0.0
 var knock := Vector2.ZERO
+var bind_t := 0.0             # 결박부: held to a crawl
 var aim := 0.0
 var coughs := 0
 var sprite: AnimatedSprite2D
@@ -159,7 +160,8 @@ func _physics_process(delta: float) -> void:
 			sprite.play("hurt")
 			if st > 0.2:
 				_begin("idle")
-	velocity = v + knock
+	bind_t = maxf(0.0, bind_t - get_physics_process_delta_time())
+	velocity = v * (0.35 if bind_t > 0.0 else 1.0) + knock
 	move_and_slide()
 	sprite.flip_h = to.x < 0
 
@@ -307,8 +309,8 @@ func _clear_tells() -> void:
 
 
 # ---------------------------------------------------------------- taking hits
-func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
-	if state not in ["dead", "kneel", "wait"]:
+func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
+	if state not in ["dead", "kneel", "wait"] and not quiet:
 		Audio.sfx("hit", -3.0)
 	if state == "dead" or state == "kneel" or state == "wait":
 		return

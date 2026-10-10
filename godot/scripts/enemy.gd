@@ -129,6 +129,7 @@ var life_t := 6.0
 var guard_dir := Vector2.DOWN
 var grow := 1.0               # 어둑시니: grows while you are near it
 var surround := 0.0
+var bind_t := 0.0             # 결박부: held to a crawl
 var _bar: Node2D
 var _bar_fill: ColorRect
 var _voice: Label
@@ -280,7 +281,8 @@ func _physics_process(delta: float) -> void:
 			sprite.play("hurt")
 			if st >= 0.25:
 				state = "chase"
-	velocity = v + knock
+	bind_t = maxf(0.0, bind_t - delta)
+	velocity = v * (0.35 if bind_t > 0.0 else 1.0) + knock
 	move_and_slide()
 	if kind == "sangun" and state == "strike" and get_slide_collision_count() > 0:
 		for i in get_slide_collision_count():
@@ -568,7 +570,8 @@ func _poof() -> void:
 	tw.tween_callback(queue_free)
 
 
-func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
+## quiet: damage over time (부적의 불길·결계) — no flinch, no sound
+func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
 	if state == "dead" or state == "downed":
 		return
 	if is_clone:
@@ -589,7 +592,8 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 		mult = 0.4
 	dmg = int(ceil(dmg * mult))
 	reveal_t = 2.0
-	Audio.sfx("hit", -3.0)
+	if not quiet:
+		Audio.sfx("hit", -3.0)
 	if kind == "eodukssini":
 		grow = maxf(0.85, grow - 0.1)
 	if state in ["vanish", "lure"]:
@@ -601,7 +605,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false) -> void:
 	knock = dir * (220.0 if heavy else 130.0)
 	if hp <= 0:
 		_down()
-	elif state == "stagger":
+	elif state == "stagger" or quiet:
 		pass
 	elif state != "strike" or heavy:
 		state = "hurt"; st = 0.0

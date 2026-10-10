@@ -58,10 +58,10 @@ func _process(_delta: float) -> void:
 	print("t=", Time.get_ticks_msec(), "ms  captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	var pl = get_tree().current_scene.get_node_or_null("Player")
 	var bs = get_tree().current_scene.get_node_or_null("Boss")
-	if pl: print("player ", pl.position, " ", pl.state, " hp ", pl.hp, " stun ", snappedf(pl.stun_t, 0.1), " slow ", snappedf(pl.slow_t, 0.1), " pull ", snappedf(pl.pull_t, 0.1))
+	if pl: print("player ", pl.position, " ", pl.state, " hp ", pl.hp, " stun ", snappedf(pl.stun_t, 0.1), " slow ", snappedf(pl.slow_t, 0.1), " pull ", snappedf(pl.pull_t, 0.1), " ki ", roundi(pl.ki), " 신명 ", snappedf(pl.shinmyeong, 0.1), " shield ", pl.shield, " ult ", snappedf(pl.ult_t, 0.1), " 부적 ", pl.current_talisman())
 	for e in get_tree().get_nodes_in_group("enemy") + get_tree().get_nodes_in_group("downed"):
 		if e is Enemy:
-			print("  ", e.kind, (" clone" if e.is_clone else ""), " ", e.position.round(), " ", e.state, " hp ", e.hp, " a ", snappedf(e.alpha, 0.01), " grow ", snappedf(e.grow, 0.01))
+			print("  ", e.kind, (" clone" if e.is_clone else ""), " ", e.position.round(), " ", e.state, " hp ", e.hp, " bind ", snappedf(e.bind_t, 0.1), " a ", snappedf(e.alpha, 0.01), " grow ", snappedf(e.grow, 0.01))
 	var ap := 0
 	for c in Audio.get_children():
 		if c is AudioStreamPlayer and c.playing: ap += 1

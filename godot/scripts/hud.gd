@@ -11,6 +11,9 @@ var _hp_fill: TextureRect
 var _ki_fill: TextureRect
 var _hp_w := 96.0
 var _ki_w := 72.0
+var _sin_w := 56.0
+var _sin_fill: TextureRect
+var _tal_label: Label
 var _touch_root: Control
 var _base: TextureRect
 var _knob: TextureRect
@@ -35,11 +38,13 @@ func _ready() -> void:
 	_lv.add_theme_color_override("font_color", Color(0.95, 0.85, 0.6))
 	_lv.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
 	_lv.add_theme_constant_override("outline_size", 4)
-	_lv.position = Vector2(30, 28)
+	_lv.position = Vector2(30, 40)
 	root.add_child(_lv)
 	_refresh_lv()
 	Game.leveled.connect(func(_l): _refresh_lv())
 	_ki_fill = _gauge(root, Vector2(30, 19), _ki_w, "res://assets/ui/gauge_ki.png")
+	_sin_fill = _gauge(root, Vector2(30, 30), _sin_w, "res://assets/ui/gauge_sin.png")   # 신명
+	_sin_fill.size.x = 0.0
 	_touch_root = Control.new()
 	_touch_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -55,6 +60,7 @@ func _ready() -> void:
 	# buttons: [texture, action, centre, touch radius]
 	for b in [["attack", "attack", Vector2(430, 222), 30.0], ["roll", "roll", Vector2(384, 244), 22.0],
 			["talisman", "talisman", Vector2(394, 196), 22.0], ["song", "song", Vector2(438, 172), 22.0],
+			["dance", "dance", Vector2(396, 150), 22.0], ["swap", "swap", Vector2(360, 186), 13.0],
 			["menu", "pause", Vector2(462, 16), 16.0]]:
 		var ring := Sprite2D.new()  # glow behind the button, shown when it is the one to press
 		ring.texture = load("res://assets/ui/glow_ring.png")
@@ -77,6 +83,16 @@ func _ready() -> void:
 		tb.passby_press = true
 		_touch_root.add_child(tb)
 		_buttons[b[0]] = tb
+	_tal_label = Label.new()   # which talisman the button will draw
+	_tal_label.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
+	_tal_label.add_theme_font_size_override("font_size", 12)
+	_tal_label.add_theme_color_override("font_color", Color(0.94, 0.88, 0.7))
+	_tal_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
+	_tal_label.add_theme_constant_override("outline_size", 4)
+	_tal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_tal_label.position = Vector2(364, 208)
+	_tal_label.size = Vector2(60, 14)
+	_touch_root.add_child(_tal_label)
 	# the 말하기 face laid over the attack button while something can be talked to
 	_talk = Sprite2D.new()
 	_talk.texture = load("res://assets/ui/btn_talk.png")
@@ -134,6 +150,13 @@ func _process(_d: float) -> void:
 		lit = "attack"
 	elif lit == "" and player and player.has_method("can_sing") and player.can_sing():
 		lit = "song"
+	elif lit == "" and player and player.can_dance():
+		lit = "dance"
+	_buttons["dance"].visible = player != null and player.can_dance()
+	_buttons["swap"].visible = Game.flag("flute") == 1
+	_tal_label.visible = _buttons["swap"].visible
+	if player:
+		_tal_label.text = player.TAL_NAME[player.current_talisman()]
 	_talk.visible = _talk_on
 	_buttons["song"].visible = Game.flag("flute") == 1
 	_buttons["attack"].modulate.a = 0.0 if _talk_on else 1.0
@@ -358,6 +381,13 @@ func bind(p: Node) -> void:
 	player = p
 	p.stats_changed.connect(_on_stats)
 	_on_stats(p.hp, p.max_hp, p.ki, p.max_ki)
+	p.sin_changed.connect(_on_sin)
+	_on_sin(p.shinmyeong)
+
+
+func _on_sin(v: float) -> void:
+	_sin_fill.size.x = roundf(_sin_w * clampf(v / 100.0, 0, 1))
+	_sin_fill.modulate = Color(1.4, 1.3, 1.0) if v >= 100.0 else Color.WHITE
 
 
 func _on_stats(hp: float, max_hp: float, ki: float, max_ki: float) -> void:

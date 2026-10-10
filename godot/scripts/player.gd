@@ -6,6 +6,8 @@ signal hit_landed(target: Node2D)
 signal stats_changed(hp: float, max_hp: float, ki: float, max_ki: float)
 signal died
 signal sang(purified: int)
+signal sin_changed(value: float)
+signal talisman_changed(kind: String)
 
 const SPEED := 72.0
 const FRAME := Vector2i(32, 48)
@@ -50,7 +52,6 @@ var hp := 100.0
 var max_ki := 100.0
 var ki := 100.0
 const KI_REGEN := 6.0 # per second
-const TALISMAN_COST := 35.0
 var spawn := Vector2.ZERO
 var interact: Callable          # level hook: returns true if something was talked to / examined
 var gentle_hits := 0            # tutorial: the next N hits only knock back (no damage)
@@ -60,6 +61,25 @@ var pull_t := 0.0               # dragged toward pull_to (물귀신, 붉은 실)
 var pull_to := Vector2.ZERO
 var _stun_fx: Label
 var haste_t := 0.0              # 연풍
+var shinmyeong := 0.0                  # 신명: fills with landed blows and 받아넘기기; full → 처용무
+const SIN_PER_HIT := 2.5
+const SIN_PER_PARRY := 15.0
+var parry_bonus := false        # 받아넘기기: the next blow lands double
+var parry_chain := 0
+var parry_chain_t := 0.0
+var _parry_cd := 0.0
+var height_t := 0.0             # 신명 고조 (받아넘기기 3연속): faster feet and swings
+var shield := 0                 # 수호부: blows it will still turn aside
+var shield_t := 0.0
+var swap_cd := 0.0
+var ult_t := 0.0                # 처용무
+var _ult_tick := 0.0
+var _burst_ready := true        # 신명폭발: once per filling
+var _last_roll_end := -10.0
+var _dash := false     # 학의 질주: a second roll right after the first
+const ULT_TIME := 6.0
+const TAL_COST := {"fire": 25.0, "bind": 30.0, "guard": 20.0, "wave": 20.0}
+const TAL_NAME := {"fire": "화염부", "bind": "결박부", "guard": "수호부", "wave": "파동부"}
 var rhythm := 0                 # 장단맞춤: presses that landed on the beat in this combo
 const SONG_TIME := 1.1
 const SONG_RANGE := 90.0
@@ -68,6 +88,9 @@ const SONG_RANGE := 90.0
 func _ready() -> void:
 	max_hp = Game.max_hp()
 	hp = max_hp
+	for a in OS.get_cmdline_user_args():   # test hook: --sin=100
+		if a.begins_with("--sin="):
+			shinmyeong = float(a.get_slice("=", 1))
 	Game.leveled.connect(_on_leveled)
 	Game.skills_changed.connect(func():  # 심해의 인내 raises the ceiling at once
 		var gain := Game.max_hp() - max_hp
@@ -116,6 +139,19 @@ func _physics_process(delta: float) -> void:
 		return
 	slow_t = maxf(0.0, slow_t - delta)
 	haste_t = maxf(0.0, haste_t - delta)
+	height_t = maxf(0.0, height_t - delta)
+	swap_cd = maxf(0.0, swap_cd - delta)
+	_parry_cd = maxf(0.0, _parry_cd - delta)
+	parry_chain_t -= delta
+	if parry_chain_t <= 0.0:
+		parry_chain = 0
+	if shield_t > 0.0:
+		shield_t -= delta
+		if shield_t <= 0.0:
+			shield = 0
+	if ult_t > 0.0:
+		_ult(delta, dir)
+		return
 	pull_t = maxf(0.0, pull_t - delta)
 	if stun_t > 0.0:
 		stun_t -= delta
@@ -129,10 +165,16 @@ func _physics_process(delta: float) -> void:
 		sprite.position.x = 0.0
 	if not locked and Input.is_action_just_pressed("talisman") and state == "move":
 		_talisman()
+	if not locked and Input.is_action_just_pressed("swap"):
+		swap_talisman()
+	if not locked and Input.is_action_just_pressed("dance") and state in ["move", "attack"]:
+		dance()
 	if not locked and Input.is_action_just_pressed("song") and state == "move" and Game.flag("flute"):
 		_start_song()
 	if not locked and Input.is_action_just_pressed("roll") and state != "roll":
-		_start_roll(dir)
+		_start_roll(dir, Game.has_skill("hak") and t_now() - _last_roll_end < 0.3)
+	elif not locked and Input.is_action_just_pressed("roll") and Game.has_skill("hak") and not _dash and t > 0.1:
+		_start_roll(dir, true)   # 학의 질주: a second tap mid-roll
 	elif not locked and Input.is_action_just_pressed("attack"):
 		if state == "attack":
 			if not queued and Game.has_skill("jangdan") and t >= _swing_time() * 0.55:
@@ -152,7 +194,7 @@ func _physics_process(delta: float) -> void:
 
 
 func _move(dir: Vector2) -> void:
-	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) * (1.25 if haste_t > 0.0 else 1.0) + _pull_vel()
+	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) * (1.25 if haste_t > 0.0 else 1.0) * (1.2 if height_t > 0.0 else 1.0) + _pull_vel()
 	move_and_slide()
 	if dir != Vector2.ZERO:
 		_face(dir)
@@ -248,7 +290,7 @@ func _attack(delta: float) -> void:
 
 
 func _swing_time() -> float:
-	return COMBO[combo]["time"] / (1.4 if _frenzy() else 1.0)
+	return COMBO[combo]["time"] / (1.4 if _frenzy() else 1.0) / (1.3 if height_t > 0.0 else 1.0)
 
 
 ## 무아지경: at the edge of falling he moves faster and feels less
@@ -272,6 +314,8 @@ func _resolve_hit(c: Dictionary, base: float) -> void:
 	if last and rhythm >= 2:   # 장단맞춤
 		mult *= 1.3
 		Game.float_text(get_parent(), global_position + Vector2(0, -40), ["얼쑤!"])
+	if parry_bonus:   # 받아넘기기 일격
+		mult *= 2.0
 	if whirl:
 		_whirl_fx()
 	if Game.has_skill("eumpa"):
@@ -283,9 +327,13 @@ func _resolve_hit(c: Dictionary, base: float) -> void:
 		if not whirl and absf(wrapf(to.angle() - base, -PI, PI)) > 1.3 and to.length() > 10:
 			continue
 		if e.has_method("take_hit"):
-			e.take_hit(int(round(c["dmg"] * mult)), to.normalized(), last)
+			var m := mult * (1.3 if Game.has_skill("gyeolbak2") and e.get("bind_t") > 0.0 else 1.0)   # 결박부·진
+			e.take_hit(int(round(c["dmg"] * m)), to.normalized(), last or parry_bonus)
+			add_sin(SIN_PER_HIT)
 			_spark(e.global_position + Vector2(0, -12))
 			hit_landed.emit(e)
+	if parry_bonus:
+		parry_bonus = false
 
 
 ## 검무: a ring of wind around him
@@ -327,7 +375,23 @@ var hurt_t := 0.0
 
 
 func hurt(dmg: int, dir: Vector2) -> void:
-	if invuln or hurt_t > 0.0 or state == "dead":
+	if ult_t > 0.0 or state == "dead":
+		return
+	if invuln:
+		if state == "roll" and t <= 0.25 and Game.has_skill("batanum"):
+			_parry(dir)
+		return
+	if hurt_t > 0.0:
+		return
+	if shield > 0:   # 수호부
+		shield -= 1
+		if shield <= 0:
+			shield_t = 0.0
+		hurt_t = 0.5
+		Audio.sfx("block", -2.0)
+		_ring_fx(Color(1.0, 0.9, 0.55), 26.0, 0.35)
+		if Game.has_skill("suho2"):   # 수호부·진: the blow goes back as sound
+			SoundWave.fire(self, (-dir).angle(), int(round(10 * Game.attack_mult())))
 		return
 	hurt_t = 0.6
 	Audio.sfx("hurt", -2.0)
@@ -387,7 +451,7 @@ func can_sing() -> bool:
 	if not Game.flag("flute"):
 		return false
 	for d in get_tree().get_nodes_in_group("downed"):
-		if d.global_position.distance_to(global_position) < SONG_RANGE:
+		if d.global_position.distance_to(global_position) < song_range():
 			return true
 	return false
 
@@ -430,7 +494,7 @@ func _song(delta: float) -> void:
 			_ripple(OBANG[i], i * 0.08)
 		var n := 0
 		for d in get_tree().get_nodes_in_group("downed"):
-			if d.global_position.distance_to(global_position) < SONG_RANGE:
+			if d.global_position.distance_to(global_position) < song_range():
 				d.purify()
 				n += 1
 		arm.visible = false
@@ -555,34 +619,88 @@ func use_item(id: String) -> bool:
 	return true
 
 
-# ---------------------------------------------------------------- 정화부 (talisman burst)
-func _talisman() -> void:
-	if ki < TALISMAN_COST:
+# ---------------------------------------------------------------- 부적 (웹판 이식: 화염·결박·수호 + 파동)
+func t_now() -> float:
+	return Time.get_ticks_msec() / 1000.0
+
+
+func song_range() -> float:
+	return SONG_RANGE * (2.0 if Game.has_skill("gyeopnorae") else 1.0)   # 겹노래
+
+
+## the talismans he can draw right now
+func talismans() -> Array:
+	var a := ["fire", "bind", "guard"]
+	if Game.has_skill("padong"):
+		a.append("wave")
+	return a
+
+
+func current_talisman() -> String:
+	var a := talismans()
+	return a[Game.tal_idx % a.size()]
+
+
+func swap_talisman() -> void:
+	if swap_cd > 0.0:
 		return
-	ki -= TALISMAN_COST
+	swap_cd = 0.5 if Game.has_skill("bujeok") else 1.0   # 부적 다루기
+	Game.tal_idx = (Game.tal_idx + 1) % talismans().size()
+	Audio.sfx("ui_move", -6.0, 0.0)
+	Game.float_text(get_parent(), global_position + Vector2(0, -44), [TAL_NAME[current_talisman()]])
+	talisman_changed.emit(current_talisman())
+
+
+func _talisman() -> void:
+	var kind := current_talisman()
+	if ki < TAL_COST[kind]:
+		Game.float_text(get_parent(), global_position + Vector2(0, -44), ["소리가 모자라다"])
+		return
+	ki -= TAL_COST[kind]
 	stats_changed.emit(hp, max_hp, ki, max_ki)
-	for e in get_tree().get_nodes_in_group("enemy"):
-		var to: Vector2 = e.global_position - global_position
-		if to.length() < 58.0 and e.has_method("absorb_talisman") and e.absorb_talisman():
-			continue  # 해태는 불(부적의 기운)을 먹는다
-		if to.length() < 58.0 and e.has_method("take_hit"):
-			e.take_hit(14, to.normalized(), true)
-	# an expanding ring of pearl light with a paper talisman flaring at the centre
-	var ring := Line2D.new()
-	ring.width = 2.0
-	ring.default_color = Color(0.75, 0.95, 1.0, 0.9)
-	ring.material = slash.material
-	ring.z_index = 40
-	ring.z_as_relative = false
-	for i in 33:
-		ring.add_point(Vector2.from_angle(i * TAU / 32) * Vector2(1, 0.55))
-	ring.position = Vector2(0, -6)
-	add_child(ring)
-	var tw := ring.create_tween().set_parallel()
-	tw.tween_property(ring, "scale", Vector2(60, 60), 0.35).set_ease(Tween.EASE_OUT)
-	tw.tween_property(ring, "width", 0.04, 0.35)
-	tw.tween_property(ring, "modulate:a", 0.0, 0.4)
-	tw.chain().tween_callback(ring.queue_free)
+	var ang: float = FACE_ANGLE[facing]
+	var big := Game.has_skill("hwayeom2")   # 화염부·진
+	match kind:
+		"fire":
+			var z := TalismanZone.new()
+			z.kind = "fire"
+			z.angle = ang
+			z.radius = 58.0 * (1.4 if big else 1.0)
+			z.life = 3.0 + (2.0 if big else 0.0)
+			z.position = position + Vector2.from_angle(ang) * 4.0
+			get_parent().add_child(z)
+			Audio.sfx("slash", -2.0, 0.3)
+		"bind":
+			var at := position + Vector2.from_angle(ang) * 40.0
+			var bd := 110.0
+			for e in get_tree().get_nodes_in_group("enemy"):
+				var dd: float = e.global_position.distance_to(global_position)
+				if dd < bd:
+					bd = dd; at = e.global_position
+			var z := TalismanZone.new()
+			z.kind = "bind"
+			z.radius = 40.0
+			z.life = 8.0 + (4.0 if Game.has_skill("gyeolbak2") else 0.0)
+			z.position = at
+			get_parent().add_child(z)
+			Audio.sfx("block", -4.0, 0.0)
+		"guard":
+			shield = 2 if Game.has_skill("suho2") else 1
+			shield_t = 10.0
+			_ring_fx(Color(1.0, 0.9, 0.55), 22.0, 0.4)
+			Audio.sfx("bell", -4.0, 0.0)
+		"wave":   # 파동부: a wall of sound that throws them back
+			for e in get_tree().get_nodes_in_group("enemy"):
+				var to: Vector2 = e.global_position - global_position
+				if to.length() < 70.0 and absf(wrapf(to.angle() - ang, -PI, PI)) < 0.9 and e.has_method("take_hit"):
+					e.take_hit(6, to.normalized() * 2.0, true)
+			for i in 3:
+				SoundWave.fire(self, ang + (i - 1) * 0.35, 4)
+	_paper_fx()
+
+
+## the paper talisman flares above his head as it is spent
+func _paper_fx() -> void:
 	var tl := Sprite2D.new()
 	tl.texture = load("res://assets/ui/btn_talisman.png")
 	tl.region_enabled = true
@@ -598,8 +716,114 @@ func _talisman() -> void:
 	tw2.chain().tween_callback(tl.queue_free)
 
 
+func _ring_fx(col: Color, r: float, time: float) -> void:
+	var ring := Line2D.new()
+	ring.width = 2.0
+	ring.default_color = col
+	ring.material = slash.material
+	ring.z_index = 40
+	ring.z_as_relative = false
+	for i in 33:
+		ring.add_point(Vector2.from_angle(i * TAU / 32) * Vector2(1, 0.55))
+	ring.position = Vector2(0, -6)
+	add_child(ring)
+	var tw := ring.create_tween().set_parallel()
+	tw.tween_property(ring, "scale", Vector2(r, r), time).set_ease(Tween.EASE_OUT)
+	tw.tween_property(ring, "modulate:a", 0.0, time + 0.05)
+	tw.chain().tween_callback(ring.queue_free)
+
+
+# ---------------------------------------------------------------- 신명 · 받아넘기기 · 처용무
+func add_sin(n: float) -> void:
+	shinmyeong = minf(100.0, shinmyeong + n)
+	sin_changed.emit(shinmyeong)
+	if shinmyeong >= 100.0 and _burst_ready and Game.has_skill("sinmyeong"):
+		_burst_ready = false   # 신명폭발: the brim spills over by itself
+		_ring_fx(Color(1.0, 0.85, 0.45), 90.0, 0.5)
+		for e in get_tree().get_nodes_in_group("enemy"):
+			var to: Vector2 = e.global_position - global_position
+			if to.length() < 90.0 and e.has_method("take_hit"):
+				e.take_hit(30, to.normalized(), true)
+		Game.float_text(get_parent(), global_position + Vector2(0, -48), ["신명폭발!"])
+
+
+## 받아넘기기: rolled through a blow at the last moment — time slows, the next blow lands double
+func _parry(_dir: Vector2) -> void:
+	if _parry_cd > 0.0:
+		return
+	_parry_cd = 0.3
+	parry_bonus = true
+	add_sin(SIN_PER_PARRY)
+	parry_chain += 1
+	parry_chain_t = 10.0
+	Audio.sfx("block", 0.0, 0.0)
+	_ring_fx(Color(1, 1, 1), 34.0, 0.4)
+	Game.float_text(get_parent(), global_position + Vector2(0, -48), ["받아넘기기"])
+	Engine.time_scale = 0.35
+	get_tree().create_timer(0.35, true, false, true).timeout.connect(func(): Engine.time_scale = 1.0)
+	if parry_chain >= 3:
+		parry_chain = 0
+		height_t = 5.0
+		Game.say_toast("신명 고조 — 발과 피리가 빨라진다 (5초)", Color(1.0, 0.85, 0.45))
+
+
+func can_dance() -> bool:
+	return shinmyeong >= 100.0 and Game.flag("flute")
+
+
+## 처용무: six seconds of untouchable dance; everything near is struck and its 탁기 shaken loose
+func dance() -> void:
+	if not can_dance():
+		return
+	shinmyeong = 0.0
+	_burst_ready = true
+	sin_changed.emit(shinmyeong)
+	_end_attack()
+	state = "move"
+	ult_t = ULT_TIME
+	_ult_tick = 0.0
+	Audio.sfx("song", 0.0, 0.0)
+	Game.say_toast("처용무!", Color(1.0, 0.85, 0.45))
+	for i in 5:
+		_ripple(OBANG[i], i * 0.06)
+	if Game.has_skill("cheonji"):   # 천지울림: the whole screen rings
+		var cam := get_viewport().get_camera_2d()
+		var view := Rect2(cam.get_screen_center_position() - Vector2(240, 135), Vector2(480, 270)) if cam else Rect2(global_position - Vector2(240, 135), Vector2(480, 270))
+		for e in get_tree().get_nodes_in_group("enemy"):
+			if view.has_point(e.global_position) and e.has_method("take_hit"):
+				e.take_hit(12 if e is PlagueGod else 40, (e.global_position - global_position).normalized(), true)
+		_ring_fx(Color(0.75, 0.95, 1.0), 200.0, 0.6)
+
+
+func _ult(delta: float, dir: Vector2) -> void:
+	ult_t -= delta
+	_ult_tick -= delta
+	velocity = dir * 60.0
+	move_and_slide()
+	sprite.rotation = 0.0
+	var row := "right" if facing == "left" else facing
+	sprite.play(row + "_attack")
+	sprite.flip_h = fmod(ult_t * 4.0, 1.0) < 0.5   # turning in the dance
+	if _ult_tick <= 0.0:
+		_ult_tick = 0.2
+		var strikes := 2 if Game.has_skill("obang") else 1   # 오방신장 join in
+		for e in get_tree().get_nodes_in_group("enemy"):
+			var to: Vector2 = e.global_position - global_position
+			if to.length() < 70.0 and e.has_method("take_hit"):
+				var boss := e is PlagueGod
+				e.take_hit(int(round(30 * (0.12 if boss else 1.0) * strikes)), to.normalized(), false, true)   # 보스는 춤 한 번에 2할 남짓
+		_ring_fx(OBANG[randi() % 5] if Game.has_skill("obang") else Color(1.0, 0.85, 0.45), 40.0, 0.2)
+		Audio.sfx("slash", -8.0)
+	if ult_t <= 0.0:
+		ult_t = 0.0
+		sprite.flip_h = facing == "left"
+
+
 # ---------------------------------------------------------------- roll (춤 구르기)
-func _start_roll(dir: Vector2) -> void:
+func _start_roll(dir: Vector2, dash := false) -> void:
+	_dash = dash
+	if dash:   # 학의 질주
+		Audio.sfx("roll", -3.0, 0.2)
 	_end_attack()
 	pull_t = 0.0  # rolling tears free of whatever is dragging him
 	Audio.sfx("roll", -6.0)
@@ -613,7 +837,7 @@ func _start_roll(dir: Vector2) -> void:
 
 func _roll(delta: float) -> void:
 	var k := clampf(t / ROLL_TIME, 0.0, 1.0)
-	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (1.0 - k * 0.6)
+	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (2.0 if _dash else 1.0) * (1.0 - k * 0.6)
 	move_and_slide()
 	# a spinning dance step: full turn, squashed low in the middle
 	var spin := (1.0 if roll_dir.x >= 0 else -1.0) * TAU * smoothstep(0.0, 1.0, k)
@@ -631,6 +855,8 @@ func _roll(delta: float) -> void:
 		invuln = false
 		if Game.has_skill("yeonpung"):  # 연풍
 			haste_t = 2.0
+		_last_roll_end = -10.0 if _dash else t_now()
+		_dash = false
 		sprite.rotation = 0.0
 		sprite.scale = Vector2.ONE
 		sprite.position = Vector2.ZERO
