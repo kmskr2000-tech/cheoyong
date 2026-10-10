@@ -17,7 +17,9 @@ OUT = ROOT.parent / 'godot' / 'assets' / 'levels'
 spec = importlib.util.spec_from_file_location('tiles', ROOT / 'tiles.py')
 tiles = importlib.util.module_from_spec(spec); spec.loader.exec_module(tiles)
 
-TS, TIER = 16, 22
+TS, TIER = 16, 26   # tier height in screen px
+K = 0.75             # foreshortening of the ground's depth: the camera looks down at an angle, not straight
+                     # down (HD-2D). A footprint row y lands on screen row y*K - height.
 INK = np.array(tiles.INK, np.uint8)
 L = np.array([-0.68, -0.38, 0.62]); L /= np.linalg.norm(L)
 
@@ -75,7 +77,9 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     OFF = int(hs.max()) + 4
 
     # ---- painter's pass: back to front
-    Hs = Hf + OFF
+    Hk = int(round(Hf * K))
+    Hs = Hk + OFF
+    ry_ = np.round(np.arange(Hf) * K).astype(int)   # screen row of each footprint row
     kind = np.zeros((Hs, W), np.int8)  # 1 top, 2 front, 3 water
     wx = np.zeros((Hs, W), np.int32); wy = np.zeros((Hs, W), np.int32); wz = np.zeros((Hs, W), np.int32)
     colh = np.zeros((Hs, W), np.int32)
@@ -84,9 +88,9 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
         hrow = hs[y]
         for z in range(int(hrow.max())):  # front face rows of this column
             sel = hrow > z
-            r = y - z + OFF
+            r = ry_[y] - z + OFF
             kind[r, X[sel]] = 2; wx[r, X[sel]] = X[sel]; wy[r, X[sel]] = y; wz[r, X[sel]] = z; colh[r, X[sel]] = hrow[sel]
-        r = y - hrow + OFF
+        r = ry_[y] - hrow + OFF
         k = np.where(water[y], 3, 1)
         kind[r, X] = k; wx[r, X] = X; wy[r, X] = y; wz[r, X] = hrow; colh[r, X] = hrow
 
@@ -219,7 +223,7 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     wimg[Wt] = [255, 255, 255, 255]
 
     # ---- ink where depth jumps (cliff tops against what lies behind/below them)
-    close = np.where(kind > 0, wy + wz, -1)
+    close = np.where(kind > 0, wy * K + wz, -1)
     ink = np.zeros((Hs, W), bool)
     for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
         nb = np.roll(np.roll(close, dr, 0), dc, 1)
@@ -244,8 +248,8 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     # thin wall only blocks its south face and can be walked through behind its top
     floor_t = 1
     for (cy, cx) in zip(*np.where(cells == 'W')):
-        r0 = cy * TS - floor_t * TIER + OFF
-        blocked[max(0, r0):max(0, r0 + TS), cx * TS:(cx + 1) * TS] = True
+        r0 = int(round(cy * TS * K)) - floor_t * TIER + OFF
+        blocked[max(0, r0):max(0, r0 + int(round(TS * K))), cx * TS:(cx + 1) * TS] = True
     G = 4
     gh, gw = Hs // G, W // G
     bg = blocked[:gh * G, :gw * G].reshape(gh, G, gw, G).mean((1, 3)) > 0.5
@@ -278,7 +282,7 @@ def bake(level_id, hmap, vmap, stairs, water_z=TIER - 9, foam=False):
     Image.fromarray(img).save(OUT / f'{level_id}.png')
     Image.fromarray(nimg).save(OUT / f'{level_id}_n.png')
     Image.fromarray(wimg).save(OUT / f'{level_id}_water.png')
-    meta = {'offset': OFF, 'tier': TIER, 'ts': TS, 'size': [W, Hf], 'heights': [''.join(r) for r in hmap], 'collision': rects}
+    meta = {'offset': OFF, 'tier': TIER, 'ts': TS, 'k': K, 'size': [W, Hk], 'footprint': [W, Hf], 'heights': [''.join(r) for r in hmap], 'collision': rects}
     (OUT / f'{level_id}.json').write_text(json.dumps(meta))
     print(f'{level_id}: {W}x{Hs}, {len(rects)} collision rects')
 

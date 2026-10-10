@@ -21,6 +21,7 @@ def hx(h):
 
 
 INK = hx('#07060b')
+K = 0.75   # depth foreshortening, the same camera as the ground (art/ground3d.py)
 L = np.array([-0.68, -0.38, 0.62]); L = L / np.linalg.norm(L)  # key light: upper left, high
 
 
@@ -75,15 +76,16 @@ class Vox:
         hdx = (np.roll(hm, -1, 0) - np.roll(hm, 1, 0)) * 0.5
         hdy = (np.roll(hm, -1, 1) - np.roll(hm, 1, 1)) * 0.5
 
-        H = Y + Z
-        R = np.arange(H)[:, None] - Z           # world row r = y - z for each screen row
+        Yk = int(round(Y * K))
+        H = Yk + Z
+        R = np.arange(H)[:, None] - Z           # screen row minus height = foreshortened world row y*K
         XX = np.broadcast_to(np.arange(X)[None, :], (H, X))
         hx_ = np.full((H, X), -1); hy_ = np.full((H, X), -1); hz_ = np.full((H, X), -1)
         face = np.zeros((H, X), np.int8)
         done = np.zeros((H, X), bool)
         for z in range(Z - 1, -1, -1):
-            for fc, yy, vis in ((0, R + z + 1, top_vis), (1, R + z, front_vis)):
-                yy = np.broadcast_to(yy, (H, X))
+            for fc, yk, vis in ((0, R + z + 1, top_vis), (1, R + z, front_vis)):
+                yy = np.broadcast_to(np.floor(yk / K + (0.0 if fc == 0 else 0.999)).astype(int), (H, X))
                 ok = (~done) & (yy >= 0) & (yy < Y)
                 hitm = np.zeros((H, X), bool)
                 hitm[ok] = vis[XX[ok], yy[ok], z]

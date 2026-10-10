@@ -26,7 +26,7 @@
 ## 아트 파이프라인 (전부 코드로 생성, 외부 에셋 없음)
 - `art/src/*.py` 도트 격자 → `python3 art/build.py` (캐릭터·NPC 시트)
 - `art/vox.py` 복셀 3D → 사선 3/4 도트 (건물·석등·장승·석축·돌담 등, 노멀맵 포함)
-- `art/ground3d.py` 높이 지도 → 레벨 지형 한 장 (윗면·절벽 옆면·물·충돌)
+- `art/ground3d.py` 높이 지도 → 레벨 지형 한 장 (윗면·절벽 옆면·물·충돌). 카메라는 비스듬히 내려다봄: 깊이 축소 `K=0.75`(vox.py도 같은 값), 단 높이 26px. 게임 좌표는 전부 발밑(footprint) 좌표로 쓰고 `level.lift()`가 화면 좌표로 바꾼다(사각형은 `lift_size`)
 - `art/props.py` 손그림 소품, `art/enemies.py` 적·보스, `art/fx.py` 이펙트, `art/ui.py` UI
 - `art/normals.py` 노멀맵, `art/tiles.py` 지형 텍스처·팔레트
 - `art/monsters.py` 설화 요괴, `art/intro.py` 인트로·타이틀 배경 그림

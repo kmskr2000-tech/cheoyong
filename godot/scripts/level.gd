@@ -160,14 +160,14 @@ func add_barrier(r: Rect2) -> Node2D:
 	b.position = lift(r.get_center())
 	var col := CollisionShape2D.new()
 	var sh := RectangleShape2D.new()
-	sh.size = r.size
+	sh.size = lift_size(r.size)
 	col.shape = sh
 	b.add_child(col)
 	var p := CPUParticles2D.new()
 	p.amount = 30
 	p.lifetime = 1.4
 	p.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	p.emission_rect_extents = r.size / 2.0
+	p.emission_rect_extents = lift_size(r.size) / 2.0
 	p.direction = Vector2(0, -1)
 	p.gravity = Vector2(0, -10)
 	p.initial_velocity_min = 4.0
@@ -227,7 +227,7 @@ func _glint(at: Vector2) -> Node2D:
 ## true when a screen position lies over open water
 func is_water(p: Vector2) -> bool:
 	var rows: Array = meta["heights"]
-	var cy := clampi(int(p.y / meta["ts"]), 0, rows.size() - 1)
+	var cy := clampi(int(p.y / depth_k() / meta["ts"]), 0, rows.size() - 1)
 	var cx := clampi(int(p.x / meta["ts"]), 0, String(rows[0]).length() - 1)
 	return String(rows[cy])[cx] == "0"
 
@@ -237,7 +237,7 @@ func add_trigger(r: Rect2, id: String) -> void:
 	var a := Area2D.new()
 	var col := CollisionShape2D.new()
 	var sh := RectangleShape2D.new()
-	sh.size = r.size
+	sh.size = lift_size(r.size)
 	col.shape = sh
 	a.position = lift(r.get_center())
 	a.add_child(col)
@@ -253,7 +253,7 @@ func _exit(ex: Array) -> void:
 	var a := Area2D.new()
 	var col := CollisionShape2D.new()
 	var sh := RectangleShape2D.new()
-	sh.size = r.size
+	sh.size = lift_size(r.size)
 	col.shape = sh
 	a.position = lift(r.get_center())
 	a.add_child(col)
@@ -412,14 +412,24 @@ func talk(lines: Array) -> void:
 	$Player.locked = false
 
 
-## footprint → screen: ground on tier k is drawn k*TIER px higher (oblique camera)
+## footprint → screen: depth is foreshortened by K (the camera looks down at an angle, HD-2D) and
+## ground on tier t is drawn t*TIER px higher (art/ground3d.py bakes the same projection)
 func lift(p: Vector2) -> Vector2:
 	var rows: Array = meta["heights"]
 	var cy := clampi(int(p.y / meta["ts"]), 0, rows.size() - 1)
 	var cx := clampi(int(p.x / meta["ts"]), 0, String(rows[0]).length() - 1)
 	var c := String(rows[cy])[cx]
 	var t := 1.0 if not c.is_valid_int() else float(c)
-	return Vector2(p.x, p.y - t * meta["tier"])
+	return Vector2(p.x, p.y * depth_k() - t * meta["tier"])
+
+
+func depth_k() -> float:
+	return float(meta.get("k", 1.0))
+
+
+## a footprint rect's size on screen
+func lift_size(sz: Vector2) -> Vector2:
+	return Vector2(sz.x, sz.y * depth_k())
 
 
 ## the baked ground: one lit sprite with geometric normals, an animated water overlay, cliff collision
@@ -481,9 +491,9 @@ func _prop(name: String, at: Vector2, light) -> void:
 	_cast_shadow(body, tex)
 	var col := CollisionShape2D.new()
 	var shape := RectangleShape2D.new()
-	shape.size = Vector2(half.x * 2, half.y * 2)
+	shape.size = Vector2(half.x * 2, maxf(2.0, round(half.y * 2 * depth_k())))   # footprint depth is foreshortened
 	col.shape = shape
-	col.position = Vector2(0, -half.y)
+	col.position = Vector2(0, -shape.size.y / 2.0)
 	body.add_child(col)
 	var glow_path := "res://assets/props/%s_glow.png" % name
 	if ResourceLoader.exists(glow_path):
