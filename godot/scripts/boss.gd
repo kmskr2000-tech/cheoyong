@@ -12,7 +12,8 @@ signal defeated
 signal knelt
 signal phase_two
 
-const CELL := Vector2i(56, 76)
+const CELL := Vector2i(120, 164)   # art/boss3d.py: over three times a man's height
+const FEET_ROW := 158.0
 const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
 const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7]}
 
@@ -37,9 +38,9 @@ func _ready() -> void:
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	var col := CollisionShape2D.new()
 	var sh := RectangleShape2D.new()
-	sh.size = Vector2(24, 8)
+	sh.size = Vector2(52, 14)   # the hem of the robe
 	col.shape = sh
-	col.position = Vector2(0, -4)
+	col.position = Vector2(0, -7)
 	add_child(col)
 	sprite = AnimatedSprite2D.new()
 	var tex: Texture2D = Tex.lit("res://assets/sprites/plague_god.png")
@@ -54,15 +55,15 @@ func _ready() -> void:
 			at.region = Rect2(i * CELL.x, 0, CELL.x, CELL.y)
 			frames.add_frame(a, at)
 	sprite.sprite_frames = frames
-	sprite.offset = Vector2(0, CELL.y / 2.0 - 70.0)
+	sprite.offset = Vector2(0, CELL.y / 2.0 - FEET_ROW)
 	sprite.play("idle")
 	add_child(sprite)
 	# miasma always seeping from the hem
 	var mi := CPUParticles2D.new()
-	mi.amount = 30
+	mi.amount = 60
 	mi.lifetime = 2.0
 	mi.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	mi.emission_rect_extents = Vector2(16, 3)
+	mi.emission_rect_extents = Vector2(36, 4)
 	mi.position = Vector2(0, -4)
 	mi.direction = Vector2(0, -1)
 	mi.gravity = Vector2(0, -12)
@@ -77,8 +78,8 @@ func _ready() -> void:
 	aura.texture = _radial()
 	aura.color = Color(0.45, 0.95, 0.4)
 	aura.energy = 0.8
-	aura.texture_scale = 0.9
-	aura.position = Vector2(0, -30)
+	aura.texture_scale = 1.8
+	aura.position = Vector2(0, -80)
 	add_child(aura)
 	target = get_tree().current_scene.get_node_or_null("Player")
 
@@ -107,11 +108,11 @@ func _physics_process(delta: float) -> void:
 	var d := to.length()
 	var fast := 1.35 if phase == 2 else 1.0
 	var v := Vector2.ZERO
-	close_t = close_t + delta if d < 44.0 else 0.0
+	close_t = close_t + delta if d < 58.0 else 0.0
 	match state:
 		"idle":
 			sprite.play("idle")
-			if d > 80.0:
+			if d > 96.0:
 				v = to.normalized() * 26.0 * fast
 			if close_t > 1.6:
 				_begin("pulse")
@@ -151,8 +152,8 @@ func _physics_process(delta: float) -> void:
 			sprite.play("cast")
 			if st > 0.6:
 				_clear_tells()
-				_ring(position, 60.0, Color(0.6, 1.0, 0.5))
-				if d < 60.0 and target.has_method("hurt"):
+				_ring(position, 80.0, Color(0.6, 1.0, 0.5))
+				if d < 80.0 and target.has_method("hurt"):
 					target.hurt(12, to.normalized())
 				close_t = 0.0
 				_begin("idle")
