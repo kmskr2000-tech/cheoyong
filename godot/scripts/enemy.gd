@@ -727,6 +727,6 @@ func _purify() -> void:
 ## screen covers fewer pixels than going sideways (velocity itself stays in footprint units)
 func _slide() -> void:
 	var vy := velocity.y
-	velocity.y *= Game.depth_k
+	velocity.y *= 1.0 - (1.0 - Game.depth_k) * 0.4   # 0.75 felt too slow on a phone: about 0.9
 	move_and_slide()
 	velocity.y = vy
