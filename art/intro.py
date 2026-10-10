@@ -105,25 +105,11 @@ def shot_sea():
 
 
 def shot_hall():
-    PEARL = ramp('#03060c', '#081020', '#0e1c34', '#18304e', '#244668', '#3a6488', '#5a88a8', '#8ab4c8')
-    g = 2.2 + np.exp(-((xx - 240) ** 2 + (yy - 90) ** 2 * 2) / 14000.0) * 3.5 + noise((H, W), 30, 2) * 0.6
-    floor = yy > 182
-    g = np.where(floor, 1.6 + ((xx + (yy - 182) * 2) // 24 + (yy - 182) // 10) % 2 * 0.5 + np.exp(-((xx - 240) ** 2) / 9000.0) * 1.5 - (yy - 182) * 0.012, g)
-    rgb = dither(g, PEARL)
-    CORAL = ramp('#12060c', '#2a0e18', '#4a1824', '#6e2830', '#94403a')
-    for cx in (52, 128, 352, 428):                    # coral-red pillars with a pearl band
-        u = (xx - cx) / 11.0
-        m = (np.abs(u) < 1) & (yy < 190)
-        t = 2.6 - u * 1.6 + np.where(np.abs(yy - 40) < 4, 1.5, 0) - (yy > 170) * 0.8
-        rgb[m] = dither(t, CORAL)[m]
-    dais = (yy > 150) & (yy < 196) & (np.abs(xx - 240) < 120 - (196 - yy) * 0.6)
-    rgb[dais] = dither(1.8 + (yy - 150) / 46.0 + (np.abs(xx - 240) < 90) * 0.5, ramp('#0a0c14', '#161a28', '#242a40', '#343c58'))[dais]
-    bed = (yy > 132) & (yy < 158) & (np.abs(xx - 240) < 70)
-    rgb[bed] = dither(2.0 + (yy < 136) * 1.6 - np.abs(xx - 240) / 70.0, ramp('#1a1420', '#2e2438', '#4a3c58', '#6e5c80', '#9a88a8'))[bed]
-    for side in (-1, 1):                              # drapes falling either side of the bed
-        dr = (np.abs(xx - (240 + side * 92)) < 16 - (yy - 40) * 0.02) & (yy > 30) & (yy < 160)
-        rgb[dr] = dither(2.2 + np.sin(xx * 0.5) * 0.6, ramp('#0c1a24', '#142c3a', '#1e4250', '#2c5a66'))[dr]
-    save('intro_hall', rgb)
+    """Shots 2–3: the 용궁 main hall, a small perspective 3D scene (art/intro_hall3d.py)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('intro_hall3d', pathlib.Path(__file__).parent / 'intro_hall3d.py')
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+    save('intro_hall', mod.render())
 
 
 def shot_night(name='intro_night', shore=True):

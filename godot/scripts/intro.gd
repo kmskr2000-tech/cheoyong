@@ -183,27 +183,29 @@ func _shot_sea() -> void:
 func _shot_hall() -> void:
 	_new_shot()
 	_layer("res://assets/intro/intro_hall.png")
-	var king := _sprite("res://assets/sprites/npc_dragonking.png", Vector2(240, 150))
+	var king := _sprite("res://assets/sprites/npc_dragonking.png", Vector2(240, 114))   # on the canopied bed
 	king.rotation = -PI / 2
 	king.offset = Vector2(0, -12)
 	king.modulate = Color(0.82, 0.86, 0.92)
-	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(176, 196))
-	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(304, 196))
+	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(200, 168))   # 맏형 해강
+	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
-	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 214), Rect2(32, 0, 32, 48))  # back view (up_idle)
+	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 232), Rect2(32, 0, 32, 48))  # back view (up_idle)
 	await _fade_in()
 	await dialog.say([
-		{"name": "맏형", "text": "용궁의 문을 닫읍시다."},
+		{"name": "맏형 해강", "text": "용궁의 문을 닫읍시다."},
+		{"name": "둘째 해명", "text": "형의 말이 맞습니다. 아버지를 위해서라도."},
 		{"name": "용왕", "text": "…문을 닫으면 썩는 건 안쪽이다."},
 	])
 	if _done: return
 	# the king turns his head; 처용 steps up to the bed
 	var tw := create_tween()
-	tw.tween_property(me, "position", Vector2(240, 178), 1.4)
+	tw.tween_property(me, "position", Vector2(240, 176), 1.4)
 	await tw.finished
 	await dialog.say([
 		{"name": "용왕", "text": "인간 세상의 액이 깊어진다."},
-		{"name": "용왕", "text": "인간을 가엾게 여기는 건 너뿐이다."},
+		{"name": "용왕", "text": "해강은 힘이 세고, 해명은 지혜롭다."},
+		{"name": "용왕", "text": "그러나 인간을 가엾게 여기는 건 너뿐이다."},
 	])
 	if _done: return
 	# 용패: a single glowing scale passes from the king's hand into his
