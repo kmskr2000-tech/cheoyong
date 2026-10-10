@@ -162,7 +162,7 @@ func _physics_process(delta: float) -> void:
 			_stun_fx.visible = stun_t > 0.0
 		if stun_t > 0.0:
 			velocity = _pull_vel()
-			move_and_slide()
+			_slide()
 			return
 		sprite.position.x = 0.0
 	if not locked and Input.is_action_just_pressed("talisman") and state == "move":
@@ -197,7 +197,7 @@ func _physics_process(delta: float) -> void:
 
 func _move(dir: Vector2) -> void:
 	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) * (1.25 if haste_t > 0.0 else 1.0) * (1.2 if height_t > 0.0 else 1.0) + _pull_vel()
-	move_and_slide()
+	_slide()
 	if dir != Vector2.ZERO:
 		_face(dir)
 	if dir.x != 0.0:
@@ -273,7 +273,7 @@ func _attack(delta: float) -> void:
 	arm.rotation = a
 	arm.flip_v = cos(a) < -0.05 # keep the sleeve's lit side on top when pointing left
 	velocity = Vector2.from_angle(base) * lunge
-	move_and_slide()
+	_slide()
 	# spirit-wind crescent during the sweep
 	var swing := k > 0.25 and k < 0.8
 	slash.visible = swing
@@ -414,7 +414,7 @@ func hurt(dmg: int, dir: Vector2) -> void:
 		return
 	_end_attack()
 	velocity = dir * 160.0
-	move_and_slide()
+	_slide()
 	var tw := create_tween()
 	for i in 3:
 		tw.tween_property(sprite, "modulate", Color(1.8, 0.5, 0.5), 0.05)
@@ -805,7 +805,7 @@ func _ult(delta: float, dir: Vector2) -> void:
 	ult_t -= delta
 	_ult_tick -= delta
 	velocity = dir * 60.0
-	move_and_slide()
+	_slide()
 	sprite.rotation = 0.0
 	var row := "right" if facing == "left" else facing
 	sprite.play(row + "_attack")
@@ -844,7 +844,7 @@ func _start_roll(dir: Vector2, dash := false) -> void:
 func _roll(delta: float) -> void:
 	var k := clampf(t / ROLL_TIME, 0.0, 1.0)
 	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (2.0 if _dash else 1.0) * (1.0 - k * 0.6)
-	move_and_slide()
+	_slide()
 	# a spinning dance step: full turn, squashed low in the middle
 	var spin := (1.0 if roll_dir.x >= 0 else -1.0) * TAU * smoothstep(0.0, 1.0, k)
 	# spin around the body's centre, not the feet
@@ -885,3 +885,12 @@ func _ghost() -> void:
 	var tw := g.create_tween()
 	tw.tween_property(g, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(g.queue_free)
+
+
+## move_and_slide with the depth foreshortening: on the flattened ground, going up or down the
+## screen covers fewer pixels than going sideways (velocity itself stays in footprint units)
+func _slide() -> void:
+	var vy := velocity.y
+	velocity.y *= Game.depth_k
+	move_and_slide()
+	velocity.y = vy

@@ -424,7 +424,8 @@ func lift(p: Vector2) -> Vector2:
 
 
 func depth_k() -> float:
-	return float(meta.get("k", 1.0))
+	Game.depth_k = float(meta.get("k", 1.0))
+	return Game.depth_k
 
 
 ## a footprint rect's size on screen

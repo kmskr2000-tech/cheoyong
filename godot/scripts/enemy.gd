@@ -283,7 +283,7 @@ func _physics_process(delta: float) -> void:
 				state = "chase"
 	bind_t = maxf(0.0, bind_t - delta)
 	velocity = v * (0.35 if bind_t > 0.0 else 1.0) + knock
-	move_and_slide()
+	_slide()
 	if kind == "sangun" and state == "strike" and get_slide_collision_count() > 0:
 		for i in get_slide_collision_count():
 			if get_slide_collision(i).get_collider() != target:
@@ -721,3 +721,12 @@ func _purify() -> void:
 	tw.tween_property(sprite, "position:y", -10.0, 0.8)
 	tw.chain().tween_interval(0.6)
 	tw.chain().tween_callback(queue_free)
+
+
+## move_and_slide with the depth foreshortening: on the flattened ground, going up or down the
+## screen covers fewer pixels than going sideways (velocity itself stays in footprint units)
+func _slide() -> void:
+	var vy := velocity.y
+	velocity.y *= Game.depth_k
+	move_and_slide()
+	velocity.y = vy
