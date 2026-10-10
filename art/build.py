@@ -7,9 +7,11 @@ Usage: python3 art/build.py [--preview N]   (preview writes an N-times upscale f
 """
 import importlib.util, pathlib, sys
 from PIL import Image
+import volume
 
 ROOT = pathlib.Path(__file__).parent
 SRC, OUT = ROOT / 'src', ROOT / 'out'
+sys.path.insert(0, str(ROOT))
 GODOT = ROOT.parent / 'godot' / 'assets' / 'sprites'
 
 
@@ -52,7 +54,7 @@ def emit(stem, frames, scale):
     fw = max(f.width for _, f in frames); fh = max(f.height for _, f in frames)
     sheet = Image.new('RGBA', (fw * len(frames), fh), (0, 0, 0, 0))
     for i, (_, f) in enumerate(frames):
-        sheet.paste(f, (i * fw, 0))
+        sheet.paste(volume.shade(f), (i * fw, 0))       # HD-2D form shading + rim (art/volume.py)
     sheet.save(OUT / f'{stem}.png')
     GODOT.mkdir(parents=True, exist_ok=True)
     sheet.save(GODOT / f'{stem}.png')  # the Godot project reads its own copy

@@ -97,6 +97,8 @@ def main():
             continue
         if path.stem in VOXEL:  # art/vox.py writes true geometric normals for these
             continue
+        if path.stem.startswith(('cheoyong', 'npc_')):  # baked HD-2D shading instead (art/volume.py); a normal map would dim them
+            continue
         big = path.parent.name == 'props'
         sprite_normals(path, radius=5.0 if big else 3.5)
         done.append(path.stem)

@@ -571,18 +571,20 @@ func _cast_shadow(parent: Node2D, tex: Texture2D) -> void:
 
 
 ## soft contact shadow under anything standing on the ground
+## soft contact shadow: a smooth dark ellipse that grounds the figure (HD-2D 접지 그림자)
 func _blob(parent: Node2D, half_w: float) -> void:
-	var img := Image.create(int(half_w * 2), int(maxf(4, half_w * 0.7)), false, Image.FORMAT_RGBA8)
-	var w := img.get_width()
-	var h := img.get_height()
+	var w := int(half_w * 2.6)
+	var h := int(maxf(5, half_w * 0.9))
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
 	for y in h:
 		for x in w:
 			var d := Vector2((x + 0.5 - w / 2.0) / (w / 2.0), (y + 0.5 - h / 2.0) / (h / 2.0)).length()
 			if d < 1.0:
-				img.set_pixel(x, y, Color(0, 0, 0, 0.5 if d < 0.7 else 0.3))
+				var a := 0.62 * pow(1.0 - d, 0.8)
+				img.set_pixel(x, y, Color(0.02, 0.02, 0.06, snappedf(a, 0.1)))   # stepped so it stays pixel art
 	var s := Sprite2D.new()
 	s.texture = ImageTexture.create_from_image(img)
-	s.position = Vector2(0, -1)
+	s.position = Vector2(1, -1)
 	s.z_index = -5
 	s.z_as_relative = false
 	parent.add_child(s)
