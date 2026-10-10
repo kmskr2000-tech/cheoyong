@@ -36,6 +36,7 @@ def frame_image(rows, pal, name):
                 raise SystemExit(f'{name}: unknown palette key {ch!r} at ({x},{y})')
             h = pal[ch].lstrip('#')
             img.putpixel((x, y), (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), 255))
+    img.info['rows'] = rows   # the palette keys tell the volume pass what each pixel is made of
     return img
 
 
