@@ -222,7 +222,10 @@ def figure(pose, sp=HERO):
     return P
 
 
-def render(facing_deg, pose, sp=HERO):
+def render(facing_deg, pose, sp=HERO, size=None):
+    """size: (w, h, feet_row) for bigger figures (the boss); sp['parts'] replaces the human figure;
+    a detail may mark pixels 'void' (eaten away: the boss's dissolving hem)."""
+    W, H, FEET = size or (globals()['W'], globals()['H'], globals()['FEET'])
     th, ph = math.radians(facing_deg), PITCH
     # camera = pitch · yaw · model;   yaw turns his front (+z) toward screen right as the angle grows
     Ry = np.array([[math.cos(th), 0, math.sin(th)], [0, 1, 0], [-math.sin(th), 0, math.cos(th)]])
@@ -238,7 +241,7 @@ def render(facing_deg, pose, sp=HERO):
     best = np.full(len(xc), np.inf)
     hitp = np.zeros((len(xc), 3)); hitn = np.zeros((len(xc), 3))
     owner = np.full(len(xc), -1)
-    parts = figure(pose, sp)
+    parts = sp['parts'](pose) if 'parts' in sp else figure(pose, sp)
     ramps = dict(RAMPS)
     ramps.update(sp.get('ramps', {}))
     for i, pr in enumerate(parts):
@@ -258,16 +261,20 @@ def render(facing_deg, pose, sp=HERO):
         rim = np.clip(nc @ L_RIM, 0, 1)
         tone = 0.9 + lam * 4.2 + {'skin': 0.8, 'hair': -1.4}.get(pr.mat, 0.0)
         mat = np.full(len(p), pr.mat, object)
-        tone, mat = details(pr, p, n, tone, mat, lam, sp)
+        tone, mat = sp.get('details', details)(pr, p, n, tone, mat, lam, sp)
+        tone = tone + sp.get('flash', 0.0)
         idx = np.clip(np.round(tone), 0, 5).astype(int)
         col = np.zeros((len(p), 3), np.float32)
         for mname in set(mat):
             s = mat == mname
+            if mname == 'void':
+                continue
             col[s] = ramps[mname][idx[s]]
         rimk = (rim > 0.55) & (mat != 'eye')
         col[rimk] = col[rimk] * 0.62 + RIM_COL * 0.38 * (rim[rimk, None] + 0.2)
         img[m, :3] = col
-        img[m, 3] = 255
+        img[m, 3] = np.where(mat == 'void', 0, 255)
+        depth.reshape(-1)[np.where(m)[0][mat == 'void']] = 1e9
     img = img.reshape(H, W, 4)
     return outline(img, depth)
 
