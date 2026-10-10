@@ -162,7 +162,7 @@ func _physics_process(delta: float) -> void:
 				_begin("idle")
 	bind_t = maxf(0.0, bind_t - get_physics_process_delta_time())
 	velocity = v * (0.35 if bind_t > 0.0 else 1.0) + knock
-	move_and_slide()
+	_slide()
 	sprite.flip_h = to.x < 0
 
 
@@ -367,3 +367,12 @@ func _defeat() -> void:
 	tw.tween_callback(func(): sprite.play("human"))
 	tw.tween_property(sprite, "modulate", Color(0.8, 0.95, 1.5, 0.0), 1.6)
 	tw.tween_callback(queue_free)
+
+
+## move_and_slide with the depth foreshortening: on the flattened ground, going up or down the
+## screen covers fewer pixels than going sideways (velocity itself stays in footprint units)
+func _slide() -> void:
+	var vy := velocity.y
+	velocity.y *= Game.depth_k
+	move_and_slide()
+	velocity.y = vy

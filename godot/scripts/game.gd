@@ -35,6 +35,7 @@ const TALS := {"cheoyong": {"name": "처용탈", "desc": "받는 피해 10% 감�
 var items := {"insam": 2, "gugija": 1, "jeonghwa": 0}
 var checkpoint := "beach"
 var level_id := "beach"
+var depth_k := 1.0          # the current level's depth foreshortening (art/ground3d.py K): vertical moves scale by it
 var spawn_name := "start"
 var _fade: ColorRect
 var _busy := false
