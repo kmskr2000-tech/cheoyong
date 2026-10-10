@@ -263,3 +263,90 @@ def _no_flute(rows, coat_fill):
 FRAMES['down_attack'] = _no_flute(DOWN_ARMLESS, _coat)
 FRAMES['up_attack'] = _no_flute(UP_ARMLESS, _coat)
 FRAMES['right_attack'] = _no_flute(SIDE_ARMLESS, _coat)
+
+
+# ---------------------------------------------------------------- 3/4 relaxed stance (HD-2D idle)
+# Standing square to the camera read as a cut-out. The idle pose turns him a quarter toward the
+# right (Godot mirrors it for the left): face 3/4 with the near eye foreshortened, the far arm half
+# hidden behind the body, weight on one leg so the upper body leans a pixel, one foot forward.
+# DIAG_B is the breath: shoulders and head settle one pixel.
+def _move_block(rows, x0, x1, y0, y1, dx, dy, fill='.'):
+    """Move a rectangle of pixels by (dx, dy); the vacated cells get `fill` (or stay if covered)."""
+    out = [list(r) for r in rows]
+    cells = {(x, y): rows[y][x] for y in range(y0, y1 + 1) for x in range(x0, x1 + 1) if rows[y][x] != '.'}
+    for (x, y) in cells:
+        out[y][x] = fill
+    for (x, y), c in cells.items():
+        if 0 <= x + dx < 32 and 0 <= y + dy < len(out):
+            out[y + dy][x + dx] = c
+    return [''.join(r) for r in out]
+
+
+def turn(rows, theta=0.42, y0=0, y1=38, lo=0, hi=31):
+    """Turn a front-facing sprite a little to the right, as if each row were a cylinder:
+    a pixel at angle phi on the surface shows at x = c + R*sin(phi + theta). Front details (eyes,
+    collar, shawl, belt knot) slide right and foreshorten; the left side opens up. Each run of
+    pixels keeps its two outline ends; the interior is resampled (nearest)."""
+    import math
+    out = list(rows)
+    for y in range(y0, y1 + 1):
+        full = rows[y]
+        r = '.' * lo + full[lo:hi + 1] + '.' * (len(full) - hi - 1)   # only the window turns
+        new = list(full)
+        x = 0
+        while x < len(r):
+            if r[x] == '.':
+                x += 1
+                continue
+            x0 = x
+            while x < len(r) and r[x] != '.':
+                x += 1
+            x1 = x - 1
+            if x1 - x0 < 4:
+                continue
+            c = (x0 + x1) / 2.0
+            R = (x1 - x0) / 2.0
+            for tx in range(x0 + 1, x1):
+                sx = max(-1.0, min(1.0, (tx - c) / R))
+                phi = math.asin(sx) - theta
+                if phi < -math.pi / 2:
+                    src = x0 + 1          # the far side we could not see: the edge colour
+                else:
+                    src = int(round(c + R * math.sin(phi)))
+                    src = max(x0 + 1, min(x1 - 1, src))
+                new[tx] = r[src]
+        out[y] = ''.join(new)
+    return out
+
+
+def _diag(front, arms=(16, 28, 9, 22)):
+    a0, a1, lo, hi = arms
+    f = turn(front, y1=a0 - 1)                          # head
+    f = turn(f, y0=a0, y1=a1, lo=lo, hi=hi)             # torso between the arms (the arms stay)
+    f = turn(f, y0=a1 + 1, y1=38)                       # skirt
+    f = _move_block(f, 0, 31, 0, 30, 1, 0)             # weight on the left leg: the body leans
+    f = _move_block(f, 9, 15, 39, 44, 0, -1)           # back foot
+    f = _move_block(f, 16, 24, 39, 44, 1, 0)           # front foot steps out
+    r = f[43]
+    f[43] = r[:24] + 'bo' + r[26:]                     # toe turned toward the camera-right
+    r = f[44]
+    f[44] = r[:24] + 'oo' + r[26:]
+    return f
+
+
+def breathe(rows, top=0, waist=24):
+    """The breath frame: everything above the waist settles one pixel."""
+    f = list(rows)
+    for y in range(waist - 1, top, -1):
+        f[y] = rows[y - 1] if y - 1 >= top else EMPTY
+    f[top] = EMPTY
+    return f
+
+
+DIAG = _diag(DOWN)
+DIAG_B = breathe(DIAG)
+FRAMES['diag_idle'] = DIAG
+FRAMES['diag_idle_b'] = DIAG_B
+# facing left: mirrored before the volume pass, so the light still falls from the upper left
+FRAMES['diagl_idle'] = [r[::-1] for r in DIAG]
+FRAMES['diagl_idle_b'] = [r[::-1] for r in DIAG_B]

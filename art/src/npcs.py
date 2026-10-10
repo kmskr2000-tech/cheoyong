@@ -1,7 +1,8 @@
 # Village NPCs, derived from 처용's front frame so they share his proportions and shading:
 # the shawl, ribbon and flute are stripped, then hair / beard / clothing are swapped per character.
-# Front idle only (NPCs stand and breathe; Godot adds the bob). 32x48 cells, feet on row 44.
-from cheoyong import DOWN
+# Frames: front idle, then the 3/4 relaxed stance and its breath (cheoyong._diag / breathe) — Godot
+# breathes between the two and mirrors them to face whoever comes near. 32x48 cells, feet on row 44.
+from cheoyong import DOWN, _diag, breathe
 
 BASE = {
     'o': '#0d0a12', 'k': '#08060c',
@@ -174,22 +175,29 @@ SANSIN_P = pal(h='#8a8a96', i='#b4b4be', j='#d8d8e0', J='#f2f2f6',
                d='#3a3e4a', e='#5a5e6c', f='#7e8292', g='#a4a8b6', G='#c8ccd6',
                r='#3a5a2a', R='#5a8a3a', q='#8ab85a', Q='#b8e080', y='#3a2414', Y='#6a4422', Z='#9a6a3a')
 
-# One sheet per character (each has its own palette).
+# One sheet per character (each has its own palette): front, 3/4 stance + breath (right, then left).
+def _frames(rows, small=False):
+    d = _diag(rows, arms=(25, 37, 9, 22) if small else (16, 28, 9, 22))
+    b = breathe(d, waist=33 if small else 24)
+    # left-facing frames are mirrored before shading so the light stays on the upper left
+    return {'idle': rows, 'diag': d, 'diag_b': b, 'diagl': [r[::-1] for r in d], 'diagl_b': [r[::-1] for r in b]}
+
+
 SHEETS = {
-    'npc_elder': (ELDER_P, {'idle': ELDER}),
-    'npc_nanyeong': (NANYEONG_P, {'idle': NANYEONG}),
-    'npc_seokgu': (SEOKGU_P, {'idle': SEOKGU}),
-    'npc_villager_f': (VILLAGER_F_P, {'idle': VILLAGER_F}),
-    'npc_dolsoe': (DOLSOE_P, {'idle': DOLSOE}),
-    'npc_sick': (SICK_P, {'idle': SICK}),
-    'npc_ghost': (GHOST_P, {'idle': GHOST}),
-    'npc_suryeong': (SURYEONG_P, {'idle': SURYEONG}),
-    'npc_official': (OFFICIAL_P, {'idle': OFFICIAL}),
-    'npc_fisher': (FISHER_P, {'idle': FISHER}),
-    'npc_child': (CHILD_P, {'idle': CHILD}),
-    'npc_king': (KING_P, {'idle': KING}),
-    'npc_sansin': (SANSIN_P, {'idle': SANSIN}),
-    'npc_dragonking': (DRAGONKING_P, {'idle': DRAGONKING}),
-    'npc_brother1': (BROTHER1_P, {'idle': BROTHER1}),
-    'npc_brother2': (BROTHER2_P, {'idle': BROTHER2}),
+    'npc_elder': (ELDER_P, _frames(ELDER)),
+    'npc_nanyeong': (NANYEONG_P, _frames(NANYEONG)),
+    'npc_seokgu': (SEOKGU_P, _frames(SEOKGU)),
+    'npc_villager_f': (VILLAGER_F_P, _frames(VILLAGER_F)),
+    'npc_dolsoe': (DOLSOE_P, _frames(DOLSOE)),
+    'npc_sick': (SICK_P, _frames(SICK)),
+    'npc_ghost': (GHOST_P, _frames(GHOST, small=True)),
+    'npc_suryeong': (SURYEONG_P, _frames(SURYEONG)),
+    'npc_official': (OFFICIAL_P, _frames(OFFICIAL)),
+    'npc_fisher': (FISHER_P, _frames(FISHER)),
+    'npc_child': (CHILD_P, _frames(CHILD, small=True)),
+    'npc_king': (KING_P, _frames(KING)),
+    'npc_sansin': (SANSIN_P, _frames(SANSIN)),
+    'npc_dragonking': (DRAGONKING_P, _frames(DRAGONKING)),
+    'npc_brother1': (BROTHER1_P, _frames(BROTHER1)),
+    'npc_brother2': (BROTHER2_P, _frames(BROTHER2)),
 }

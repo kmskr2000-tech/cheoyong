@@ -15,7 +15,8 @@ const FEET_ROW := 44 # feet row inside the 48px cell; the node origin sits on it
 
 # Sheet order written by art/build.py (art/src/cheoyong.py FRAMES).
 const SHEET := {
-	"down_idle": [0], "up_idle": [1], "right_idle": [2],
+	"down_idle": [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19], "up_idle": [1], "right_idle": [2],  # 3/4 stance + breath
+	"downl_idle": [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 21],  # the same, facing left
 	"down_walk": [3, 4, 5, 6], "up_walk": [7, 8, 9, 10], "right_walk": [11, 12, 13, 14],
 	"down_attack": [15], "up_attack": [16], "right_attack": [17],
 }
@@ -61,6 +62,7 @@ var pull_t := 0.0               # dragged toward pull_to (물귀신, 붉은 실)
 var pull_to := Vector2.ZERO
 var _stun_fx: Label
 var haste_t := 0.0              # 연풍
+var _last_h := 1.0              # last horizontal direction (the 3/4 idle faces it)
 var shinmyeong := 0.0                  # 신명: fills with landed blows and 받아넘기기; full → 처용무
 const SIN_PER_HIT := 2.5
 const SIN_PER_PARRY := 15.0
@@ -198,11 +200,15 @@ func _move(dir: Vector2) -> void:
 	move_and_slide()
 	if dir != Vector2.ZERO:
 		_face(dir)
+	if dir.x != 0.0:
+		_last_h = signf(dir.x)
 	var row := "right" if facing == "left" else facing
+	var anim := row + ("_walk" if dir != Vector2.ZERO else "_idle")
+	if anim == "down_idle" and _last_h < 0.0:
+		anim = "downl_idle"   # the 3/4 idle turns toward the side he last moved to
 	sprite.flip_h = facing == "left"
 	sprite.rotation = 0.0
 	sprite.scale = Vector2.ONE
-	var anim := row + ("_walk" if dir != Vector2.ZERO else "_idle")
 	if sprite.animation != anim:
 		sprite.play(anim)
 
