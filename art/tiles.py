@@ -99,15 +99,14 @@ STAMPS = {
         '.212.',
         '..a..',
     ],
-    'pebble': [
-        '.22.',
-        '2331',
-        '1221',
-        'abba',
+    'pebble': [  # seen at an angle: wide and flat, its shadow falling toward us
+        '.233.',
+        '12221',
+        '.abba',
     ],
     'pebble_s': [
-        '23',
-        'ab',
+        '23.',
+        'aba',
     ],
     'crack': [
         'b....',
@@ -207,7 +206,7 @@ def tone_texture(kind, seed):
 def flagstones(seed):
     """박석: irregular flat paving stones from a periodic Voronoi, beveled, with mossy joints."""
     rnd = random.Random(seed)
-    pts = [(rnd.random() * TEX, rnd.random() * TEX) for _ in range(100)]
+    pts = [(rnd.random() * TEX, rnd.random() * TEX) for _ in range(90)]
     shade = [rnd.random() for _ in pts]
     t = [[0.0] * TEX for _ in range(TEX)]
     owner = [[0] * TEX for _ in range(TEX)]
@@ -217,7 +216,7 @@ def flagstones(seed):
             for i, (px, py) in enumerate(pts):
                 dx = min(abs(x + 0.5 - px), TEX - abs(x + 0.5 - px))
                 dy = min(abs(y + 0.5 - py), TEX - abs(y + 0.5 - py))
-                d = math.hypot(dx, dy * 1.2)
+                d = math.hypot(dx, dy * 1.2)   # (the ground bake foreshortens depth by ground3d.K)
                 if d < best:
                     second, best, bi = best, d, i
                 elif d < second:
@@ -233,12 +232,16 @@ def flagstones(seed):
         for x in range(TEX):
             if t[y][x] == -9:
                 continue
-            up = t[(y - 1) % TEX][x] == -9 or t[y][(x - 1) % TEX] == -9
-            dn = t[(y + 1) % TEX][x] == -9 or t[y][(x + 1) % TEX] == -9
-            up2 = t[(y - 2) % TEX][x] == -9
-            if up: t[y][x] += 1.3
-            elif dn: t[y][x] -= 1.1
-            elif up2: t[y][x] += 0.5
+            up = t[(y - 1) % TEX][x] == -9
+            left = t[y][(x - 1) % TEX] == -9
+            dn = t[(y + 1) % TEX][x] == -9
+            dn2 = t[(y + 2) % TEX][x] == -9
+            right = t[y][(x + 1) % TEX] == -9
+            if dn: t[y][x] -= 1.7          # the near edge: each stone's thickness shows as a dark lip
+            elif dn2: t[y][x] -= 0.9
+            elif up: t[y][x] += 1.2        # the far edge catches the light (thin: it faces away)
+            elif left: t[y][x] += 0.6
+            elif right: t[y][x] -= 0.6
     return t
 
 
