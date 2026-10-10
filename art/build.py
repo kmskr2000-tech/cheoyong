@@ -46,6 +46,8 @@ def main():
     OUT.mkdir(exist_ok=True)
     for path in sorted(SRC.glob('*.py')):
         mod = load(path)
+        if getattr(mod, 'EMIT', True) is False:   # e.g. cheoyong.py: the hero sheet comes from art/hero.py
+            continue
         sheets = getattr(mod, 'SHEETS', None) or {path.stem: (mod.PALETTE, mod.FRAMES)}
         for sheet_name, (palette, fr) in sheets.items():
             emit(sheet_name, [(n, frame_image(r, palette, f'{sheet_name}:{n}')) for n, r in fr.items()], scale)

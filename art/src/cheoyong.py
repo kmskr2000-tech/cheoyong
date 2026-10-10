@@ -1,16 +1,19 @@
 # 처용 — 퇴마사 재해석: 검푸른 철릭(주름치마), 붉은 댕기·안감·허리띠, 청록 용비늘 숄, 등에 멘 대금,
 # 팔목 토시와 목 긴 신. 32x48 cells, feet (bottom outline) on row 44. Light from the upper left.
+# The sheet itself now comes from art/hero.py (a 3D figure rendered to HD-2D pixels); these grids stay
+# as the base the village NPCs are cut from, and PALETTE colours the weapon-arm cut-out to match.
+EMIT = False
 PALETTE = {
-    'o': '#0d0a12', 'k': '#08060c',
-    '1': '#4a2a2e', '2': '#8a5a52', '3': '#c08a72', '4': '#e6b896',
+    'o': '#100c14', 'k': '#0e0c12',
+    '1': '#6a4638', '2': '#8e6250', '3': '#ad8066', '4': '#c89e80',
     'h': '#0e0c16', 'i': '#1e1a2c', 'j': '#34304c', 'J': '#5a5a82',
-    'd': '#0d0e1c', 'e': '#171930', 'f': '#232848', 'g': '#363e66', 'G': '#56608e',
+    'd': '#21263a', 'e': '#2d3349', 'f': '#3b4259', 'g': '#4d546b', 'G': '#636a80',
     'r': '#3a0c14', 'R': '#6a1620', 'q': '#a02a2a', 'Q': '#d04838',
     't': '#0b272b', 'T': '#134046', 'u': '#1f6266', 'U': '#3a9088',
-    'y': '#6a4a1c', 'Y': '#b88a32', 'Z': '#f0cc6a',
+    'y': '#695330', 'Y': '#866c40', 'Z': '#bba372',
     'b': '#120e16', 'B': '#2a2234',
-    'w': '#d8d2c0', 'W': '#8e8a96',
-    'p': '#5a4420', 'P': '#a08640',
+    'w': '#454552', 'W': '#2a2a34',
+    'p': '#4c3a26', 'P': '#775f40',
 }
 
 DOWN = [
