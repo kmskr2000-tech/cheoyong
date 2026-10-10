@@ -40,6 +40,10 @@
 - 작업은 `main`에서 새 브랜치를 따서 하고, 끝나면 커밋·푸시한다.
 - **PR을 만들면 확인을 묻지 말고 바로 머지한다**(merge 커밋 방식). 머지 후 다음 작업은 다시 `main`에서 새 브랜치로.
 
+## 웹 빌드 (시험판)
+- `godot/export_presets.cfg` "Web"(스레드 없음) → `godot --headless --path godot --export-release Web ../build/web/index.html`. 템플릿은 `~/.local/share/godot/export_templates/4.4.1.stable/web_nothreads_release.zip`(전체 tpz에서 이 파일만 받아 둠)
+- 아티팩트는 파일당 15MB 제한: wasm을 4조각으로 나누고 페이지의 fetch 심이 다시 이어 붙인다(모든 조각 확장자 .wasm)
+
 ## 검증
 - 화면 확인: `xvfb-run` + `godot -- --capture=out.png --frames=N [--at=x,y] [--hold=action] [--seq=action:frame,...]`
   - 캡처 중엔 60fps 고정(프레임 ≈ 초×60). `--seq`는 실제 입력 이벤트를 보내므로 대화(confirm)도 넘길 수 있다.
