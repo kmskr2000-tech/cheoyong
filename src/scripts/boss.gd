@@ -77,8 +77,8 @@ func _ready() -> void:
 	var aura := PointLight2D.new()
 	aura.texture = _radial()
 	aura.color = Color(0.45, 0.95, 0.4)
-	aura.energy = 0.45
-	aura.texture_scale = 1.8
+	aura.energy = 0.85   # 위압감: 어두운 밤 배경에서 묻히지 않게 오라 강화 (2x 확대안은 화면 과점유+도트 밀도 불일치로 기각)
+	aura.texture_scale = 2.6
 	aura.position = Vector2(0, -52)
 	add_child(aura)
 	target = get_tree().current_scene.get_node_or_null("Player")
