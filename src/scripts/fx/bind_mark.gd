@@ -8,7 +8,8 @@ var _t := 0.0
 
 func _ready() -> void:
 	_s = CFX.sheet("bindmark", 4, 2, 0)
-	_s.position = Vector2(0, -44)
+	_s.position = Vector2(-16, -34)
+	_s.modulate.a = 0.75
 	add_child(_s)
 
 

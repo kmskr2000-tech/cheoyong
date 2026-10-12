@@ -112,10 +112,10 @@ static func screen_flash(tree: SceneTree, col: Color, sec: float) -> void:
 static func parry(pl: Node2D, ki_gain: float) -> void:
 	var par := pl.get_parent()
 	var at := pl.global_position + Vector2(0, -16)
-	play_once(par, at, "parry", 6, 22.0, 1.7, 1, 0, true)
-	play_once(par, at, "parry", 6, 16.0, 2.6, 1, 0, true)   # 바깥 파문: 한 번 더 크게
-	screen_flash(pl.get_tree(), Color(1, 1, 1, 0.55), 0.2)
-	screen_flash(pl.get_tree(), Color(0.2, 0.3, 0.7, 0.28), 0.45)   # 시간이 멈춘 듯한 푸른 가라앉음
+	play_once(par, at, "parry", 6, 22.0, 0.8, 1, 0, true)   # 작은 중심 섬광
+	play_once(par, at, "parry", 6, 16.0, 1.5, 1, 0, true)   # 바깥 파문: 가장자리 위주 링
+	screen_flash(pl.get_tree(), Color(1, 1, 1, 0.16), 0.12)
+	screen_flash(pl.get_tree(), Color(0.2, 0.3, 0.7, 0.12), 0.4)   # 시간이 멈춘 듯한 푸른 가라앉음
 	pop_text(par, pl.global_position + Vector2(0, -68), "+%d 소리" % int(ki_gain), COL_KI, 11, true)
 
 
@@ -196,8 +196,8 @@ static func synergy(host: Node2D, mult_text: String) -> void:
 	if now - int(host.get_meta("syn_text_ms", -9999)) >= 900:
 		host.set_meta("syn_text_ms", now)
 		var par := host.get_parent()
-		play_once(par, host.global_position + Vector2(0, -22), "bindmark", 4, 14.0, 1.4, 2, 1)
-		pop_text(par, host.global_position + Vector2(0, -46), mult_text, COL_FIRE, 12)
+		play_once(par, host.global_position + Vector2(18, -34), "bindmark", 4, 14.0, 1.0, 2, 1).modulate.a = 0.7
+		pop_text(par, host.global_position + Vector2(0, -66), mult_text, COL_FIRE, 12)
 
 
 # ---------------------------------------------------------------- 예고 굳음 (tell_lock, 진행 50%)
@@ -207,7 +207,7 @@ static func tell_lock(host: Node2D, body: CanvasItem, head_y := -18.0) -> void:
 	play_once(host.get_parent(), host.global_position + Vector2(0, head_y), "tellock", 5, 30.0, 1.0)
 	if body:
 		var tw := body.create_tween()
-		tw.tween_property(body, "self_modulate", Color(2.4, 2.4, 2.4), 0.04)
+		tw.tween_property(body, "self_modulate", Color(1.3, 1.3, 1.3), 0.05)
 		tw.tween_property(body, "self_modulate", Color.WHITE, 0.1)
 
 
