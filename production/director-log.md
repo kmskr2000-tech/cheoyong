@@ -278,3 +278,6 @@
 - [지시] 02:27 — 에이전트 배정: asset/combat-fx(6ce838f)를 조건부로 승인했습니다. 머지는 prog/balance-apply가 확정돼 먼저 머지된 뒤, 이펙트 브랜치를 재검증(combat_strategy, smoke, save_check)해서 통과해야 진행합니다.
 - [지시] 02:27 — 에이전트 배정: Same S4 report as before, resent. Already approved and handed to 통합배포 for merge and deploy, and logged to main (ea569bc). I'm waiting on that merge result.
 - [지시] 02:27 — 에이전트 배정: Agent "프로그래밍팀-S4버그수정" finished · 31m 44s
+- [검토] 02:32 프로그래밍팀-전투밸런스적용(c6c2c14) — 스윕: 수치만으론 탭 지배 미해소(HP800까지 낮춰도 탭 5/5·사망 0). 메커니즘 BOSS_OPEN_IF_HIT=0(맞으면 열림 없음) 추가 시 탭 사망 0→5.0·처치 5/5→2/5, reader/window 는 봇 회피 한계로 0/5.
+- [결정] 02:32 보스 밸런스 — 메커니즘 유지, 상수 HP1000/IDLE0.5/OPEN2.0/CAST1.25 확정. 봇 회피 개선 후 재측정, 전체 회귀 재실행 후 승인 판단(기한 04:00). 사람 플레이 확인은 폰 체크리스트 항목.
+- [승인] 02:32 프로그래밍팀-통합배포 — prog/s4-fixes PR #45 머지(151ce90), main smoke 7/7, 배포 20261013022948 live 일치.
