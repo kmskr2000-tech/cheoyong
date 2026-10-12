@@ -280,7 +280,7 @@ func set_setting(k: String, v) -> void:
 ## Save format (user://save.json, JSON object). `save_version`: absent = v1 (legacy), 2 = adds the field.
 ## Rules: never rename/remove an existing key; new fields get defaults in _migrate(). Unknown keys
 ## (e.g. written by a newer build) are kept in _save_extra and written back, so they are not lost.
-## Corrupt files (bad JSON / wrong types / missing "flags") are moved to save.json.bad and has_save() is false.
+## Corrupt files (bad JSON / not an object / missing "flags") are moved to save.json.bad and has_save() is false; a wrongly typed key just falls back to its default. Unreadable (I/O) files are never touched.
 const SAVE_VERSION := 2
 const SAVE_BAD_PATH := "user://save.json.bad"
 const SAVE_TMP_PATH := "user://save.json.tmp"
@@ -297,15 +297,47 @@ const _SAVE_TYPES := {
 }
 var _save_extra := {}     # unknown keys from the loaded file, preserved on save
 var _save_version := 0    # version of the last loaded file
+var _read_failed := false
+var _save_protected := false   # true: existing file unreadable / unbacked-up, save() must not overwrite
+var _future_backed_up := false
 
 
 func save() -> void:
+	if _save_protected:   # the existing file could not be read/quarantined: never overwrite it
+		push_warning("save: skipped, existing save.json is unreadable and could not be backed up")
+		return
 	var data: Dictionary = _save_extra.duplicate(true)
 	data.merge({"flags": flags, "money": money, "items": items, "checkpoint": checkpoint,
 		"jeonggi": jeonggi, "deok": deok, "lv": lv, "skill_points": skill_points, "skills": skills, "mats": mats,
 		"dogam": dogam, "tal": tal, "tals": tals, "accessories": accessories, "titles": titles}, true)
+	# A file from a newer build keeps its version label (and unknown keys); we only update fields we know.
+	# Before the first overwrite of such a file, keep a one-time backup of it.
 	data["save_version"] = maxi(SAVE_VERSION, _save_version)
+	if _save_version > SAVE_VERSION and not _future_backed_up and FileAccess.file_exists(SAVE_PATH):
+		var bak := "user://save.json.v%d.bak" % _save_version
+		var orig := FileAccess.get_file_as_string(SAVE_PATH)
+		if orig != "" and _write_text(bak, orig):
+			_future_backed_up = true
+		else:
+			push_warning("save: could not back up newer-version save; not overwriting")
+			return
 	_write_atomic(JSON.stringify(data))
+
+
+func _write_text(path: String, text: String) -> bool:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_string(text)
+	f.flush()
+	f.close()
+	return FileAccess.get_file_as_string(path) == text
+
+
+## Web builds persist user:// (IndexedDB) after file *writes*; a bare rename may not trigger a sync.
+func _web_sync() -> void:
+	if OS.has_feature("web"):
+		_write_text("user://.sync", str(Time.get_ticks_msec()))
 
 
 ## Write to a temp file, verify it re-parses, then rename over the real file (rename overwrites on POSIX
@@ -337,6 +369,7 @@ func _write_atomic(text: String) -> bool:
 		g.store_string(text)
 		g.close()
 		dir.remove("save.json.tmp")
+	_web_sync()
 	return true
 
 
@@ -344,27 +377,40 @@ func _quarantine_save(reason: String) -> void:
 	push_warning("save: corrupt save.json (%s) -> moved to save.json.bad" % reason)
 	var dir := DirAccess.open("user://")
 	if dir == null:
+		_save_protected = true
 		return
+	var orig := FileAccess.get_file_as_string(SAVE_PATH)
 	if dir.file_exists("save.json.bad"):   # keep the previous quarantined file instead of overwriting it
 		dir.rename("save.json.bad", "save.json.bad.%d" % Time.get_unix_time_from_system())
-	if dir.rename("save.json", "save.json.bad") != OK:
-		# could not move: copy, then leave the original (has_save stays false because it is still invalid)
-		dir.copy("save.json", "save.json.bad")
+	# copy by writing (works the same on web), verify, then remove the original
+	if _write_text("user://save.json.bad", orig):
+		dir.remove("save.json")
+		_save_protected = dir.file_exists("save.json")
+	else:
+		_save_protected = true   # backup failed: keep the original and refuse to overwrite it
+	_web_sync()
 
 
-## Parse + validate + migrate. Returns the normalized dict, or {} if there is no usable save
-## (corrupt files are quarantined as a side effect).
+## Parse + validate + migrate. Returns the normalized dict, or {} if there is no usable save.
+## Sets _read_failed when a file exists but could not be read (I/O problem: nothing is quarantined).
 func _read_save() -> Dictionary:
+	_read_failed = false
 	if not FileAccess.file_exists(SAVE_PATH):
 		# interrupted save: the verified temp file is the newest data -> promote it
-		if FileAccess.file_exists(SAVE_TMP_PATH) and typeof(JSON.parse_string(FileAccess.get_file_as_string(SAVE_TMP_PATH))) == TYPE_DICTIONARY:
-			DirAccess.rename_absolute(SAVE_TMP_PATH, SAVE_PATH)
+		if FileAccess.file_exists(SAVE_TMP_PATH):
+			var t := FileAccess.get_file_as_string(SAVE_TMP_PATH)
+			if typeof(JSON.parse_string(t)) == TYPE_DICTIONARY and _write_text(SAVE_PATH, t):
+				DirAccess.remove_absolute(SAVE_TMP_PATH)
+				_web_sync()
 		if not FileAccess.file_exists(SAVE_PATH):
 			return {}
 	var rf := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if rf == null:   # locked / unreadable is an I/O problem, not corruption: do not quarantine
 		push_warning("save: cannot read save.json (%d)" % FileAccess.get_open_error())
+		_read_failed = true
+		_save_protected = true
 		return {}
+	_save_protected = false
 	var parsed = JSON.parse_string(rf.get_as_text())
 	rf.close()
 	if typeof(parsed) != TYPE_DICTIONARY:
@@ -374,17 +420,21 @@ func _read_save() -> Dictionary:
 	if not data.has("flags"):
 		_quarantine_save("missing required key 'flags'")
 		return {}
-	for k in _SAVE_TYPES:
+	var repaired := false
+	for k in _SAVE_TYPES:   # a wrongly typed key is reset to its default; the rest of the save survives
 		if data.has(k):
 			var t := typeof(data[k])
 			var want: int = _SAVE_TYPES[k]
 			if t != want and not (want == TYPE_FLOAT and t == TYPE_INT):
-				_quarantine_save("key '%s' has wrong type" % k)
-				return {}
+				push_warning("save: key '%s' has wrong type; using default" % k)
+				data[k] = SAVE_DEFAULTS[k].duplicate(true) if SAVE_DEFAULTS[k] is Array or SAVE_DEFAULTS[k] is Dictionary else SAVE_DEFAULTS[k]
+				repaired = true
 	var ver = data.get("save_version", 1)   # no version field = legacy v1
 	if typeof(ver) != TYPE_FLOAT and typeof(ver) != TYPE_INT:
-		_quarantine_save("bad save_version")
-		return {}
+		push_warning("save: bad save_version; treating as v1")
+		ver = 1
+	if repaired and not FileAccess.file_exists("user://save.json.bad"):
+		_write_text("user://save.json.bad", FileAccess.get_file_as_string(SAVE_PATH))   # keep original of repaired save
 	return _migrate(data, int(ver))
 
 
@@ -410,7 +460,8 @@ func _intify(d: Dictionary) -> Dictionary:
 
 
 func has_save() -> bool:
-	return not _read_save().is_empty()
+	var d := _read_save()
+	return not d.is_empty() or _read_failed   # unreadable-but-present counts as "a save exists"
 
 
 func load_save() -> bool:
@@ -450,7 +501,7 @@ func new_game() -> void:
 	spawn_name = "start"
 	jeonggi = 0; deok = 0; lv = 1; skill_points = 0; skills = []
 	mats = {}; dogam = {}; tal = ""; tals = []; accessories = []; titles = []
-	_save_extra = {}; _save_version = 0
+	_save_extra = {}; _save_version = 0; _future_backed_up = false
 
 
 ## where a fresh start / continue / death puts you

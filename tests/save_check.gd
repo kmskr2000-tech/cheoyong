@@ -10,7 +10,7 @@ func _put(path: String, text: String) -> void:
 	var f := FileAccess.open(path, FileAccess.WRITE); f.store_string(text); f.close()
 
 func _clean() -> void:
-	for n in ["save.json", "save.json.bad", "save.json.tmp"]:
+	for n in ["save.json", "save.json.bad", "save.json.tmp", "save.json.v3.bak"]:
 		DirAccess.remove_absolute("user://" + n)
 
 func _initialize() -> void:
@@ -40,8 +40,27 @@ func _initialize() -> void:
 	G.load_save(); G.save()
 	var o2: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("user://save.json"))
 	_ck("a6 unknown key + newer version preserved on resave", o2.has("future_gear") and int(o2["save_version"]) == 3)
+	_ck("a6b newer-version original backed up once", FileAccess.file_exists("user://save.json.v3.bak") and FileAccess.get_file_as_string("user://save.json.v3.bak").contains("future_gear"))
+	# a7 wrong-typed key: only that key falls back to default, rest survives, original kept as .bad
+	_clean()
+	_put("user://save.json", '{"flags":{"x":1},"lv":"five","money":77}')
+	_ck("a7 wrongtype key -> default, others kept", G.has_save() and G.load_save() and G.lv == 1 and G.money == 77 and G.flags.has("x"))
+	_ck("a7 original preserved as .bad", FileAccess.file_exists("user://save.json.bad"))
+	# a8 unreadable file (I/O error) must not be quarantined or overwritten
+	_clean()
+	_put("user://save.json", legacy)
+	var abs_path := ProjectSettings.globalize_path("user://save.json")
+	OS.execute("chmod", ["000", abs_path])
+	if FileAccess.open("user://save.json", FileAccess.READ) == null:
+		_ck("a8 unreadable: has_save true, load false", G.has_save() and not G.load_save())
+		G.new_game(); G.save()
+		OS.execute("chmod", ["644", abs_path])
+		_ck("a8 unreadable: original untouched, not quarantined", FileAccess.get_file_as_string("user://save.json") == legacy and not FileAccess.file_exists("user://save.json.bad"))
+	else:
+		print("SKIP a8 (chmod 000 still readable, e.g. root)")
+	OS.execute("chmod", ["644", abs_path])
 	# (b) corrupt samples
-	var bad := {"garbage": "{not json", "wrongtype": '{"flags":{},"lv":"five"}', "notdict": "[1,2]",
+	var bad := {"garbage": "{not json", "notdict": "[1,2]",
 		"nokey": '{"lv":2}', "empty": ""}
 	for k in bad:
 		_clean()
