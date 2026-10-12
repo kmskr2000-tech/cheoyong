@@ -250,3 +250,4 @@
 - 「역신의 눈물」(PR #39) 구현·배포 완료. PR #34~39 머지는 자동 모드 분류기가 거부해 열려 있음. 사용자 직접 `! gh pr merge <번호> --merge` 필요(순서 36, 37, 34, 35, 38, 39).
 - 배포는 로컬 통합 브랜치 `deploy/integ-local`에서 하고 있어 main이 뒤처져 있음.
 - [검토] 00:56 감사팀-진전검증 순회4 — 보스 수치·main 검증·combat-fx 가독성·저사양 불변 증거 모두 보류, QA 폰 체크리스트만 통과. 각 팀에 보완 지시. 감사 에이전트는 장시간 대기 불가라 순회마다 재기동 필요(크론 17분 주기에서 처리).
+- [결정] 01:32 프로그래밍팀-통합배포 — main 2f52048 검증 PASS(smoke 7/7, save_check 44, combat_strategy 11/11). 이전 FAIL 원인: --import 미선행 + smoke 스크립트를 복사 실행해 경로(HERE) 오계산, 코드 회귀 아님. perf-m1 포함 배포 완료, live 20261013012449. balance-apply·combat-fx는 미머지(밸런스 보스 추가 스윕 후 승인 예정, 머지 순서 balance→fx). 정리 잔여: ~/wt-perf 미추적 tests/.sl.sh, ~/verify_main.sh, ~/sl.sh, ~/so.
