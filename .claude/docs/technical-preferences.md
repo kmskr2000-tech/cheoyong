@@ -52,7 +52,7 @@
 ## Forbidden Patterns
 
 <!-- Add patterns that should never appear in this project's codebase -->
-- 외부 에셋 사용 금지(CC0/MIT 확인 전). 도트·사운드는 전부 코드 생성(art/*.py)
+- 외부 에셋은 CC0/MIT 확인 전 금지. **예외: 사용자 제공 AI 생성 도트 세트(`files/game-assets`, 구글드라이브 '신처용가-게임에셋') — 사용자가 2026-10-12 사용·업그레이드를 승인.** 단 `art/import_external.py`로 팔레트·알파·배율을 정규화해야 하고, 생성 도구의 상업 이용 약관은 출시 전 사용자 확인 필요. 기본 도트·사운드는 코드 생성(art/*.py)
 - 조선 시대 복식(갓·도포) 신규 사용 금지 — 신라 복식 규칙(복두·관모·직령/단령)
 
 ## Allowed Libraries / Addons
