@@ -326,3 +326,4 @@
 - [지시] 06:12 — 에이전트 배정: Agent "프로그래밍팀-챕터2진입검증" finished · 10m 17s
 - [지시] 06:12 — 에이전트 배정: prog/ch2-enter(cd10334)를 승인했고, 통합배포에 main 머지만 지시했습니다. 배포는 막았습니다(기한 08:30). 감사팀이 짚은 보류 3건이 모두 처리됐습니다.
 - [검토] 06:13 프로그래밍팀-통합배포 — prog/ch2-enter PR #50 머지(main 65533ff), 머지 후 검증 통과(smoke 9/9·save 44·art_walk 8/8·chapter1 FAIL 0·combat_strategy 11/11·quality_fallback, 신규 ch2 3시나리오 PASS). 배포 안 함, 라이브 20261013030331 유지. main=챕터2 M1+진입 수정 포함.
+- [지시] 06:17 — 에이전트 배정: Agent "프로그래밍팀-통합배포" finished · 4m 29s
