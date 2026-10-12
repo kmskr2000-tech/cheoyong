@@ -194,7 +194,7 @@ const DATA := {
 		"name": "지리산 산길",
 		"ground": "jiri",
 		"ambient": Color(0.40, 0.44, 0.60),
-		"spawns": {"fromHwagae": Vector2(24, 205), "start": Vector2(24, 205), "fromVillage": Vector2(656, 24), "fromDen": Vector2(1088, 100)},
+		"spawns": {"fromHwagae": Vector2(24, 205), "start": Vector2(24, 205), "fromVillage": Vector2(656, 46), "fromDen": Vector2(1088, 100)},
 		"props": [["rockwall", 532, 152, null], ["rockwall", 580, 152, null], ["rockwall", 556, 310, null], ["rockwall", 604, 310, null], ["cairn", 430, 240, null]],
 		"lights": [],
 		"npcs": [["sansin", "npc_sansin", 250, 175, "산신령"]],
@@ -220,7 +220,7 @@ const DATA := {
 		# doll(짚인형, 의뢰 B)은 girl_soul 사연을 들은 뒤 story.gd 가 add_interact 로 켠다. grave = 마을 어귀 무덤
 		"interact": [["grave", 96, 380, "무덤"]],
 		# 불도깨비 3 · 외눈박이 1. 폴백 지형엔 우회로가 없어 요괴를 피해 갈 수는 없지만, 사연·인형·무덤은 서쪽 절반(요괴 어그로 밖)에 둬서 전투 없이 의뢰를 끝낼 수 있다.
-		"enemies": [["dokkaebi_fire", 300, 290], ["dokkaebi_fire", 400, 180], ["dokkaebi_fire", 450, 120], ["dokkaebi_oneeye", 520, 70]],
+		"enemies": [["dokkaebi_fire", 360, 225], ["dokkaebi_fire", 425, 175], ["dokkaebi_fire", 480, 112], ["dokkaebi_oneeye", 535, 60]],
 		"exits": [[Rect2(0, 355, 6, 48), "jiri_path", "fromVillage"]],
 		"anchors": {"doll": Vector2(126, 250), "grave": Vector2(96, 380), "exit": Vector2(14, 380)},
 	},
@@ -251,11 +251,11 @@ const DATA := {
 		"ground": "gwana",
 		"ambient": Color(0.30, 0.30, 0.46),
 		"spawns": {"start": Vector2(95, 395), "fromDen3": Vector2(490, 64)},
-		"props": [["pillar", 250, 252, null], ["pillar", 330, 255, null], ["pillar", 385, 195, null], ["pillar", 345, 165, null], ["jars", 240, 300, null], ["jars", 300, 300, null], ["beam", 140, 340, null]],
+		"props": [["pillar", 250, 252, null], ["pillar", 330, 255, null], ["pillar", 385, 195, null], ["pillar", 372, 150, null], ["jars", 240, 300, null], ["jars", 300, 300, null], ["beam", 140, 340, null]],
 		"lights": [[200, 204, GHOSTFIRE, 0.7, 0.5], [343, 100, GHOSTFIRE, 0.6, 0.5], [496, 80, GHOSTFIRE, 0.5, 0.5], [148, 416, GHOSTFIRE, 0.4, 0.5]],
 		"npcs": [],
 		"interact": [],
-		"enemies": [["jangsanbeom", 272, 228], ["dokkaebi_oneeye", 235, 282], ["dokkaebi_oneeye", 390, 160], ["dokkaebi_fire", 385, 235]],
+		"enemies": [["jangsanbeom", 272, 228], ["dokkaebi_oneeye", 235, 282], ["dokkaebi_oneeye", 358, 185], ["dokkaebi_fire", 385, 235]],
 		"exits": [[Rect2(50, 400, 100, 19), "den1", "fromDen2"], [Rect2(450, 36, 80, 12), "den3", "start"]],
 		# door: 동쪽 문 앞을 막는 막(정예 정화 전). 열림 = den2_gate_cleared
 		"anchors": {"door": Rect2(430, 66, 110, 12), "exit": Vector2(490, 44)},

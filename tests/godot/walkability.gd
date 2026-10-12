@@ -19,12 +19,26 @@ const ROUTES := {
 	"hwagae": [Vector2(312, 342), Vector2(360, 320), Vector2(205, 275), Vector2(430, 255), Vector2(560, 135), Vector2(655, 60), Vector2(706, 14)],
 	"jiri_path": [Vector2(200, 205), Vector2(300, 190), Vector2(440, 195), Vector2(470, 235), Vector2(580, 215), Vector2(625, 150), Vector2(640, 100), Vector2(665, 80), Vector2(765, 235), Vector2(940, 100), Vector2(960, 250), Vector2(10, 205)],
 	# 2장 M2 (폴백 지형 village/pyega1/gwana/pyega2 — 걸을 수 있는 자리에 맞춘 좌표, 마지막 지점이 출구 안쪽)
-	"old_village": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 380), Vector2(300, 262), Vector2(420, 170), Vector2(500, 90), Vector2(540, 56), Vector2(14, 380)],
+	"old_village": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 380), Vector2(320, 262), Vector2(430, 168), Vector2(480, 125), Vector2(535, 70), Vector2(14, 380)],
 	"den1": [Vector2(100, 392), Vector2(250, 415), Vector2(235, 318), Vector2(225, 262), Vector2(146, 222), Vector2(312, 332), Vector2(395, 432), Vector2(556, 386), Vector2(582, 384)],
 	"den2": [Vector2(150, 350), Vector2(240, 282), Vector2(272, 228), Vector2(330, 200), Vector2(390, 160), Vector2(490, 64), Vector2(490, 44), Vector2(100, 405)],
 	"den3": [Vector2(284, 330), Vector2(284, 308), Vector2(400, 190), Vector2(480, 150), Vector2(700, 200), Vector2(284, 416)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
+# --live: 요괴를 살려 둔 채 '실제 보행 경로'로 연출 지점·상호작용 지점까지 걸어가며 어그로(state != idle)가 한 번도 없는지 본다 (god/tp 로 가려지는 문제 방지).
+# 키 "<맵>:<스폰>" → 걸어갈 footprint 지점들(빈 배열 = 스폰에서 2초 가만히). 마지막 지점에서도 2초 버틴다. 트리거·출구는 꺼 둔다(장면 전환·대사 없이 거리만 본다).
+const LIVE := {
+	"jiri_path:fromHwagae": [Vector2(240, 195)],
+	"jiri_path:fromVillage": [],
+	"jiri_path:fromDen": [],
+	"old_village:start": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 378)],
+	"den1:start": [Vector2(80, 392)],
+	"den1:fromDen2": [Vector2(554, 384)],
+	"den2:start": [],
+	"den2:fromDen3": [],
+	"den3:start": [Vector2(284, 310)],
+}
+var live := false
 var G: Node
 var level: Node
 var space: PhysicsDirectSpaceState2D
@@ -48,6 +62,7 @@ func _initialize() -> void:
 		elif a.begins_with("--spawn="): spawn = a.get_slice("=", 1)
 		elif a.begins_with("--flags="): flags = a.get_slice("=", 1)
 		elif a.begins_with("--dump="): dump = a.get_slice("=", 1)
+		elif a == "--live": live = true
 	G = root.get_node("Game")
 	G.level_id = map_id
 	G.spawn_name = spawn
@@ -164,6 +179,9 @@ func _walk(path: Array[Vector2], label: String) -> bool:
 		while p.position.distance_to(wp) > 2.5:
 			await physics_frame
 			frames += 1
+			if live and not _aggro_check(label):
+				_release()
+				return false
 			var d := (wp - p.position)
 			var dir := d.normalized()
 			Input.action_press("move_right", maxf(dir.x, 0.0))
@@ -177,6 +195,58 @@ func _walk(path: Array[Vector2], label: String) -> bool:
 		_release()
 	await physics_frame
 	return true
+
+
+## --live 전용: 어그로가 걸린 요괴가 있으면 실패 기록
+func _aggro_check(label: String) -> bool:
+	for e in get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or e.is_queued_for_deletion():
+			continue
+		if e.get("state") != "idle":
+			fails.append("%s: 연출 전 어그로 — %s(%s) state=%s, 플레이어 %s" % [label, e.get("kind"), str(e.position), e.get("state"), str(level.get_node("Player").position)])
+			return false
+	return true
+
+
+func _live_main(player: Node2D, prev: Dictionary) -> void:
+	var key := "%s:%s" % [map_id, G.spawn_name]
+	if not LIVE.has(key):
+		_fail("LIVE 정의 없음: " + key)
+		return
+	var en := get_nodes_in_group("enemy")
+	print("INFO live %s 요괴 %d체" % [key, en.size()])
+	if not _aggro_check(key + " 시작"):
+		pass
+	var cur := player.position
+	for pt in LIVE[key]:
+		if not fails.is_empty():
+			break
+		var goal: Vector2 = level.lift(pt)
+		var pv := _bfs(_cell(cur))
+		var gc := _near(pv, goal, 4.0)
+		if gc.x == -9999:
+			fails.append("%s: 경로 없음 %s" % [key, str(pt)])
+			break
+		var path := _path(pv, gc)
+		await _walk(path, key + " →" + str(pt))
+		cur = player.position
+		print("  walk ", "%s 도착 %s" % [str(pt), str(cur)])
+	var md := 1.0e9
+	for i in 120:
+		await physics_frame
+		if not _aggro_check(key + " 대기"):
+			break
+		for e in get_nodes_in_group("enemy"):
+			if is_instance_valid(e) and not e.is_queued_for_deletion():
+				md = minf(md, e.global_position.distance_to(player.global_position))
+	print("INFO live %s 최소 요괴 거리 %.0f (어그로 130)" % [key, md])
+	if fails.is_empty():
+		print("LIVE_RESULT %s PASS" % key)
+		quit(0)
+	else:
+		for f in fails:
+			print("FAIL: [%s] %s" % [key, f])
+		quit(1)
 
 
 func _release() -> void:
@@ -196,7 +266,10 @@ func _main() -> void:
 		_fail("레벨이 로드되지 않음")
 		return
 	var player: Node2D = level.get_node("Player")
-	for e in get_nodes_in_group("enemy"):   # 지형만 본다: 적은 막거나 때리지 않게 치운다 (적 위치는 아래 targets 에서 따로 확인)
+	for e in get_nodes_in_group("enemy"):
+		if live:
+			break
+		# 지형만 본다: 적은 막거나 때리지 않게 치운다 (적 위치는 아래 targets 에서 따로 확인)
 		e.process_mode = Node.PROCESS_MODE_DISABLED
 		e.collision_layer = 0
 		e.collision_mask = 0
@@ -218,6 +291,16 @@ func _main() -> void:
 		_fail("시작 위치가 막혀 있음 %s" % str(player.position))
 		return
 	var prev := _bfs(start)
+	if live:
+		for i in 3:
+			await physics_frame   # 출구·트리거 Area 는 call_deferred 로 붙으므로 기다린 뒤에 끈다
+	for ch in level.get_children():   # 장면 전환·대사 없이 걷게 (live 에서도 구역은 끈다)
+		if live and ch is Area2D:
+			ch.set_deferred("monitoring", false)
+	if live:
+		await physics_frame
+		await _live_main(player, prev)
+		return
 	print("INFO %s 도달 가능 칸 %d (격자 %dx%d)" % [map_id, prev.size(), gw, gh])
 	if dump != "":   # 디버그: 도달 가능한 발판 위치를 그림 좌표로 칠한 PNG
 		var img := Image.create(gw * CELL, gh * CELL, false, Image.FORMAT_RGBA8)
