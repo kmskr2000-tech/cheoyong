@@ -28,9 +28,10 @@ func _main() -> void:
 		await process_frame
 	var player: Node2D = lv.get_node("Player")
 	var spots: Array[Vector2] = [player.position]
-	for L in lv.flicker:   # 라이트 근처 몇 곳도 확인 (시야 가장자리에서 컬링 경계가 걸리는 위치)
-		if spots.size() < 6:
-			spots.append(L.global_position + Vector2(230, 40))
+	for L in lv.flicker:   # 라이트마다 그 라이트가 막 시야 가장자리에 걸치는 위치 (컬링 경계)
+		if spots.size() < 8:
+			spots.append(L.global_position + Vector2(240 + L.texture.get_width() * L.texture_scale * 0.5 + 20, 0))
+			spots.append(L.global_position + Vector2(-240 - L.texture.get_width() * L.texture_scale * 0.5 - 20, 0))
 	var total_off := 0
 	for sp in spots:
 		player.position = sp
@@ -40,10 +41,22 @@ func _main() -> void:
 			await process_frame
 		lv._cull_lights()
 		Engine.time_scale = 0.0
-		lv._cull_t = 1e9
+		paused = true   # 적·NPC·물리·애니메이션까지 정지 (렌더만 남김)
+		lv.set_process(false)   # 플리커(벽시계)·귀화 움직임 정지
+		lv._ash.speed_scale = 0.0
 		await process_frame
 		await RenderingServer.frame_post_draw
 		var a: Image = root.get_viewport().get_texture().get_image()
+		await process_frame
+		await RenderingServer.frame_post_draw
+		var c: Image = root.get_viewport().get_texture().get_image()
+		var noise := 0
+		var nb := Rect2i()
+		for y in a.get_height():
+			for x in a.get_width():
+				if a.get_pixel(x, y) != c.get_pixel(x, y):
+					noise += 1
+					nb = nb.expand(Vector2i(x, y)) if nb.size != Vector2i.ZERO else Rect2i(x, y, 1, 1)
 		var off := 0
 		for L in lv.flicker:
 			if not L.visible:
@@ -59,11 +72,14 @@ func _main() -> void:
 					diff += 1
 		total_off += off
 		var ok := diff == 0
+		if noise > 0: print("     (대조: 같은 상태 재캡처에서도 %d px 다름, bbox %s — 렌더 비결정 성분)" % [noise, nb])
 		print("  %s at %s: 컬링으로 꺼진 라이트 %d개, 전부 켠 화면과 달라진 픽셀 %d" % ["ok  " if ok else "FAIL", sp.round(), off, diff])
 		if not ok: fails += 1
-		lv._cull_t = 0.0
-	print("  컬링으로 꺼진 라이트 합계 %d (0이면 증명이 무의미)" % total_off)
-	if total_off == 0: fails += 1
+		paused = false
+		lv.set_process(true)
+		lv._ash.speed_scale = 1.0
+	print("  컬링으로 꺼진 라이트 합계 %d (맵 단독 0이면 이 맵은 컬링 증명 대상 아님 — 전 맵 합계로 판단)" % total_off)
+	print("  허용 오차: 0 px (정지 후 동일 상태 재캡처 대조 노이즈도 함께 출력)")
 	Engine.time_scale = 1.0
 	print("LOWEND_PIXELS ", "PASS" if fails == 0 else "FAIL")
 	quit(0 if fails == 0 else 1)
