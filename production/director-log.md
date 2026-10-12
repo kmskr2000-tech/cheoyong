@@ -101,3 +101,4 @@
 ### 다른 개발 상태 (참고)
 - 「역신의 눈물」(PR #39) 구현·배포 완료. PR #34~39 머지는 자동 모드 분류기가 거부해 열려 있음. 사용자 직접 `! gh pr merge <번호> --merge` 필요(순서 36, 37, 34, 35, 38, 39).
 - 배포는 로컬 통합 브랜치 `deploy/integ-local`에서 하고 있어 main이 뒤처져 있음.
+- 통합배포: prog/bugfix2(45dde40) 배포 20261012195152, asset/hero-detail(c81df43) 합쳐 배포 20261012200305 (smoke 7/7·save_check 36·regress PASS). terrain-collision·combat-strategy는 체크포인트 미완이라 대기.
