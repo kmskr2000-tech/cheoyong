@@ -11,7 +11,7 @@ mkdir -p "$OUT"
 HARNESS="$HERE/tests/godot/harness.gd"
 TIMEOUT="${TIMEOUT:-300}"
 fail=0
-DEFAULT=(cs_parry cs_charge cs_guard cs_targeting cs_economy cs_boss cs_deaths)
+DEFAULT=(cs_parry cs_charge cs_guard cs_targeting cs_economy cs_boss cs_deaths cs_wave cs_aura cs_tutorial cs_cover)
 SCNS=("$@"); [ ${#SCNS[@]} -eq 0 ] && SCNS=("${DEFAULT[@]}")
 for name in "${SCNS[@]}"; do
   log="$OUT/$name.log"
@@ -20,7 +20,8 @@ for name in "${SCNS[@]}"; do
   if [ "${RENDER:-headless}" = "xvfb" ]; then cmd=(xvfb-run -a "$GODOT" --rendering-driver opengl3); else cmd+=(--headless); fi
   args=()
   case "$name" in
-    cs_boss*) args+=(--level=pyega2) ;;
+    cs_boss*|cs_aura) args+=(--level=pyega2) ;;
+    cs_tutorial) args+=(--level=beach --beach-fight) ;;
     *) args+=(--level=pyega1) ;;
   esac
   t0=$SECONDS

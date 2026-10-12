@@ -105,6 +105,18 @@ func _ready() -> void:
 			_test_after_unlock(func(): gentle_hits = 1; hurt(5, Vector2.LEFT))
 		if a == "--test-die":    # 스프라이트 확인용: 0.6초 뒤 쓰러진다
 			_test_after_unlock(func(): _die())
+		if a == "--test-charge":   # CS-13: 베기 버튼을 1.5초 눌러 충전(0.45 진입 + 0.9 만충) 후 놓아 강 베기를 쓴다
+			_test_after_unlock(func():
+				Input.action_press("attack")
+				await get_tree().create_timer(1.5).timeout
+				Input.action_release("attack"))
+		if a == "--test-parry":    # CS-13: 구르기 시작 0.05초 뒤 인공 근접 접촉 → 받아넘기기
+			_test_after_unlock(func():
+				Input.action_press("roll")
+				await get_tree().create_timer(0.05).timeout
+				Input.action_release("roll")
+				await get_tree().create_timer(0.05).timeout
+				hurt(8, Vector2.LEFT, true))
 	Game.leveled.connect(_on_leveled)
 	Game.skills_changed.connect(func():  # 심해의 인내 raises the ceiling at once
 		var gain := Game.max_hp() - max_hp
@@ -976,7 +988,10 @@ func _talisman() -> void:
 			for e in get_tree().get_nodes_in_group("enemy"):
 				var to: Vector2 = e.global_position - global_position
 				if to.length() < 70.0 and absf(wrapf(to.angle() - ang, -PI, PI)) < 0.9 and e.has_method("take_hit"):
-					e.take_hit(6, to.normalized() * 2.0, true)
+					var bound: bool = e.get("bind_t") != null and e.bind_t > 0.0   # S4 묶어 울리기: 결박된 적은 피해 ×2·넉백 ×0.5
+					e.take_hit(6 * (int(CT.WAVE_BIND_DMG_MULT) if bound else 1), to.normalized() * 2.0 * (CT.WAVE_BIND_KNOCK_MULT if bound else 1.0), true)
+					if e.has_method("_interrupt"):
+						e._interrupt()   # 파동은 예고·시전을 끊는다
 			for i in 3:
 				SoundWave.fire(self, ang + (i - 1) * 0.35, 4)
 	_paper_fx()

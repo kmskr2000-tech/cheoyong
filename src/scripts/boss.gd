@@ -29,6 +29,10 @@ var knock := Vector2.ZERO
 var bind_t := 0.0             # 결박부: held to a crawl
 var aim := 0.0
 var coughs := 0
+var aura: PointLight2D
+const AURA_IDLE := Color(0.45, 0.95, 0.4)
+const AURA_COLOR := {"fog": Color(0.35, 1.0, 0.35), "cough": Color(1.0, 0.3, 0.25), "clones": Color(0.7, 0.35, 1.0)}   # 안개 녹 / 기침 적 / 졸개 보라
+const AURA_WARN := 0.5        # 패턴 직전 이 시간 동안 다음 패턴의 색 오라 (글 없이 색만)
 var home_pos := Vector2.ZERO   # 재도전 때 돌아갈 자리 (스토리가 깨울 때 기록)
 var open_t := 0.0             # CS-06: 열림(후딜) 지속 — 이동·공격 불가, 받는 피해 ×1.5
 var sprite: AnimatedSprite2D
@@ -77,7 +81,7 @@ func _ready() -> void:
 	mi.color = Color(0.45, 0.85, 0.35, 0.35)
 	mi.z_index = -1
 	add_child(mi)
-	var aura := PointLight2D.new()
+	aura = PointLight2D.new()
 	aura.texture = _radial()
 	aura.color = Color(0.45, 0.95, 0.4)
 	aura.energy = 0.45
@@ -121,6 +125,8 @@ func _physics_process(delta: float) -> void:
 				_begin("pulse")
 			elif st > (1.0 if phase == 2 else 1.4):
 				_next_pattern()
+			else:
+				_aura_warn()
 		"fog":
 			sprite.play("cast")
 			if st > 0.9 / fast:
@@ -255,8 +261,34 @@ func phase_shift() -> void:
 	_open(CT.BOSS_PHASE_SHIFT)
 
 
+## 고정 순서 (학습 가능): 1페이즈 안개-기침-졸개-기침, 2페이즈 안개-기침-졸개-기침-안개-졸개
+func _cycle() -> Array:
+	return ["fog", "cough", "clones", "cough", "fog", "clones"] if phase == 2 else ["fog", "cough", "clones", "cough"]
+
+
+func next_pattern_name() -> String:
+	var c := _cycle()
+	return c[pat_i % c.size()]
+
+
+## CS-11: 패턴 직전 0.5초 동안 역신 둘레 오라가 다음 패턴의 색으로 바뀐다
+func _aura_warn() -> void:
+	if aura == null:
+		return
+	var wait := 1.0 if phase == 2 else 1.4
+	if st > wait - AURA_WARN:
+		aura.color = AURA_COLOR[next_pattern_name()]
+		aura.energy = 0.9
+	else:
+		aura.color = AURA_IDLE
+		aura.energy = 0.45
+
+
 func _next_pattern() -> void:
-	var cycle := ["fog", "cough", "clones", "cough", "fog", "clones"] if phase == 2 else ["fog", "cough", "clones", "cough"]
+	if aura:
+		aura.color = AURA_IDLE
+		aura.energy = 0.45
+	var cycle := _cycle()
 	var p: String = cycle[pat_i % cycle.size()]
 	pat_i += 1
 	match p:

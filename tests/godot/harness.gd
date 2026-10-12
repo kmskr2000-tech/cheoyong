@@ -252,6 +252,10 @@ func _main() -> void:
 		"cs_economy": await sc_cs_economy()
 		"cs_boss": await sc_cs_boss()
 		"cs_deaths": await sc_cs_deaths()
+		"cs_wave": await sc_cs_wave()
+		"cs_aura": await sc_cs_aura()
+		"cs_tutorial": await sc_cs_tutorial()
+		"cs_cover": await sc_cs_cover()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -1352,4 +1356,108 @@ func sc_cs_deaths() -> void:
 	G.save()
 	G.deaths = {}
 	await must(G.load_save() and int(G.deaths.get("pyega1", 0)) == 3, "세이브→로드 후 값 유지")
+	await done()
+
+
+func sc_cs_wave() -> void:
+	step("CS-15 S4 묶어 울리기: 결박된 적에게 파동부 피해 ×2·넉백 ×0.5, 시전 중단")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+	G.skills = ["padong"]
+	p.facing = "right"
+	G.tal_idx = 3
+	await must(p.current_talisman() == "wave", "파동부 선택")
+	var a = cs_dummy("ghoul", home + Vector2(40, 0))
+	var b = cs_dummy("ghoul", home + Vector2(40, 12))
+	a.bind_t = 5.0
+	a.state = "tell"
+	b.state = "tell"
+	p.ki = 100.0
+	p._talisman()
+	await tick(1)
+	await must(a.cfg["hp"] - a.hp == 12, "결박된 적 6×2 = 12: " + str(a.cfg["hp"] - a.hp))
+	await must(b.cfg["hp"] - b.hp == 6, "일반 적 6: " + str(b.cfg["hp"] - b.hp))
+	await must(a.knock.length() < b.knock.length() * 0.6, "결박된 적 넉백 ×0.5")
+	await must(a.state == "hurt" and b.state == "hurt", "예고 중단")
+	G.skills = []
+	await done()
+
+
+func sc_cs_aura() -> void:
+	step("CS-11 보스 예고 색 오라: 패턴 직전 0.5초, 안개 녹/기침 적/졸개 보라")
+	var boss = await cs_wake_boss()
+	boss.position = player().position + Vector2(300, 0)
+	for spec in [[0, "fog"], [1, "cough"], [2, "clones"], [3, "cough"]]:
+		boss._begin("idle")
+		boss.pat_i = spec[0]
+		await must(boss.next_pattern_name() == spec[1], "다음 패턴 = " + spec[1])
+		boss.st = 0.2
+		await tick(2)
+		await must(boss.aura.color == boss.AURA_IDLE, "패턴 0.5초 전엔 평시 색")
+		boss.st = 1.0
+		await tick(1)
+		await must(boss.aura.color == boss.AURA_COLOR[spec[1]] and boss.aura.energy > 0.8, spec[1] + " 오라 색")
+	await done()
+
+
+func sc_cs_tutorial() -> void:
+	step("CS-09 받아넘기기 튜토리얼: 갯귀 첫 예고 = 구르기 점등, 두 번째 예고 = 다시 구르기 점등(글 없음)")
+	Engine.time_scale = 1.0
+	await boot_level()
+	G.skills = []
+	var yk = lvl().get_node("Gaetgwi")
+	var seen := [0]
+	yk.telegraph.connect(func(): seen[0] += 1)
+	await until(func(): return seen[0] >= 1, "첫 예고", 1500)
+	await tick(2)
+	await must(lvl().hud._guide == "roll", "첫 예고: 구르기 버튼 점등")
+	await press("roll")   # 플레이어가 구른다 → 안내가 풀린다
+	await until(func(): return lvl().hud._guide != "roll", "안내 해제", 600)
+	await until(func(): return seen[0] >= 2, "두 번째 예고", 2500)
+	await tick(2)
+	await must(lvl().hud._guide == "roll", "두 번째 예고: 구르기 버튼 점등(받아넘기기 안내)")
+	await must(Engine.time_scale < 1.0, "예고 동안 시간이 느려진다")
+	await must(player().gentle_hits >= 0, "갯귀 gentle_hits 유지")
+	await press("roll")
+	await until(func(): return lvl().hud._guide != "roll", "안내 해제", 600)
+	await done()
+
+
+func sc_cs_cover() -> void:
+	step("CS-10 엄폐: 투사체는 소품·지형 충돌체에 막히고, 열린 곳에서는 맞는다")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+	var PR = load("res://scripts/fx/projectile.gd")
+	# 열린 곳: 처용을 향해 쏘면 맞는다
+	var open_hp: float = p.hp
+	var a = PR.make("", Vector2i(1, 1), 1)
+	a.vel = Vector2(-120, 0)
+	a.dmg = 8
+	a.position = home + Vector2(45, 0)
+	lvl().add_child(a)
+	await until(func(): return not is_instance_valid(a), "투사체 소멸", 120)
+	await must(p.hp < open_hp, "엄폐 없음 → 맞는다")
+	# 엄폐: 사이에 벽
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 120)
+	var wall := StaticBody2D.new()
+	var cs := CollisionShape2D.new()
+	var sh := RectangleShape2D.new()
+	sh.size = Vector2(8, 40)
+	cs.shape = sh
+	wall.add_child(cs)
+	wall.position = home + Vector2(24, 0)
+	lvl().add_child(wall)
+	await tick(2)
+	var hp1: float = p.hp
+	var b = PR.make("", Vector2i(1, 1), 1)
+	b.vel = Vector2(-120, 0)
+	b.dmg = 8
+	b.position = home + Vector2(45, 0)
+	lvl().add_child(b)
+	await until(func(): return not is_instance_valid(b), "투사체 소멸", 120)
+	await must(p.hp == hp1, "벽 뒤에 있으면 맞지 않는다(엄폐)")
 	await done()

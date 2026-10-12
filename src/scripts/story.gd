@@ -158,7 +158,10 @@ func _fight(level: Node) -> void:
 	yokai.hit_taken.connect(func():
 		if level.hud._guide == "attack":
 			level.hud.guide(""), CONNECT_ONE_SHOT)
-	yokai.telegraph.connect(func(): _teach_roll(level), CONNECT_ONE_SHOT)
+	yokai.telegraph.connect(func():
+		await _teach_roll(level)
+		if is_instance_valid(yokai):   # CS-09: 두 번째 예고에서 "맞기 직전에 구르면 받아넘긴다"를 버튼 점등만으로 보여 준다
+			yokai.telegraph.connect(func(): _teach_parry(level, yokai), CONNECT_ONE_SHOT), CONNECT_ONE_SHOT)
 	yokai.collapsed.connect(func(): level.hud.guide("song"))
 	yokai.purified.connect(func(): _after_fight(level))
 
@@ -170,6 +173,19 @@ func _teach_roll(level: Node) -> void:
 	Engine.time_scale = 0.3
 	var until := Time.get_ticks_msec() + 2500
 	while Time.get_ticks_msec() < until and p.state != "roll":
+		await level.get_tree().process_frame
+	Engine.time_scale = 1.0
+	if level.hud._guide == "roll":
+		level.hud.guide("")
+
+
+## CS-09: 두 번째 예고 — 구르기 버튼만 빛나고 시간이 느려진다. 글 없음. (갯귀 gentle_hits 3 은 그대로: 틀려도 벌이 없다)
+func _teach_parry(level: Node, yokai: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	level.hud.guide("roll")
+	var until := Time.get_ticks_msec() + 3500
+	while Time.get_ticks_msec() < until and is_instance_valid(yokai) and p.state != "roll" and yokai.state in ["tell", "strike"]:
+		Engine.time_scale = 0.5 if yokai.state == "tell" else 1.0
 		await level.get_tree().process_frame
 	Engine.time_scale = 1.0
 	if level.hud._guide == "roll":
