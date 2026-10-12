@@ -536,24 +536,34 @@ func sc_boss_retry() -> void:
 	await tp(Vector2(470, 192))
 	var blocked: bool = player().test_move(player().global_transform, Vector2(40, 0))
 	expect(blocked, "보스방 봉쇄벽이 입구를 막는다 (결함이면 플레이어가 나갈 수 있음)")
+	# CS-12 (OQ-1 디렉터 확정): 보스방 사망 → 레벨 재로드 없이 보스방 입구에서 부활, 몹 재생성 없음, 보스 HP·페이즈 리셋
+	G.deaths = {}
 	for attempt in 2:
-		step("재도전 %d: 보스전 중 사망 → 입구 계단에서 재시작" % (attempt + 1))
+		step("재도전 %d: 보스전 중 사망 → 보스방 입구에서 부활(재로드 없음)" % (attempt + 1))
 		var iid := level_iid()
 		god = false
 		boss = lvl().get_node("Boss")
-		boss.take_hit(100, Vector2.ZERO)   # 일부 피해를 줘도 재도전하면 초기화되어야 한다
+		boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO) if attempt == 1 else boss.take_hit(100, Vector2.ZERO)
+		if attempt == 1:   # 2페이즈를 겪은 뒤 죽어도 처음부터(페이즈 1)
+			await until(func(): return boss.phase == 2 and boss.state != "wait", "2페이즈 대사 후", 1500)
+		boss.take_hit(30, Vector2.ZERO)   # 일부 피해
+		var ghoul = cs_spawn("ghoul", boss.position + Vector2(30, 0))   # 소환된 졸개가 남아 있어도 정리된다
+		var foes_before: int = get_nodes_in_group("enemy").filter(func(e): return e.get("kind") != null and e != boss).size()
+		await until(func(): return player().hurt_t <= 0.0, "피격 유예 해제", 300)
 		player().hurt(99999, Vector2.RIGHT)
-		await until(func(): return level_ready("pyega2", iid), "pyega2 재로드", 1500)
-		god = true
+		await must(player().hp == 0.0, "치명타로 쓰러졌다")
+		await until(func(): return player().hp == player().max_hp and player().state == "move", "플레이어 부활", 600)
+		await tick(3)
+		await must(level_iid() == iid, "레벨 재로드 없음(같은 장면)")
 		boss = lvl().get_node("Boss")
-		await must(boss.state == "wait" and boss.hp == BOSS_MAX, "역신이 사람 모습·만피로 재배치")
+		await must(boss.hp == BOSS_MAX and boss.phase == 1 and boss.state == "idle", "역신 HP 만피·1페이즈·전투 상태로 초기화 hp=%s ph=%s st=%s" % [boss.hp, boss.phase, boss.state])
+		await must(not is_instance_valid(ghoul) or ghoul.is_queued_for_deletion(), "소환된 졸개 제거")
+		await must(get_nodes_in_group("enemy").filter(func(e): return e.get("kind") != null and not e.is_queued_for_deletion()).is_empty(), "다락 몹이 되살아나지 않는다")
 		await must(G.flag("boss_done") == 0, "boss_done 미설정")
-		await must(player().hp == player().max_hp and not player().locked, "플레이어 체력 가득·조작 가능")
-		await must(player().position.distance_to(lvl().lift(lvl().def["spawns"]["start"])) < 2.0, "입구 스폰 위치")
-		await clear_room()
-		await tp(Vector2(545, 190))
-		await until(func(): return boss.state == "idle", "역신 재각성(트리거 재작동)", 3000)
-		await until(func(): return not player().locked, "재각성 후 조작 가능", 600)
+		await must(player().position.distance_to(lvl().lift(Vector2(535, 192))) < 2.0, "보스방 입구(봉쇄문 안쪽)에서 부활")
+		await must(not player().locked, "조작 가능")
+		await must(int(G.deaths.get("pyega2_boss", 0)) == attempt + 1 and int(G.deaths.get("pyega2", 0)) == 0, "사망이 pyega2_boss 키로 집계")
+		god = true
 	step("재도전 뒤에도 격파 경로가 열려 있다")
 	boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO)
 	await until(func(): return boss.phase == 2 and boss.state == "idle", "2페이즈 대사 후 전투 재개", 1500)

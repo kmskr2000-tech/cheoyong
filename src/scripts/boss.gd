@@ -29,6 +29,7 @@ var knock := Vector2.ZERO
 var bind_t := 0.0             # 결박부: held to a crawl
 var aim := 0.0
 var coughs := 0
+var home_pos := Vector2.ZERO   # 재도전 때 돌아갈 자리 (스토리가 깨울 때 기록)
 var open_t := 0.0             # CS-06: 열림(후딜) 지속 — 이동·공격 불가, 받는 피해 ×1.5
 var sprite: AnimatedSprite2D
 var target: Node2D
@@ -177,6 +178,39 @@ func _physics_process(delta: float) -> void:
 func disguise() -> void:
 	state = "wait"
 	sprite.play("human")
+
+
+## CS-12: 처용이 쓰러진 동안 역신은 가만히 선다 (패턴·안개 정리)
+func stand_down() -> void:
+	_clear_tells()
+	_clear_fog()
+	state = "wait"
+	velocity = Vector2.ZERO
+	sprite.play("idle")
+
+
+## CS-12: 재도전 — HP·페이즈·패턴 순서 초기화, 소환된 졸개와 안개 제거 (다락의 몹은 되살아나지 않는다)
+func reset_fight() -> void:
+	hp = MAX_HP
+	phase = 1
+	pat_i = 0
+	coughs = 0
+	close_t = 0.0
+	open_t = 0.0
+	knock = Vector2.ZERO
+	sprite.self_modulate = Color.WHITE
+	_clear_tells()
+	_clear_fog()
+	for g in ["enemy", "downed"]:
+		for e in get_tree().get_nodes_in_group(g):
+			if e != self and e.get("kind") != null:
+				e.remove_from_group("enemy")
+				e.remove_from_group("downed")
+				e.queue_free()
+	if home_pos != Vector2.ZERO:
+		position = home_pos
+	hp_changed.emit(hp, MAX_HP)
+	_begin("idle")
 
 
 func awaken() -> void:

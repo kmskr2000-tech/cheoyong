@@ -5,6 +5,7 @@ extends CharacterBody2D
 signal hit_landed(target: Node2D)
 signal stats_changed(hp: float, max_hp: float, ki: float, max_ki: float)
 signal died
+signal respawned
 signal sang(purified: int)
 signal sin_changed(value: float)
 signal talisman_changed(kind: String)
@@ -688,6 +689,7 @@ func _respawn() -> void:
 	state = "move"
 	hurt_t = 1.0
 	stats_changed.emit(hp, max_hp, ki, max_ki)
+	respawned.emit()
 
 
 # ---------------------------------------------------------------- 처용가 (the purifying song)

@@ -474,14 +474,27 @@ func _inner_room(level: Node) -> void:
 		boss.hp = 20.0
 	level.hud.show_boss(boss, "역신(疫神)")
 	Game.death_zone = "pyega2_boss"   # CS-07: 역신전 사망은 폐가2 와 따로 센다
-	# falling here means trying the room again from the stair (the door is sealed behind him)
-	p.died.connect(func(): Game.change_level("pyega2", "start"), CONNECT_ONE_SHOT)
+	# CS-12(OQ-1, 디렉터 확정): 쓰러지면 보스방 입구에서 다시 일어선다. 몹은 되살아나지 않고 역신 HP·페이즈만 초기화된다.
+	p.spawn = level.lift(Vector2(535, 192))
+	boss.home_pos = boss.position
+	p.died.connect(_boss_player_died.bind(level, boss))
 	if "--boss-kneel" in OS.get_cmdline_user_args():  # test hook: skip straight to SC1-19
 		await level.get_tree().create_timer(1.0).timeout
 		boss.take_hit(9999, Vector2.ZERO)
-	boss.phase_two.connect(_boss_phase_two.bind(level, boss), CONNECT_ONE_SHOT)
+	boss.phase_two.connect(_boss_phase_two.bind(level, boss))   # 재도전마다 다시 2페이즈를 겪으므로 ONE_SHOT 아님
 	boss.knelt.connect(_boss_knelt.bind(level), CONNECT_ONE_SHOT)
 	boss.defeated.connect(_boss_defeated.bind(level), CONNECT_ONE_SHOT)
+
+
+## CS-12: 보스전 사망 → 역신은 잠시 멈추고, 처용이 입구에서 일어서면 HP·페이즈·졸개를 초기화한다
+func _boss_player_died(level: Node, boss: PlagueGod) -> void:
+	if not is_instance_valid(boss) or boss.state in ["kneel", "dead"]:
+		return
+	boss.stand_down()
+	var p: Node = level.get_node("Player")
+	await p.respawned
+	if is_instance_valid(boss) and boss.state == "wait":
+		boss.reset_fight()
 
 
 ## SC1-18
