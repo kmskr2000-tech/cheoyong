@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Godot 스모크: 6장면을 --capture로 실행해 종료 코드·SCRIPT ERROR·Parse Error·결과 줄을 검사한다.
+# Godot 스모크: 8장면(1장 6 + 2장 M1 2)을 --capture로 실행해 종료 코드·SCRIPT ERROR·Parse Error·결과 줄을 검사한다.
 # 사용: GODOT=/path/to/godot tests/smoke_godot.sh   (기본: ~/workspace/tools/godot-4.4.1/...)
 set -u
 GODOT="${GODOT:-$HOME/workspace/tools/godot-4.4.1/Godot_v4.4.1-stable_linux.x86_64}"
@@ -24,5 +24,7 @@ run pyega 300 --level=pyega1 --test-enemies
 run boss 400 --boss
 run kneel 300 --boss-kneel
 run endcont 200 --level=gyeongju --flags=arrived,met_nanyeong,sang_child,briefed,summoned,rescued,rumor,king_call,appointed,chapter1_done
+run ch2_hwagae 120 --level=hwagae --flags=chapter1_done,appointed,ch2_start
+run ch2_jiri 200 --level=jiri_path --flags=chapter1_done,appointed,ch2_start,raided,ch2_old_man --test-enemies
 echo "ERR_CANT_OPEN lines: $(cat "$OUT"/*.log | grep -c ERR_CANT_OPEN)  (out: $OUT)"
 exit $fail
