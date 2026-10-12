@@ -4,7 +4,7 @@
 SRC="$1"; TAG="$2"; OUT="$3"; shift 3
 GODOT="${GODOT:-$HOME/workspace/tools/godot-4.4.1/Godot_v4.4.1-stable_linux.x86_64}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SCNS=("$@"); [ ${#SCNS[@]} -eq 0 ] && SCNS=(parry charge guard open boss_open bindfire purify tell)
+SCNS=("$@"); [ ${#SCNS[@]} -eq 0 ] && SCNS=(parry charge guard open boss_open bindfire purify tell dark nametag)
 mkdir -p "$OUT"
 for s in "${SCNS[@]}"; do
   timeout 900 xvfb-run -a "$GODOT" --rendering-driver opengl3 --fixed-fps 60 --path "$SRC" -s "$HERE/godot/fx_shots.gd" -- --level=pyega1 --out="$OUT" --tag="$TAG" --only="$s" >"$OUT/$TAG-$s.log" 2>&1

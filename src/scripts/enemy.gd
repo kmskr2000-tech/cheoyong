@@ -138,6 +138,7 @@ var bind_t := 0.0             # 결박부: held to a crawl
 var _bar: Node2D
 var _bar_fill: ColorRect
 var _voice: Label
+var _name_lbl: Label   # 졸개 이름표 (화면 가장자리 클램프용)
 
 
 func _ready() -> void:
@@ -212,8 +213,14 @@ func _make_bar() -> void:
 	nm.size = Vector2(68, 14)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bar.add_child(nm)
+	_name_lbl = nm
 	_bar.visible = false
 	add_child(_bar)
+
+
+func _process(_d: float) -> void:
+	if _name_lbl and _bar and _bar.visible:
+		CFX.clamp_label(_name_lbl)   # 화면 끝에서 잘리지 않게 안쪽으로 (아트팀)
 
 
 func _physics_process(delta: float) -> void:

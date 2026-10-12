@@ -96,6 +96,8 @@ func _main() -> void:
 	if want("bindfire"): await sc_bindfire()
 	if want("purify"): await sc_purify()
 	if want("tell"): await sc_tell()
+	if want("dark"): await sc_dark()
+	if want("nametag"): await sc_nametag()
 	print("FXSHOTS DONE ", tag)
 	quit(0)
 
@@ -253,3 +255,20 @@ func sc_tell() -> void:
 		await tick(1 if i == 1 else 1 if i == 2 else 2 if i == 4 else 3)
 		await shot("tell_b_lock_%02d" % i)
 	await tick(30)
+
+
+func sc_dark() -> void:
+	await boot()
+	await tick(20)
+	await shot("dark_hero")
+
+
+func sc_nametag() -> void:
+	await boot()
+	var p := player()
+	var cam: Camera2D = p.get_node_or_null("Camera")
+	var kind := "mama"
+	var e = dummy(kind, p.position + Vector2(-228, 0))
+	e._bar.visible = true
+	await tick(20)
+	await shot("nametag_edge")

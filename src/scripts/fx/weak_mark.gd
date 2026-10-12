@@ -14,16 +14,20 @@ func _ready() -> void:
 	_ring.z_index = -1
 	_ring.z_as_relative = true
 	_ring.position = Vector2(0, -2)
+	_ring.scale = Vector2(1.2, 1.2)   # 어두운 맵에서도 읽히도록 크게·밝게 (아트팀)
+	_ring.modulate = Color(1.5, 1.35, 1.1)
 	add_child(_ring)
 	_mark = CFX.sheet("weak", 4)
 	_mark.position = Vector2(0, -78.0 if big else -40.0)
-	_mark.scale = Vector2(2, 2) if big else Vector2(1.5, 1.5)
+	_mark.scale = Vector2(2.4, 2.4) if big else Vector2(1.9, 1.9)
+	_mark.modulate = Color(1.5, 1.4, 1.2)
 	add_child(_mark)
 	# 열리는 순간의 번쩍임
 	var par := get_parent().get_parent()
 	if par:
 		CFX.play_once(par, get_parent().global_position + Vector2(0, -(48.0 if big else 18.0)), "fullflash", 5, 22.0, 0.9 if big else 0.5)
 		if big:
+			CFX.vignette(get_tree(), sec)
 			CFX.pop_text(par, get_parent().global_position + Vector2(0, -96), "열렸다!", CFX.COL_OPEN, 12)
 
 

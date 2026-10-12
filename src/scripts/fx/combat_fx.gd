@@ -15,6 +15,7 @@ const COL_OPEN := Color(1.0, 0.8, 0.4)
 
 static var _add: CanvasItemMaterial
 static var _tex := {}
+static var _syn_ms := -9999
 
 
 static func additive() -> CanvasItemMaterial:
@@ -107,6 +108,52 @@ static func screen_flash(tree: SceneTree, col: Color, sec: float) -> void:
 	tw.tween_callback(layer.queue_free)
 
 
+## 가장자리에서 안쪽으로 이름표 클램프: 화면 밖으로 잘리지 않게 라벨의 가로 위치를 보정한다 (margin: 화면 가장자리 여백, px)
+static func clamp_label(lbl: Control, margin := 3.0) -> void:
+	if not lbl.is_inside_tree():
+		return
+	var vp := lbl.get_viewport_rect().size
+	var r := lbl.get_global_transform_with_canvas()
+	var left: float = r.origin.x
+	var right: float = left + lbl.size.x * r.get_scale().x
+	var dx := 0.0
+	if left < margin:
+		dx = margin - left
+	elif right > vp.x - margin:
+		dx = (vp.x - margin) - right
+	if dx != 0.0:
+		lbl.position.x += dx / r.get_scale().x
+
+
+## 역신 열림: 화면 가장자리에 약한 금빛 비네트가 깃들었다 걷힌다 (시선이 보스의 열린 몸으로 모인다)
+static func vignette(tree: SceneTree, sec: float) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 79
+	var g := GradientTexture2D.new()
+	g.fill = GradientTexture2D.FILL_RADIAL
+	g.fill_from = Vector2(0.5, 0.5)
+	g.fill_to = Vector2(1.0, 0.5)
+	g.width = 120
+	g.height = 68
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([Color(1.0, 0.75, 0.3, 0.0), Color(1.0, 0.75, 0.3, 0.0), Color(1.0, 0.7, 0.25, 0.22)])
+	grad.offsets = PackedFloat32Array([0.0, 0.62, 1.0])
+	g.gradient = grad
+	var tr := TextureRect.new()
+	tr.texture = g
+	tr.size = Vector2(480, 270)
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.modulate.a = 0.0
+	layer.add_child(tr)
+	tree.current_scene.add_child(layer)
+	var tw := tr.create_tween()
+	tw.tween_property(tr, "modulate:a", 1.0, 0.12)
+	tw.tween_interval(maxf(0.0, sec - 0.3))
+	tw.tween_property(tr, "modulate:a", 0.0, 0.18)
+	tw.tween_callback(layer.queue_free)
+
+
 # ---------------------------------------------------------------- 받아넘기기 성공
 ## 흰 섬광 + 시간 정지감(화면 푸른 가림막) + "+8 소리". 플레이어가 호출한다.
 static func parry(pl: Node2D, ki_gain: float) -> void:
@@ -116,7 +163,10 @@ static func parry(pl: Node2D, ki_gain: float) -> void:
 	play_once(par, at, "parry", 6, 16.0, 1.5, 1, 0, true)   # 바깥 파문: 가장자리 위주 링
 	screen_flash(pl.get_tree(), Color(1, 1, 1, 0.16), 0.12)
 	screen_flash(pl.get_tree(), Color(0.2, 0.3, 0.7, 0.12), 0.4)   # 시간이 멈춘 듯한 푸른 가라앉음
-	pop_text(par, pl.global_position + Vector2(0, -68), "+%d 소리" % int(ki_gain), COL_KI, 11, true)
+	# 글자 분리: "받아넘기기"(player.gd, 머리 위)가 먼저, "+8 소리"는 섬광이 걷힌 0.18초(실시간) 뒤 옆으로
+	pl.get_tree().create_timer(0.18, true, false, true).timeout.connect(func():
+		if is_instance_valid(pl) and pl.is_inside_tree():
+			pop_text(pl.get_parent(), pl.global_position + Vector2(34, -30), "+%d 소리" % int(ki_gain), COL_KI, 11, true))
 
 
 # ---------------------------------------------------------------- 강 베기 충전
@@ -193,11 +243,15 @@ static func synergy(host: Node2D, mult_text: String) -> void:
 	bind_mark(host)
 	host.set_meta("syn_t", 0.7)
 	var now := Time.get_ticks_msec()
-	if now - int(host.get_meta("syn_text_ms", -9999)) >= 900:
-		host.set_meta("syn_text_ms", now)
+	if now - _syn_ms >= 900:   # 군집전: 적이 여럿이어도 글자는 0.9초에 한 번, 시너지 중인 적 수만 덧붙인다
+		_syn_ms = now
+		var n := 0
+		for e in host.get_tree().get_nodes_in_group("enemy"):
+			if e.has_meta("syn_t") and float(e.get_meta("syn_t")) > 0.0:
+				n += 1
 		var par := host.get_parent()
 		play_once(par, host.global_position + Vector2(18, -34), "bindmark", 4, 14.0, 1.0, 2, 1).modulate.a = 0.7
-		pop_text(par, host.global_position + Vector2(0, -66), mult_text, COL_FIRE, 12)
+		pop_text(par, host.global_position + Vector2(0, -66), mult_text if n <= 1 else "%s ·%d" % [mult_text, n], COL_FIRE, 12)
 
 
 # ---------------------------------------------------------------- 예고 굳음 (tell_lock, 진행 50%)
