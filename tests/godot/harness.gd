@@ -247,6 +247,7 @@ func _main() -> void:
 		# ---- 전투 전략(combat-strategy) 시나리오: tests/combat_strategy.sh 로 실행 (기본 chapter1 목록과 분리)
 		"cs_parry": await sc_cs_parry()
 		"cs_charge": await sc_cs_charge()
+		"cs_guard": await sc_cs_guard()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -912,4 +913,88 @@ func sc_cs_charge() -> void:
 	await must(p.state == "move" and p._charge_c == 0.0 and not p._charge_hold, "길게 눌러도 차징 시작 안 함")
 	await must(talked[0] == 1, "상호작용은 1회")
 	Input.action_release("attack")
+	await done()
+
+
+func sc_cs_guard() -> void:
+	step("CS-03 준비")
+	await cs_setup()
+	var p := player()
+	await tp(lvl().def["spawns"]["start"])
+
+	step("수호부가 막은 공격의 기절·끌림·둔화도 함께 막는다 (D3), 환급 +10")
+	p.shield = 1
+	p.shield_t = 10.0
+	p.ki = 50.0
+	var hp0: float = p.hp
+	# 요괴 코드가 하는 순서 그대로: 피해 → 상태이상 (처녀귀신 울음 / 물귀신 발목 끌기 / 손각시 붉은 실)
+	p.hurt(4, Vector2.LEFT, false)
+	p.stun(1.2)
+	p.pull(p.position + Vector2(30, 0), 0.9)
+	p.slow(1.6)
+	await tick(1)
+	await must(p.hp == hp0 and p.shield == 0, "피해 0 · 수호부 소모")
+	await must(p.stun_t == 0.0 and p.pull_t == 0.0 and p.slow_t == 0.0, "기절·끌림·둔화 전부 없음")
+	await must(p.ki >= 59.0 and p.ki <= 62.0, "수호부 파괴 환급 소리 +10: " + str(p.ki))
+	await must(p._guard_t > 0.0, "_guard_t 가 걸렸다")
+
+	step("0.4초가 지나면 다시 걸린다 (차단은 한 번의 막기에 한정)")
+	await until(func(): return p._guard_t <= 0.0 and p.hurt_t <= 0.0, "차단·유예 해제", 120)
+	p.stun(0.2)
+	await must(p.stun_t > 0.0, "수호부 없이/시간이 지난 뒤에는 기절한다")
+	await until(func(): return p.stun_t <= 0.0, "기절 끝", 60)
+
+	step("수호부 없이 맞으면 피해와 상태이상이 그대로 들어온다")
+	p.hurt_t = 0.0
+	hp0 = p.hp
+	p.hurt(4, Vector2.LEFT, false)
+	await must(p.hp < hp0, "피해를 입었다")
+	p.slow(0.5)
+	await must(p.slow_t > 0.0, "둔화가 걸린다")
+	await cs_idle()
+	p.slow_t = 0.0
+
+	step("독기 틱(kind=miasma)은 수호부가 켜진 동안 0 피해·충전 유지 (10초 지속)")
+	p.hurt_t = 0.0
+	p.shield = 1
+	p.shield_t = 10.0
+	p.ki = 40.0
+	hp0 = p.hp
+	for i in 6:
+		p.hurt(5, Vector2.ZERO, false, "miasma")
+		await tick(2)
+	await must(p.hp == hp0 and p.shield == 1, "독기 6틱에도 피해 0·수호부 유지")
+	await must(p.hurt_t == 0.0 and p._guard_t == 0.0, "피격 유예·차단 타이머도 쓰지 않음")
+	await must(p.ki < 45.0, "환급 없음(직접 타격을 막은 것이 아님)")
+	p.shield_t = 0.1
+	await until(func(): return p.shield == 0, "10초 지속이 끝나면 사라진다", 60)
+	await must(p.ki < 45.0, "막지 못하고 사라진 수호부는 환급 없음")
+	p.hurt(5, Vector2.ZERO, false, "miasma")
+	await must(p.hp < hp0, "수호부가 없으면 독기에 맞는다")
+	await cs_idle()
+
+	step("suho2: 충전 2회, 환급은 마지막 충전이 소모될 때 1회")
+	p.hurt_t = 0.0
+	p.hp = p.max_hp
+	G.skills = ["suho2"]
+	p.shield = 2
+	p.shield_t = 10.0
+	p.ki = 40.0
+	p.hurt(8, Vector2.LEFT, false)
+	await tick(1)
+	await must(p.shield == 1 and p.ki < 45.0, "첫 충전 소모: 환급 없음")
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 60)
+	p.hurt(8, Vector2.LEFT, false)
+	await tick(1)
+	await must(p.shield == 0 and p.ki >= 49.0, "마지막 충전 소모: 환급 +10")
+	G.skills = []
+	await cs_idle()
+
+	step("구르기 무적 중에는 slow() 도 무시된다")
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기", 30)
+	p.slow(1.0)
+	p.stun(1.0)
+	await must(p.slow_t <= 0.0 and p.stun_t <= 0.0, "구르기 중 둔화·기절 없음 slow=%s stun=%s inv=%s st=%s" % [p.slow_t, p.stun_t, p.invuln, p.state])
+	await cs_idle()
 	await done()

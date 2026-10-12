@@ -73,6 +73,7 @@ var _parry_cd := 0.0
 var height_t := 0.0             # 신명 고조 (받아넘기기 3연속): faster feet and swings
 var shield := 0                 # 수호부: blows it will still turn aside
 var shield_t := 0.0
+var _guard_t := 0.0             # CS-03: 수호부가 막은 직후 GUARD_T 동안 같은 공격의 기절·끌림·둔화를 덮는다
 var swap_cd := 0.0
 var ult_t := 0.0                # 처용무
 var _ult_tick := 0.0
@@ -195,6 +196,7 @@ func _physics_process(delta: float) -> void:
 	height_t = maxf(0.0, height_t - delta)
 	swap_cd = maxf(0.0, swap_cd - delta)
 	_parry_cd = maxf(0.0, _parry_cd - delta)
+	_guard_t = maxf(0.0, _guard_t - delta)
 	parry_chain_t -= delta
 	if parry_chain_t <= 0.0:
 		parry_chain = 0
@@ -608,12 +610,19 @@ func hurt(dmg: int, dir: Vector2, melee := false, kind := "") -> void:
 		if state == "roll" and melee and t <= _parry_window():
 			_parry(dir)
 		return
+	if kind == "miasma" and shield > 0:
+		return   # 독기 틱: 수호부가 켜져 있는 동안 충전 소모 없이 0 피해로 무시 (D3, 10초 지속)
 	if hurt_t > 0.0:
 		return
 	if shield > 0:   # 수호부
 		shield -= 1
+		_guard_t = CT.GUARD_T
 		if shield <= 0:
 			shield_t = 0.0
+			ki = minf(max_ki, ki + CT.GUARD_REFUND)   # 직접 타격을 막아 사라질 때 환급 (마지막 충전에서 1회)
+			stats_changed.emit(hp, max_hp, ki, max_ki)
+			Game.float_text(get_parent(), global_position + Vector2(0, -44), ["+소리"])
+			_haptic()
 		hurt_t = 0.5
 		Audio.sfx("block", -2.0)
 		_ring_fx(Color(1.0, 0.9, 0.55), 26.0, 0.35)
@@ -785,7 +794,7 @@ func _on_leveled(_lv: int) -> void:
 
 # ---------------------------------------------------------------- status effects from 요괴
 func stun(sec: float) -> void:
-	if invuln or state == "dead":
+	if invuln or state == "dead" or _guard_t > 0.0:
 		return
 	Audio.sfx("stun", -6.0)
 	_end_attack()
@@ -805,11 +814,15 @@ func stun(sec: float) -> void:
 
 
 func slow(sec: float) -> void:
+	if invuln or state == "dead" or _guard_t > 0.0:
+		return   # 수호부가 막은 직후, 그리고 구르기 무적 중에는 둔화도 걸리지 않는다
 	slow_t = maxf(slow_t, sec)
 
 
 ## drag toward a point for a while (the hero can still roll to break free)
 func pull(to: Vector2, sec: float) -> void:
+	if _guard_t > 0.0 or state == "dead":
+		return
 	if state == "charge":
 		_end_attack()   # 끌려가면 충전이 끊긴다
 	pull_to = to
