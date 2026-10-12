@@ -1,0 +1,1 @@
+player world=(335,-38) screen=(239,13) -> not visible in image
