@@ -7,11 +7,12 @@ extends SceneTree
 ## 성공하면 "WALK_RESULT <map> PASS" 를 찍고 0 으로 종료, 실패는 "FAIL:" 줄 + 비-0.
 
 const CELL := 4
-const FOOT := Vector2(10, 6)
+const FOOT := Vector2(11, 7)   # 실제 발판(10x6)보다 여유를 둔 질의 모양
 # 맵별 반드시 갈 수 있어야 하는 footprint 지점 (levels.gd 와 같은 좌표계). 마지막 지점까지는 실제로 걸어간다.
 const ROUTES := {
 	"gyeongju": [Vector2(270, 300), Vector2(405, 180), Vector2(430, 170), Vector2(562, 30), Vector2(140, 245), Vector2(192, 360), Vector2(6, 379)],
 	"gwana": [Vector2(395, 165), Vector2(300, 240), Vector2(470, 100), Vector2(100, 410)],
+	"pyega1": [Vector2(190, 330), Vector2(520, 380), Vector2(100, 400), Vector2(146, 200), Vector2(8, 387)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
 var G: Node
@@ -58,7 +59,7 @@ func _free(ix: int, iy: int) -> bool:
 	var p := Vector2(x0 + ix * CELL, y0 + iy * CELL)
 	var q := PhysicsShapeQueryParameters2D.new()
 	q.shape = shape
-	q.transform = Transform2D(0.0, p + Vector2(0, -3))
+	q.transform = Transform2D(0.0, p + Vector2(0, -3.0))
 	q.collision_mask = 1
 	q.exclude = excl
 	var ok := space.intersect_shape(q, 1).is_empty()
@@ -80,7 +81,7 @@ func _line_free(a: Vector2, b: Vector2) -> bool:
 		var p := a.lerp(b, float(i) / n)
 		var q := PhysicsShapeQueryParameters2D.new()
 		q.shape = shape
-		q.transform = Transform2D(0.0, p + Vector2(0, -3))
+		q.transform = Transform2D(0.0, p + Vector2(0, -3.0))
 		q.collision_mask = 1
 		q.exclude = excl
 		if not space.intersect_shape(q, 1).is_empty():
@@ -185,6 +186,11 @@ func _main() -> void:
 		_fail("레벨이 로드되지 않음")
 		return
 	var player: Node2D = level.get_node("Player")
+	for e in get_nodes_in_group("enemy"):   # 지형만 본다: 적은 막거나 때리지 않게 치운다 (적 위치는 아래 targets 에서 따로 확인)
+		e.process_mode = Node.PROCESS_MODE_DISABLED
+		e.collision_layer = 0
+		e.collision_mask = 0
+		e.visible = false
 	excl = [player.get_rid()]
 	for n in level.get_children():
 		if n is CharacterBody2D:
@@ -234,6 +240,10 @@ func _main() -> void:
 			fails.append("도달 불가: %s at %s" % [t[0], str(t[1])])
 		else:
 			print("  ok   ", t[0])
+	for ch in level.get_children():   # 걷는 동안 출구·트리거가 장면을 바꾸지 않게 (도달성은 위에서 확인함)
+		if ch is Area2D:
+			ch.set_deferred("monitoring", false)
+	await physics_frame
 	# 실제로 걸어가기: 시작 → ROUTE 순서대로 (없으면 도달 가능한 마지막 대상)
 	if fails.is_empty() and not route.is_empty():
 		var cur := player.position

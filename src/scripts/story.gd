@@ -666,7 +666,7 @@ func objective(level: Node):
 		"gwana":
 			return Vector2(395, 140) if not f.call("briefed") else Vector2(100, 410)
 		"pyega1":
-			return Vector2(320, 40)
+			return Vector2(146, 197)
 		"pyega2":
 			var b = level.get_node_or_null("Boss")
 			if b and b.state == "wait": return Vector2(560, 200)

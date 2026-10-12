@@ -55,25 +55,22 @@ const DATA := {
 		"exits": [[Rect2(50, 400, 100, 19), "gyeongju", "fromGwana"]],
 		"anchors": {"exit": Vector2(100, 410)},
 	},
-	# 서쪽 폐가 — 마당과 안채 (SC1-13)
+	# 서쪽 폐가 — 마당과 안채 (SC1-13). 그림(무너진 대청 마당)에 맞춘 좌표: 서쪽 입구, 왼쪽 문(디딤돌) 위가 다락.
 	"pyega1": {
 		"music": "dread", "amb": "wind",
 		"name": "서쪽 폐가",
 		"ground": "pyega1",
 		"ambient": Color(0.26, 0.28, 0.44),
-		"spawns": {"start": Vector2(22, 220), "fromUp": Vector2(320, 100)},
-		"props": [
-			["seonang", 96, 340, [-60, GHOSTFIRE, 0.6, 1.4]],
-			["jars", 168, 66, null], ["beam", 430, 92, null], ["jars", 560, 300, null],
-			["beam", 120, 250, null], ["cairn", 470, 248, null], ["jars", 260, 360, null],
-		],
+		"spawns": {"start": Vector2(26, 387), "fromUp": Vector2(150, 232)},
+		"props": [],
+		"lights": [[146, 193, GHOSTFIRE, 0.7, 0.5], [440, 147, GHOSTFIRE, 0.8, 0.7], [300, 267, GHOSTFIRE, 0.4, 0.5], [60, 400, GHOSTFIRE, 0.4, 0.5]],
 		"npcs": [],
 		"interact": [],
-		# SC1-13: 무너진 마당 — 역병 들개·역귀, 우물엔 물귀신, 서낭나무 아래 처녀귀신
-		"enemies": [["dog", 200, 310], ["ghoul", 340, 262], ["dog", 420, 210], ["ghoul", 250, 90],
-			["mulgwi", 488, 312], ["maiden_ghost", 140, 300]],
-		"exits": [[Rect2(0, 196, 6, 56), "gyeongju", "fromPyega"], [Rect2(296, 34, 48, 10), "pyega2", "start"]],
-		"wisps": Vector2(320, 70),
+		# SC1-13: 무너진 마당 — 역병 들개·역귀, 깨진 항아리 곁엔 물귀신, 구석엔 처녀귀신
+		"enemies": [["dog", 190, 360], ["ghoul", 300, 317], ["dog", 420, 387], ["ghoul", 230, 280],
+			["mulgwi", 520, 387], ["maiden_ghost", 100, 400]],
+		"exits": [[Rect2(0, 360, 6, 53), "gyeongju", "fromPyega"], [Rect2(130, 187, 30, 20), "pyega2", "start"]],
+		"wisps": Vector2(146, 200),
 	},
 	# 서쪽 폐가 — 다락과 최심부 (SC1-14~20)
 	"pyega2": {
