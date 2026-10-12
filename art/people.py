@@ -1,7 +1,7 @@
 """마을 사람들 — 처용과 같은 3D 인형 렌더러(art/hero.py)로 NPC 16명을 같은 화풍으로 뽑는다.
 
 Each person is a spec: a few mid colours (turned into muted 6-tone ramps with cool shadows and warm
-lights), a hat, hair, beard, 치마, rank badge, staff, body scale. Sheets keep the frame layout
+lights), a hat (bokdu 복두 / geumgwan 금관), hair, beard, 치마, 과대 (belt-plate rank mark), staff, body scale. Sheets keep the frame layout
 npc.gd and intro.gd read: 0 front, 1-2 3/4 right + breath, 3-4 3/4 left + breath. 32x48, feet on 44.
 Usage: python3 art/people.py [--preview N]
 """
@@ -36,7 +36,7 @@ SKIN = '#b48a6e'
 DARK_SKIN = '#9a6c52'
 
 PEOPLE = {
-    # 촌주 박노인: grey topknot, long white beard, faded brown 도포
+    # 촌주 박노인: grey topknot, long white beard, faded brown 직령포
     'npc_elder': {'beard': 'long', 'ramps': P(robe='#5a4c3c', red='#4a3e30', hair=GREY_HAIR, skin=SKIN, cuff='#3a3028')},
     # 난영: 쪽진 머리, deep plum 치마, pale jade 저고리, gold 비녀
     'npc_nanyeong': {'chima': True, 'long_hair': True, 'ramps': P(robe='#6a3450', top='#7e9a8c', red='#8a3a3a', skin='#c09a7e', cuff='#7e9a8c')},
@@ -50,17 +50,17 @@ PEOPLE = {
     'npc_sick': {'ramps': P(robe='#545a48', red='#3e4236', skin='#8e9a7a', cuff='#3e4236')},
     # 보리 (아이 원혼): a small child, pale and blue
     'npc_ghost': {'scale': 0.6, 'ramps': P(robe='#8a9ac0', red='#6a7aa0', skin='#b4c0dc', hair='#4a5478', cuff='#6a7aa0', boot='#5a6488')},
-    # 개운포 수령 한기: 사모, deep green 관복, gold 흉배, trim beard
-    'npc_suryeong': {'hat': 'samo', 'beard': 'short', 'badge': 'gold', 'ramps': P(robe='#2e5a46', red='#3a3020', skin=SKIN, cuff='#1e3a2e')},
-    # 관아 사람 / 관리: indigo 단령, black 사모
-    'npc_official': {'hat': 'samo', 'badge': 'collar', 'ramps': P(robe='#2e3a6a', red='#2a2a3a', skin=SKIN, cuff='#1e2648')},
+    # 개운포 수령 한기: 복두, deep green 단령, gold 과대 (belt plates), trim beard
+    'npc_suryeong': {'hat': 'bokdu', 'beard': 'short', 'badge': 'gold', 'ramps': P(robe='#2e5a46', red='#3a3020', skin=SKIN, cuff='#1e3a2e')},
+    # 관아 사람 / 관리 / 포졸: indigo 단령, black 복두, silver 과대
+    'npc_official': {'hat': 'bokdu', 'badge': 'collar', 'ramps': P(robe='#2e3a6a', red='#2a2a3a', skin=SKIN, cuff='#1e2648')},
     # 어부: salt-faded indigo, straw headband, sun-dark skin
     'npc_fisher': {'hat': 'headband', 'ramps': P(robe='#3a5068', red='#4a3e30', hat='#b8a070', skin=DARK_SKIN, cuff='#2a3a4c')},
     # 역병 걸린 아이: the child's short body, sallow fevered skin, undyed hemp
     'npc_child': {'scale': 0.6, 'ramps': P(robe='#7a7464', red='#5a5446', skin='#b0967a', cuff='#5a5446')},
-    # 왕: 익선관, deep red 곤룡포, gold roundel, jade belt
-    'npc_king': {'hat': 'ikseon', 'badge': 'gold', 'ramps': P(robe='#8a2e2e', red='#4a7a66', skin=SKIN, cuff='#6a2020')},
-    # 산신령: long white beard, faded white 도포, staff with a gourd
+    # 왕: 신라 금관 형태 (고증 미확정), 홍색 포, gold 과대, jade belt
+    'npc_king': {'hat': 'geumgwan', 'badge': 'gold', 'ramps': P(robe='#8a2e2e', red='#4a7a66', skin=SKIN, cuff='#6a2020')},
+    # 산신령: long white beard, faded white 직령포, staff with a gourd
     'npc_sansin': {'beard': 'long', 'staff': True, 'ramps': P(robe='#b4b4b0', red='#6a8a52', hair=WHITE_HAIR, skin=SKIN, cuff='#8a8a86', beard='#d0d0cc')},
     # 용왕: the elder's beard, a gold crown tipped with coral, sea-green robe gone grey with sickness
     'npc_dragonking': {'beard': 'long', 'hat': 'crown', 'ramps': P(robe='#3e6a5e', red='#8a3a3a', hair=GREY_HAIR, skin='#a4988e', cuff='#2e4a42')},

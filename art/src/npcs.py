@@ -49,7 +49,7 @@ def pal(**over):
 
 PLAIN = strip(DOWN)
 
-# 촌주 박노인: grey topknot, long white beard, faded brown 도포
+# 촌주 박노인: grey topknot, long white beard, faded brown 직령포 (was 도포; 조선 명칭 정리)
 ELDER = list(PLAIN)
 for y, x, t in ((12, 12, 'wwwwww'), (13, 12, 'wwwWww'), (14, 13, 'wwWw'), (15, 13, 'wWww'), (16, 14, 'ww')):
     put(ELDER, y, x, t)
@@ -104,7 +104,7 @@ GHOST_P = pal(**{'1': '#4a5a7a', '2': '#7a8ab0', '3': '#a8b8d8', '4': '#d0dcf0'}
               r='#3a4466', R='#4e5a82', q='#6a78a0', Q='#8a98c0', y='#4e5a82', Y='#6a78a0', Z='#aab6d8',
               w='#e0e8f8', W='#a0aac8', B='#3a4466', b='#2a3048')
 
-# 개운포 수령 한기: 사모(紗帽) with side wings, deep green 관복 with a gold 흉배 and belt, trim beard
+# 개운포 수령 한기: 복두 (was 사모), deep green 단령 with a gold 과대 (was 흉배) and belt, trim beard
 SURYEONG = list(PLAIN)
 for y, x, t in ((1, 13, 'ooooo'), (2, 13, 'ojJjio'), (3, 13, 'ojiihho'), (5, 7, 'oJJjj'), (5, 20, 'iihho'), (6, 7, 'ooooo'), (6, 21, 'oooo')):
     put(SURYEONG, y, x, t)
@@ -116,7 +116,7 @@ SURYEONG_P = pal(h='#07070c', i='#101018', j='#1e1e2a', J='#34344a',
                  d='#0a1612', e='#10241c', f='#18382a', g='#225038', G='#2e6a4a',
                  r='#2a2010', R='#4a3a18', q='#8a6a28', Q='#c9a24a', y='#6a4a1c', Y='#b88a32', Z='#f0cc6a')
 
-# 관아 사람 / 관리: indigo 단령, black hat
+# 관아 사람 / 관리: indigo 단령, black 복두
 OFFICIAL = list(SURYEONG)
 OFFICIAL_P = pal(h='#07070c', i='#101018', j='#1e1e2a', J='#34344a',
                  d='#0a0c1e', e='#121834', f='#1c2650', g='#28366c', G='#36488a',
@@ -135,7 +135,7 @@ CHILD_P = pal(**{'1': '#4a3a34', '2': '#7e6658', '3': '#a88e7a', '4': '#c4ac94'}
               d='#1e1c1a', e='#2c2a26', f='#3e3a34', g='#524c44', G='#686058',
               r='#2a2420', R='#3e3630', q='#5a5046', Q='#7a6e60', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
 
-# 왕: 익선관 (wings standing up behind), deep red 곤룡포 with a gold dragon roundel, jade belt
+# 왕: 금관 (was 익선관; 신라 금관 형태, 고증 미확정), 홍색 포 (was 곤룡포) with a gold dragon roundel, jade belt
 KING = list(PLAIN)
 for y, x, t in ((1, 13, 'ooooo'), (2, 13, 'ojJjio'), (3, 13, 'ojiihho'), (0, 11, 'oo'), (1, 10, 'ojo'), (0, 20, 'oo'), (1, 20, 'ojo'), (2, 10, 'oo'), (2, 21, 'oo')):
     put(KING, y, x, t)
@@ -167,7 +167,7 @@ BROTHER2_P = pal(h='#08080c', i='#12121a', j='#20202e', J='#323246',
                  d='#061614', e='#0c2622', f='#123a34', g='#1a5048', G='#246a5e',
                  r='#1a2a28', R='#2a423e', q='#3e625a', Q='#5a8a7e', y='#3a3020', Y='#6a5a3a', Z='#9a8858')
 
-# 산신령: 산의 주인. 긴 흰 수염과 흰 눈썹, 바랜 흰 도포, 옹이진 지팡이 끝에 호리병.
+# 산신령: 산의 주인. 긴 흰 수염과 흰 눈썹, 바랜 흰 직령포, 옹이진 지팡이 끝에 호리병.
 SANSIN = list(ELDER)
 for y, x, t in ((9, 12, 'J'), (9, 19, 'J'), (17, 14, 'ww'), (18, 15, 'w')):
     put(SANSIN, y, x, t)
