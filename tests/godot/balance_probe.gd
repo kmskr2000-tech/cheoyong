@@ -252,8 +252,9 @@ func sc_boss() -> void:
 func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) -> Dictionary:
 	var p := player()
 	probe_reset(3)
-	p.max_hp = G.max_hp()
-	p.hp = p.max_hp
+	var real_max: float = G.max_hp()   # 가상 사망 판정용 (실제 사망은 레벨 재로드를 일으키므로 hp 를 1000 으로 두고 누적 피해로 센다)
+	p.max_hp = 1000.0
+	p.hp = 1000.0
 	var home: Vector2 = boss.home_pos if boss.home_pos != Vector2.ZERO else boss.position
 	boss.reset_fight()
 	boss._begin("idle")
@@ -276,13 +277,16 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 		if boss.state in ["kneel", "dead"]:
 			win = true
 			break
-		if p.state == "dead" or p.hp <= 0.0:
+		if p.hp <= 1000.0 - real_max:
 			deaths += 1
 			# 게임 규칙(CS-12): 입구 부활, 보스 HP·페이즈 초기화, 졸개 제거
 			p.state = "move"
-			p.hp = p.max_hp
+			p.hp = 1000.0
 			p.hurt_t = 0.0
-			p.locked = false
+			p.stun_t = 0.0
+			p.slow_t = 0.0
+			p.pull_t = 0.0
+			p.state = "move"
 			p.invuln = false
 			boss.reset_fight()
 			boss.position = home
