@@ -1,5 +1,5 @@
 {
- "out": "godot/assets/ui/gauge_ki.png",
+ "out": "src/assets/ui/gauge_ki.png",
  "kind": "UI",
  "made": "art/ui.py"
 }

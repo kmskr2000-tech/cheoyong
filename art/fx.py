@@ -3,12 +3,12 @@
 slash.png  4 frames of 64x64: a crescent of spirit-wind swept by the 대금, opening then thinning out,
            pointing right (+x) — Godot rotates it to the swing direction. Core white, cyan body, blue rim.
 spark.png  3 frames of 16x16: a four-pointed star burst for hits.
-Output: godot/assets/fx/
+Output: src/assets/fx/
 """
 import math, pathlib
 from PIL import Image
 
-OUT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets' / 'fx'
+OUT = pathlib.Path(__file__).parent.parent / 'src' / 'assets' / 'fx'
 CORE, BODY, RIM, DEEP = (255, 255, 255, 255), (170, 235, 255, 255), (80, 150, 255, 230), (40, 70, 200, 170)
 
 

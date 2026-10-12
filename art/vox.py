@@ -12,7 +12,7 @@ import math, pathlib
 import numpy as np
 from PIL import Image
 
-OUT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets' / 'props'
+OUT = pathlib.Path(__file__).parent.parent / 'src' / 'assets' / 'props'
 
 
 def hx(h):

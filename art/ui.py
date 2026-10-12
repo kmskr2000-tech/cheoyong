@@ -5,12 +5,12 @@ panel.png   48x48, 9-slice margins 14: black lacquer with faint grain, a brass d
 seal.png    24x20, 9-slice margins 6: a vermilion seal stamp with a carved light border and worn edges.
 knot.png    2 frames of 9x14: a red 매듭 knot with a tassel, swaying (continue indicator).
 HUD:        emblem (처용탈), brush-stroke gauges, lacquer touch buttons, brass-ring joystick.
-Output: godot/assets/ui/
+Output: src/assets/ui/
 """
 import pathlib, random
 from PIL import Image
 
-OUT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets' / 'ui'
+OUT = pathlib.Path(__file__).parent.parent / 'src' / 'assets' / 'ui'
 
 
 def hx(h, a=255):

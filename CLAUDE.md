@@ -17,11 +17,11 @@
 - 튜토리얼은 BotW식: "○○를 눌러보세요" 텍스트 금지, **빛나는 버튼은 한 번에 하나**, 상호작용은 "다가가면 버튼이 빛난다"로 통일.
 
 ## 엔진·구조
-- Godot 4.4, GL Compatibility, 480x270 정수 배율 픽셀 퍼펙트. 프로젝트는 `godot/`.
+- Godot 4.4, GL Compatibility, 480x270 정수 배율 픽셀 퍼펙트. 프로젝트는 `src/`(= Godot 코드 루트, `project.godot` 위치. 템플릿 규약, ADR-001).
 - 흐름: `title.tscn` → `intro.tscn`(인트로 샷 1~4) → `level.tscn`(모든 레벨 공용, `Levels.DATA[Game.level_id]`).
 - 스토리 비트는 전부 `scripts/story.gd`(오토로드 Story): `on_enter` / `interact` / `trigger` / `objective`(용패 길잡이). 진행은 `Game.flags`.
 - 레벨 데이터 `scripts/levels.gd`: props(5번째 칸 = 표시 조건 플래그), npcs(6번째 칸 "hidden"), interact, triggers, vents, exits, ambient.
-- 이전 웹판(`index.html`, `src/`)은 참고용 원본이다. 새 작업은 Godot에서 한다.
+- 이전 웹판(JS Canvas)은 `legacy-web/`(`index.html`, `src/`)로 옮겼다. 참고용 원본이며 새 작업은 Godot(`src/`)에서 한다. 레포 루트 `index.html`은 `legacy-web/`로 보내는 임시 안내 페이지다(Godot 웹 빌드 배포 전까지).
 
 ## 아트 파이프라인 (전부 코드로 생성, 외부 에셋 없음)
 - `art/src/*.py` 도트 격자 → `python3 art/build.py` (처용 팔 컷아웃)
@@ -33,7 +33,7 @@
 - `art/props.py` 손그림 소품, `art/enemies.py` 적·보스, `art/fx.py` 이펙트, `art/ui.py` UI
 - `art/normals.py` 노멀맵, `art/tiles.py` 지형 텍스처·팔레트
 - `art/monsters.py` 설화 요괴, `art/intro.py` 인트로·타이틀 배경 그림
-- `art/sound.py` 소리 전부 합성(대금·피리·장구·징·풍경, A 계면조) → `godot/assets/audio`. 재생은 오토로드 `Audio`(레벨 `music`/`amb`, 요괴가 쫓아오면 전투곡, 보스는 override)
+- `art/sound.py` 소리 전부 합성(대금·피리·장구·징·풍경, A 계면조) → `src/assets/audio`. 재생은 오토로드 `Audio`(레벨 `music`/`amb`, 요괴가 쫓아오면 전투곡, 보스는 override)
 - 화풍: 시오브스타즈식 3/4 탑다운 + 옥토파스식 HD-2D 후처리(심도·블룸·색보정). 색조는 어두운 푸른 밤, 따뜻한 등불·보랏빛 귀화가 포인트.
 
 ## 작업 방식
@@ -41,7 +41,7 @@
 - **PR을 만들면 확인을 묻지 말고 바로 머지한다**(merge 커밋 방식). 머지 후 다음 작업은 다시 `main`에서 새 브랜치로.
 
 ## 웹 빌드 (시험판)
-- `godot/export_presets.cfg` "Web"(스레드 없음) → `godot --headless --path godot --export-release Web ../build/web/index.html`. 템플릿은 `~/.local/share/godot/export_templates/4.4.1.stable/web_nothreads_release.zip`(전체 tpz에서 이 파일만 받아 둠)
+- `src/export_presets.cfg` "Web"(스레드 없음) → `godot --headless --path src --export-release Web ../build/web/index.html`. 템플릿은 `~/.local/share/godot/export_templates/4.4.1.stable/web_nothreads_release.zip`(전체 tpz에서 이 파일만 받아 둠)
 - 아티팩트는 파일당 15MB 제한: wasm을 4조각으로 나누고 페이지의 fetch 심이 다시 이어 붙인다(모든 조각 확장자 .wasm)
 
 ## 검증

@@ -1,3 +1,8 @@
 docs/board/
 __pycache__/
 build/
+
+# === Claude Code Game Studios ===
+project.local.yaml
+production/session-state/
+production/session-logs/

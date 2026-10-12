@@ -10,7 +10,7 @@ Writes <name>_n.png next to each source PNG (OpenGL convention: +Y is up, as God
 import math, pathlib
 from PIL import Image
 
-GODOT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets'
+GODOT = pathlib.Path(__file__).parent.parent / 'src' / 'assets'
 INK_MAX = 34
 VOXEL = {'house', 'terrace', 'lantern', 'jangseung_m', 'jangseung_f', 'dodam', 'board', 'stall'}  # pixels darker than this (max channel) are treated as outline / crease
 

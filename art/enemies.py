@@ -5,7 +5,7 @@ plague_dog.png  side view facing right, 44x30 cells, feet on row 28:
 ghoul.png       front view, 30x42 cells, feet on row 40:
                 walk0..walk3 (shambling bob), claw0 (arms raised), claw1 (raking down)
 plague_god.png  역신 boss, 56x76 cells, hem bottom ~row 70: idle0..3 (float), cast, swipe, hurt, human (disguise)
-Output: godot/assets/sprites/
+Output: src/assets/sprites/
 """
 import importlib.util, math, pathlib
 from PIL import Image
@@ -14,7 +14,7 @@ ROOT = pathlib.Path(__file__).parent
 spec = importlib.util.spec_from_file_location('props', ROOT / 'props.py')
 props = importlib.util.module_from_spec(spec); spec.loader.exec_module(props)
 Canvas, R, GREEN = props.Canvas, props.R, props.GREEN
-OUT = ROOT.parent / 'godot' / 'assets' / 'sprites'
+OUT = ROOT.parent / 'src' / 'assets' / 'sprites'
 TMP = ROOT / 'out' / 'enemy_frames'
 
 FUR = R('#100c10', '#1c161a', '#2c2328', '#3e3236', '#54464a', '#6a5a5a')

@@ -2,13 +2,13 @@
 
 Drawn pixel by pixel with a few shading rules (light from the upper left, violet-black ink outline
 added automatically around every silhouette). Each prop is anchored at the bottom-centre of its
-canvas (where it touches the ground). Output: godot/assets/props/<name>.png
+canvas (where it touches the ground). Output: src/assets/props/<name>.png
 """
 import math, pathlib, random
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).parent
-OUT = ROOT.parent / 'godot' / 'assets' / 'props'
+OUT = ROOT.parent / 'src' / 'assets' / 'props'
 
 
 def hx(h):

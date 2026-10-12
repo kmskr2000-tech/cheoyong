@@ -7,13 +7,13 @@ Scale: A 계면조 (A C D E G) — D bends down toward C, A and E shake.
 Music (seamless loops): title, night (탐색), dread (폐가), battle (자진모리 12/8), boss (휘모리풍)
 SFX: slash hit block roll hurt song purify tell blip ui_move ui_ok pickup levelup throw wail fire splash stun door
 Ambience loops: waves, wind
-Output: godot/assets/audio/*.wav (22050 Hz mono 16-bit)
+Output: src/assets/audio/*.wav (22050 Hz mono 16-bit)
 """
 import pathlib, wave
 import numpy as np
 
 SR = 22050
-OUT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets' / 'audio'
+OUT = pathlib.Path(__file__).parent.parent / 'src' / 'assets' / 'audio'
 rng = np.random.default_rng(7)
 
 NOTE = {'A2': 110.0, 'E3': 164.81, 'G3': 196.0, 'A3': 220.0, 'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'G4': 392.0,

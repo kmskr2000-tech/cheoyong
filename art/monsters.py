@@ -3,7 +3,7 @@
 Every sheet uses the same 7-frame layout so Enemy KINDS can share it:
     move0..move3 (idle / walk / float cycle), tell (예고 동작), strike (공격), hurt (피격·쓰러짐)
 Projectiles and extras get their own small sheets (e.g. mama_boil).
-Output: godot/assets/sprites/<name>.png  +  art/out/monsters_preview.png (contact sheet per chapter)
+Output: src/assets/sprites/<name>.png  +  art/out/monsters_preview.png (contact sheet per chapter)
 """
 import importlib.util, math, pathlib
 from PIL import Image

@@ -12,7 +12,7 @@ import volume
 ROOT = pathlib.Path(__file__).parent
 SRC, OUT = ROOT / 'src', ROOT / 'out'
 sys.path.insert(0, str(ROOT))
-GODOT = ROOT.parent / 'godot' / 'assets' / 'sprites'
+GODOT = ROOT.parent / 'src' / 'assets' / 'sprites'
 
 
 def load(path):

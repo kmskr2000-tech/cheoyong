@@ -6,13 +6,13 @@ intro_sea_fg.png   foreground kelp / rock silhouettes (alpha)
 intro_hall.png     shots 2–3: inside 용궁 — pearl light, coral pillars, the sick-bed dais
 intro_night.png    shot 4: the surface at night — moon, swell, far village lights on the shore
 title_bg.png       the title screen: moon over the sea, the beach of 개운포 below
-Dithered ramps keep it pixel art. Output: godot/assets/intro/
+Dithered ramps keep it pixel art. Output: src/assets/intro/
 """
 import math, pathlib
 import numpy as np
 from PIL import Image
 
-OUT = pathlib.Path(__file__).parent.parent / 'godot' / 'assets' / 'intro'
+OUT = pathlib.Path(__file__).parent.parent / 'src' / 'assets' / 'intro'
 W, H = 480, 270
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]) / 16.0
 
