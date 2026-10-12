@@ -56,6 +56,16 @@ func _ready() -> void:
 		var ip := {"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]}
 		if it.size() > 4 and it[4] == "glint":
 			ip["node"] = _glint(ip["pos"])
+			var icon_path := "res://assets/ui/icons/key_%s.png" % it[0]   # e.g. the 피리 lying on the sand
+			if ResourceLoader.exists(icon_path):
+				var ic := Sprite2D.new()
+				ic.texture = load(icon_path)
+				ic.position = Vector2(0, -9)
+				ic.z_index = 1
+				ip["node"].add_child(ic)
+				var bob := ic.create_tween().set_loops()
+				bob.tween_property(ic, "position:y", -11.0, 0.9).set_trans(Tween.TRANS_SINE)
+				bob.tween_property(ic, "position:y", -8.0, 0.9).set_trans(Tween.TRANS_SINE)
 		interact_points.append(ip)
 	for c in def.get("crabs", []):
 		var crab := Crab.new()

@@ -50,6 +50,7 @@ func _ready() -> void:
 		if a.begins_with("--level="): level_id = a.get_slice("=", 1)
 		elif a.begins_with("--spawn="): spawn_name = a.get_slice("=", 1)
 		elif a.begins_with("--deok="): deok = int(a.get_slice("=", 1))   # test hook
+		elif a.begins_with("--tal="): tal = a.get_slice("=", 1)   # test hook: 쓰고 있는 탈
 		elif a.begins_with("--sp="): skill_points = int(a.get_slice("=", 1))   # test hook: 수련 점수
 		elif a.begins_with("--skills="): skills = Array(a.get_slice("=", 1).split(","))   # test hook: 익힌 수
 		elif a.begins_with("--flags="):
