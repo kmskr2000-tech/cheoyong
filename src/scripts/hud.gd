@@ -89,9 +89,10 @@ func _ready() -> void:
 	_tal_label.add_theme_color_override("font_color", Color(0.94, 0.88, 0.7))
 	_tal_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
 	_tal_label.add_theme_constant_override("outline_size", 4)
-	_tal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_tal_label.position = Vector2(364, 208)
-	_tal_label.size = Vector2(60, 14)
+	# right-aligned in the gap left of the 교체 button: the old spot (below it) sat on the 부적/구르기 buttons
+	_tal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_tal_label.position = Vector2(290, 179)
+	_tal_label.size = Vector2(56, 14)
 	_touch_root.add_child(_tal_label)
 	# the 말하기 face laid over the attack button while something can be talked to
 	_talk = Sprite2D.new()
