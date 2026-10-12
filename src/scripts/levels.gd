@@ -63,8 +63,8 @@ const DATA := {
 		"npcs": [],
 		"interact": [],
 		# SC1-13: 무너진 마당 — 역병 들개·역귀, 깨진 항아리 곁엔 물귀신, 구석엔 처녀귀신
-		"enemies": [["dog", 190, 360], ["ghoul", 300, 317], ["dog", 420, 387], ["ghoul", 230, 280],
-			["mulgwi", 520, 387], ["maiden_ghost", 100, 400]],
+		"enemies": [["dog", 260, 300], ["ghoul", 300, 330], ["dog", 420, 387], ["ghoul", 230, 280],
+			["mulgwi", 520, 387], ["maiden_ghost", 200, 420]],
 		"exits": [[Rect2(0, 360, 6, 53), "gyeongju", "fromPyega"], [Rect2(130, 187, 30, 20), "pyega2", "start"]],
 		"wisps": Vector2(146, 200),
 	},

@@ -163,6 +163,17 @@ func tp(footprint: Vector2) -> void:
 	await tick(3)
 
 
+## 레벨 정의의 gates(이야기가 여는 출구)·exits 의 중심 (좌표를 하드코딩하지 않는다: 아트팀이 지형을 바꿔도 따라간다)
+func gate_center(name: String) -> Vector2:
+	var r: Rect2 = lvl().def["gates"][name][0]
+	return r.get_center()
+
+
+func exit_center(i: int) -> Vector2:
+	var r: Rect2 = lvl().def["exits"][i][0]
+	return r.get_center()
+
+
 func tp_raw(p: Vector2) -> void:
 	player().position = p
 	await tick(3)
@@ -275,7 +286,7 @@ func sc_chain() -> void:
 	await until(func(): return not player().locked, "마을 사람 대사 끝", 1500)
 
 	step("SC1-05 첫 전투 → 정화 (노래)")
-	await tp(Vector2(330, 105))
+	await tp(lvl().def["anchors"]["fight_player"])
 	await until(func(): return lvl().hud._guide == "attack", "전투 튜토리얼 안내(베기 버튼)", 300)
 	var yokai = lvl().get_node("Gaetgwi")
 	yokai.take_hit(9999, Vector2.ZERO)
@@ -317,7 +328,7 @@ func sc_chain() -> void:
 	step("SC1-11 밤 · 관아 사람의 호출")
 	await until(func(): return G.flag("summoned") == 1 and not player().locked, "관아 사람 호출 대사 끝", 3000)
 	iid = level_iid()
-	await tp(Vector2(636, 185))
+	await tp(gate_center("gwana"))
 	await until(func(): return level_ready("gwana", iid), "관아 도착(출구 이동)", 1500)
 
 	step("SC1-12 관아 의뢰 + 난영 쓰러짐")
@@ -328,19 +339,19 @@ func sc_chain() -> void:
 	await must(G.flag("nanyeong_fallen") == 1, "난영 쓰러짐 플래그")
 	await must(int(G.items["insam"]) >= 4, "관아 지급 인삼정기탕 +2 (2→4)")
 	iid = level_iid()
-	await tp(Vector2(3, 235))
+	await tp(lvl().def["anchors"]["exit"])
 	await until(func(): return level_ready("gyeongju", iid), "경주 복귀(관아 출구)", 1500)
 
 	step("SC1-13 경주 → 서쪽 폐가 (마당)")
 	await free_player()
 	iid = level_iid()
-	await tp(Vector2(3, 185))
+	await tp(gate_center("pyega"))
 	await until(func(): return level_ready("pyega1", iid), "폐가 마당 도착", 1500)
 	await clear_room()
 
 	step("SC1-14 폐가 다락")
 	iid = level_iid()
-	await tp(Vector2(320, 39))
+	await tp(exit_center(1))
 	await until(func(): return level_ready("pyega2", iid), "폐가 다락 도착", 1500)
 	var boss = lvl().get_node("Boss")
 	await must(boss.state == "wait", "역신은 사람 모습으로 앉아 있다(wait)")
@@ -349,7 +360,7 @@ func sc_chain() -> void:
 	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
 
 	step("SC1-15~17 최심부 · 역신 각성")
-	await tp(Vector2(545, 190))   # trigger inner
+	await tp(Vector2(562, 190))   # trigger inner
 	await until(func(): return boss.state == "idle", "역신 각성", 3000)
 	await until(func(): return not player().locked, "각성 후 조작 가능", 600)
 
@@ -395,7 +406,7 @@ func sc_chain() -> void:
 	step("SC1-22~23 편전 · 퇴마어사 임명")
 	await free_player()
 	iid2 = level_iid()
-	await tp(Vector2(256, 196))
+	await tp(Vector2(256, 228))
 	await until(func(): return G.flag("appointed") == 1, "임명 플래그", 3000)
 	await until(func(): return level_ready("gyeongju", iid2), "경주 '떠나는 날'", 3000)
 
@@ -520,12 +531,12 @@ func sc_boss_retry() -> void:
 	await clear_room()
 	await tp(Vector2(420, 190))
 	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
-	await tp(Vector2(545, 190))
+	await tp(Vector2(562, 190))
 	var boss = lvl().get_node("Boss")
 	await until(func(): return boss.state == "idle", "역신 각성", 3000)
 	await until(func(): return not player().locked, "조작 가능", 600)
 	# 보스방 문(add_barrier)이 실제로 막는가: 트리거 콜백 안에서 만들어져 엔진이 "Can't change this state while flushing queries"를 찍는다
-	await tp(Vector2(470, 192))
+	await tp(Vector2(520, 190))
 	var blocked: bool = player().test_move(player().global_transform, Vector2(40, 0))
 	expect(blocked, "보스방 봉쇄벽이 입구를 막는다 (결함이면 플레이어가 나갈 수 있음)")
 	for attempt in 2:
@@ -543,7 +554,7 @@ func sc_boss_retry() -> void:
 		await must(player().hp == player().max_hp and not player().locked, "플레이어 체력 가득·조작 가능")
 		await must(player().position.distance_to(lvl().lift(lvl().def["spawns"]["start"])) < 2.0, "입구 스폰 위치")
 		await clear_room()
-		await tp(Vector2(545, 190))
+		await tp(Vector2(562, 190))
 		await until(func(): return boss.state == "idle", "역신 재각성(트리거 재작동)", 3000)
 		await until(func(): return not player().locked, "재각성 후 조작 가능", 600)
 	step("재도전 뒤에도 격파 경로가 열려 있다")
