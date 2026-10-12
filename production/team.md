@@ -10,6 +10,8 @@
 | 아트팀 | art-director, technical-artist | `art/`, `src/assets/`(재생성 산출물), `design/art/` | 기획 인계 자산 목록을 기준으로 |
 | QA팀 | qa-lead, qa-tester | `tests/`, `docs/qa/`, `production/qa/` | 모든 부서 PR의 검증·회귀 |
 
+| 감사팀 | (감사 전담) | `production/audit/` | 전 팀 에이전트 진전·산출물 검증, 헛도는 에이전트 적발 |
+
 ## 규칙
 1. **구역 침범 금지.** 다른 부서 파일에서 문제를 발견하면 수정하지 말고 보고에 적는다.
 2. 한 라운드에 `src/scripts/`를 쓰는 프로그래머는 파일 단위로 겹치지 않게 배정한다.
