@@ -59,3 +59,13 @@
 ## Open Questions
 
 기획안 부록 "확인 필요" 10건 — 특히 #1 코드 루트, #2 챕터 분량, #4 3장 분기와 정화 철학.
+
+## 보완 요청
+
+2026-10-12 검토(`design/gdd/REVIEW-2026-10-12.md`) 결과. Status는 Draft로 둔다. 아래 1~4를 반영하고 5의 사용자 결정이 나면 Approved로 올린다.
+
+1. **Open Questions가 낡았다(위 "기획안 부록 10건, #1 코드 루트")** — 기획안 v2.0 부록은 14건이고 #1(코드 루트)은 "결정 완료(템플릿 규약 채택, ADR-0001)", #10(Godot 4.4.1 설치)은 완료다. 미결은 12건(#2~#9, #11~#14). 표로 다시 써서 항목·권장안·막는 일을 이 문서에 직접 둘 것(참조만 하면 구현자가 기획안을 열어야 한다).
+2. **Out of Scope에 미결 항목이 섞여 있다** — "필드 채집(권장: 안 함)"(#8), "인물록·설화 조각 수집(보류)"(#11), "세이브 슬롯 다중화(보류)"(#12)는 사용자 결정 전이다. 확정 제외 목록과 분리하고 결정 대기로 표시할 것.
+3. **출처 없는 주장** — `Monetization: 없음`, `Session Length: 10~20분`, `Out of Scope: 과금·PC·콘솔 포팅`은 GOAL.md·기획안·BRIEF-ch1 어디에도 근거가 없다(기획안에는 "세션 30분에서 30fps"뿐). 근거를 달거나 사용자 확인 항목으로 옮길 것. `보이스 없음`은 기획안 §11에 근거가 있다.
+4. **템플릿 누락** — 기준은 `.claude/docs/templates/game-concept.md`다. 빠진 것: Player Experience(MDA), Player Motivation, Target Player Profile, Technical Considerations, Risks(디자인·기술·범위), Anti-Pillars(현재 "막는 것" 열이 일부 대신함), Inspiration, Scope Tiers, Next Steps. 요약본 취지에 맞게 기획안 §13(위험·성공 기준)·§10(기술)을 가져와 요약해도 된다. `/map-systems`는 "MVP Definition" 제목의 섹션을 읽으므로 "MVP / Vertical Slice"에 그 이름을 병기할 것.
+5. **사용자 결정 필요(Approved 전에 결정/확인)** — 챕터 2~5 분량(기획안 부록 #2, 이 문서 Estimated Scope의 "확인 필요"), 3장 "처단"과 정화 철학(#4), 수익 모델, 세션 길이.

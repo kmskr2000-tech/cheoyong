@@ -9,7 +9,7 @@
 
 ## Overview
 
-1장이 Godot에 구현돼 있으므로 이 표는 "앞으로 설계할 것"이 아니라 **이미 있는 시스템에 GDD가 없다는 사실**을 기록한다. `Design Doc` 칸의 `GDD.md`·`growth-system.md`는 템플릿 형식(8섹션)이 아닌 기존 문서다. 템플릿 파이프라인이 요구하는 형식의 GDD는 `/reverse-document`로 코드에서 역산해 만든다(스프린트 1~2). `Status`는 **템플릿 형식 GDD의 상태**(템플릿이 허용하는 값만 사용 — 괄호·자유 문구 금지)이고, 코드 구현 현황은 `Implementation` 열에 따로 둔다. 템플릿 형식 GDD가 없는 시스템은 `Not Started`이고, 행 5·6은 `/reverse-document`로 역산한 GDD가 생겨 `In Review`다.
+1장이 Godot에 구현돼 있으므로 이 표는 "앞으로 설계할 것"이 아니라 **이미 있는 시스템에 GDD가 없다는 사실**을 기록한다. `Design Doc` 칸의 `GDD.md`·`growth-system.md`는 템플릿 형식(8섹션)이 아닌 기존 문서다. 템플릿 파이프라인이 요구하는 형식의 GDD는 `/reverse-document`로 코드에서 역산해 만든다(스프린트 1~2). `Status`는 **템플릿 형식 GDD의 상태**(템플릿이 허용하는 값만 사용 — 괄호·자유 문구 금지)이고, 코드 구현 현황은 `Implementation` 열에 따로 둔다. 템플릿 형식 GDD가 없는 시스템은 `Not Started`이고, 행 5·6은 `/reverse-document`로 역산한 GDD가 생겨 `In Review`였고, 2026-10-12 검토(`REVIEW-2026-10-12.md`)에서 `Approved`가 됐다.
 
 원본 현황표: `docs/GDD.md` 부록 A (ID 단위 상태). 스토리·장면: `docs/story-bible.md`.
 
@@ -23,8 +23,8 @@
 | 2 | 플레이어 컨트롤러 (이동·구르기·상태이상) | Core | Core | MVP | Not Started | Implemented (GDD 없음) | docs/GDD.md §7 | 1 |
 | 3 | 레벨 시스템 (레벨 데이터·지형·충돌·출입구·카메라) | Core | Foundation | MVP | Not Started | Implemented (GDD 없음) | CLAUDE.md "엔진·구조" | — |
 | 4 | 세이브·체크포인트 | Persistence | Core | MVP | Not Started | Implemented (단일 슬롯) | — | 3, 9 |
-| 5 | 전투 코어 (대금 3연타·강 베기·받아넘기기·신명) | Gameplay | Core | MVP | In Review | Implemented | design/gdd/combat-core.md | 2 |
-| 6 | 정화 시스템 (쓰러짐→처용가→한풀이) | Gameplay | Feature | MVP | In Review | Implemented | design/gdd/purification.md | 5 |
+| 5 | 전투 코어 (대금 3연타·강 베기·받아넘기기·신명) | Gameplay | Core | MVP | Approved | Implemented | design/gdd/combat-core.md | 2 |
+| 6 | 정화 시스템 (쓰러짐→처용가→한풀이) | Gameplay | Feature | MVP | Approved | Implemented | design/gdd/purification.md | 5 |
 | 7 | 부적 (화염·결박·수호·파동) | Gameplay | Feature | MVP | Not Started | Implemented, 현혹·뇌성 미구현 | 기획안 §6.3 | 5, 18 |
 | 8 | 적 AI·요괴 기믹 (17종) | Gameplay | Feature | MVP | Not Started | Implemented (GDD 없음) | story-bible.md 부록 E | 5, 6 |
 | 9 | 스토리 비트·진행 플래그·대화 (SC ID) | Narrative | Core | MVP | Not Started | Implemented | story-bible.md | 3 |
@@ -137,7 +137,7 @@ Effort: S = 1 세션, M = 2~3, L = 4+.
 | 코드 Implemented | 17 (1·2·3·4·5·6·8·9·10·11·12·13·15·19·20·21·27) |
 | 코드 Partial | 4 (7·14·16·28) |
 | 코드 Not Started | 7 (17·18·22·23·24·25·26) |
-| Template-format GDD 완료 | 0 |
+| Template-format GDD 완료 | 2 (Approved: 5·6) |
 | Gap | 1 (배포) |
 
 ## Next Steps
@@ -145,3 +145,22 @@ Effort: S = 1 세션, M = 2~3, L = 4+.
 - [ ] 스프린트 1: `/reverse-document` — 전투 코어·정화 GDD
 - [ ] `/design-review` 각 GDD → `/review-all-gdds`
 - [ ] ADR-001(코드 루트·엔진 버전) → `/create-architecture`
+
+---
+
+## 보완 요청
+
+2026-10-12 검토(`design/gdd/REVIEW-2026-10-12.md`) 결과. 이 문서는 Draft로 유지하며 아래를 반영하면 Approved로 올린다. 출처는 코드 `08294f2` 기준 대조.
+
+1. **행 5 이름의 "강 베기"** — 구현에 없는 기능이다(`combat-core.md` C1, 결정 대기). 행 이름에서 빼거나 "(미구현·결정 대기)"를 붙일 것. 왜: 색인이 존재하지 않는 기능을 구현 시스템처럼 보이게 한다.
+2. **행 5·6 `Depends On` 불일치** — 행 5는 `2`뿐이지만 `combat-core.md` Dependencies는 성장 코어(13)·스킬 트리(14)·장비(16)에도 의존한다고 쓴다. 행 6은 `5`뿐이지만 `purification.md`는 14(겹노래·여의주)에도 의존한다. 순환 의존(6↔13)은 이미 기록돼 있으니 그 방식대로 맞출 것.
+3. **낡은 구현 현황 칸(코드 `08294f2`와 대조)**
+   - 행 16: "처용탈·역신의 눈물 획득만" → 눈물 효과(독기 지속 피해 -40%)가 구현됨(`game.gd:TEAR_MIASMA_CUT`, `miasma_dmg`). `docs/growth-system.md` §12의 "효과 미구현"도 같이 낡았다(상위 문서이므로 수정은 별도 합의).
+   - 행 4: "단일 슬롯"만 적혀 있으나 세이브 버전 2·마이그레이션·손상 격리·원자적 쓰기가 들어왔다(`game.gd:SAVE_VERSION`).
+   - 행 28: "Capture만 (회귀 없음)" → `tests/save_check.sh`, `tests/smoke_godot.sh`가 있다.
+   - 행 29와 High-Risk 표: `docs/architecture/adr-0002-web-deploy.md`(Accepted), `tools/deploy-web.sh`, 원격 `gh-pages` 브랜치가 있다. 실제 라이브 배포 여부는 이번 검토에서 확인하지 않았으니 "배포 경로 있음, 라이브 미확인"으로 고쳐 쓰고 사용자 폰 확인 전까지 Gap 유지 여부를 정할 것.
+4. **행 12 `Depends On` = `9, 14`** — 의뢰·상점의 엽전 경제는 성장 코어(13)에 닿는다(`growth-system.md` §2). 14(스킬 트리)는 오기로 보인다. 확인 후 정정.
+5. **행 8 "요괴 17종"** — 코드의 `Bestiary.ENTRIES`는 21종(보스 포함), `enemy.gd:KINDS`는 20개 항목(보스 제외 추정)이다. 어느 기준의 17종인지(바이블 부록 E 대조) 밝히거나 수를 바로잡을 것.
+6. **Dependency Map의 계층 불일치** — Polish Layer에 해상전(23)·엔딩 분기(22)·낮/밤(25)이 있으나 표의 Layer 열은 이들을 `Feature`로 둔다. 어느 쪽이 맞는지 정해 한 곳으로 통일.
+7. **Next Steps 체크박스** — `/reverse-document` 전투·정화 항목은 완료됐고 `/design-review`도 이번에 수행됐으니 체크하고 남은 항목(`/review-all-gdds`, ADR-001→`/create-architecture`, ADR-0002 반영)을 현재 상태로 갱신.
+8. **(inferred) 행 22~25** — 추론 행이다. 사용자가 범위를 확정했는지(낮/밤은 "확인 필요", 기획안 부록 #7) 표시할 것.
