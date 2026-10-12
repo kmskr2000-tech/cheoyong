@@ -4,6 +4,7 @@
 > **Author**: game-designer (reverse-document: 코드에서 역산)
 > **Last Updated**: 2026-10-12
 > **Last Verified**: 2026-10-12 — `player.gd`·`enemy.gd`·`boss.gd`·`fx/talisman_zone.gd`·`fx/projectile.gd`·`game.gd`·`combat_tuning.gd`를 브랜치 `prog/combat-strategy`(CS-01~15 구현) 기준으로 재역산(CS-14). 수치는 `src/scripts/combat_tuning.gd`(CT)가 정본
+> **미결 불일치 규칙**: 아래 [불일치](#불일치-의도-vs-구현) C1~C9는 사용자 결정 전까지 **상위 문서(story-bible > growth-system > 기획안)가 우선**하며, 이 문서는 현재 구현을 기록할 뿐 상위 문서를 덮어쓰지 않는다.
 > **Implements Pillar**: 1 정화, 처치가 아니다 / 2 노래가 무기다 / 3 손가락으로 배운다 (`design/gdd/game-concept.md`)
 > **Rigor**: standard (`project.yaml` modes.rigor) — 필수 섹션 Overview·Player Fantasy·Detailed Rules·Dependencies·Tuning Knobs·Acceptance Criteria + 수치 규칙이 있으므로 Formulas. Edge Cases는 선택이지만 코드에서 읽은 것을 남겼다.
 
@@ -278,6 +279,7 @@ ki' = min(100, ki + 4.0·Δt − 부적 비용 + 8·정화(normal) + 20·정화(
 | 부적 (#7) | #7 depends on this | 이 문서가 부적 4종의 효과 수치를 소유(색인 행 7 "부적 GDD"가 따로 생기면 이관) |
 | 적 AI·요괴 기믹 (#8) | #8 depends on this | `take_hit` 시그니처, 사거리 판정 |
 | 보스 프레임워크 (#11) | #11 depends on this | 보스 12% 계수, `kneel` 진입 |
+| 장비 (#16) | This depends on #16 | 「역신의 눈물」이 독기 피해를 40% 줄임(규칙 30 참고) |
 | 성장 코어 (#13) | This depends on #13 | `attack_mult`, `max_hp`, `damage_taken_mult`, 레벨업 회복 |
 | 스킬 트리 (#14) | This depends on #14 | 28개 중 동작(live) 20개 가운데 이 문서에서 쓰이는 것은 위 표 |
 | HUD (#19) | #19 depends on this | 버튼 가이드·게이지 신호 |
@@ -317,7 +319,7 @@ ki' = min(100, ki + 4.0·Δt − 부적 비용 + 8·정화(normal) + 20·정화(
 (검증 훅은 `CLAUDE.md` "검증": `--sin=100`, `--skills=id,id`, `--sp=N`, `--test-enemies=키`, `--level=<id>`)
 
 - [ ] Lv.1, 스킬 없음: `--test-enemies=dog`에서 베기 3연타로 들개(HP 30)가 쓰러지고(소멸하지 않고 `downed` 그룹으로 이동) 정화 전에는 사라지지 않는다.
-- [ ] 3타째에 앞으로 짧게 돌진하고 heavy 넉백(일반 요괴 220 vs 일반 130)이 일어난다.
+- [ ] 3타째에 앞으로 짧게 돌진하고 heavy 넉백(요괴 넉백 속도 heavy 220 vs 일반 130)이 일어난다.
 - [ ] 스윙 중 한 번 더 누르면 시점과 무관하게 다음 타로 이어지고, 누르지 않으면 다음 입력은 1타부터 시작한다.
 - [ ] 스틱 입력이 없을 때 70px 이내에 요괴가 있으면 그쪽을 향해 휘두른다.
 - [ ] 구르기는 0.32초 동안 무적이며 베기를 취소하고 시작된다.
