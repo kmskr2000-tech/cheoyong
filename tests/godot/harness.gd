@@ -575,7 +575,7 @@ func sc_boss_retry() -> void:
 		await must(not is_instance_valid(ghoul) or ghoul.is_queued_for_deletion(), "소환된 졸개 제거")
 		await must(get_nodes_in_group("enemy").filter(func(e): return e.get("kind") != null and not e.is_queued_for_deletion()).is_empty(), "다락 몹이 되살아나지 않는다")
 		await must(G.flag("boss_done") == 0, "boss_done 미설정")
-		await must(player().position.distance_to(lvl().lift(Vector2(535, 192))) < 2.0, "보스방 입구(봉쇄문 안쪽)에서 부활")
+		await must(player().position.distance_to(lvl().lift(Vector2(556, 192))) < 2.0, "보스방 입구(봉쇄문 안쪽)에서 부활")
 		await must(not player().locked, "조작 가능")
 		await must(int(G.deaths.get("pyega2_boss", 0)) == attempt + 1 and int(G.deaths.get("pyega2", 0)) == 0, "사망이 pyega2_boss 키로 집계")
 		god = true
@@ -1201,7 +1201,7 @@ func cs_wake_boss():
 	await clear_room()
 	await tp(Vector2(420, 190))
 	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
-	await tp(Vector2(545, 190))
+	await tp(Vector2(562, 190))
 	var boss = lvl().get_node("Boss")
 	await until(func(): return boss.state == "idle", "역신 각성", 3000)
 	await until(func(): return not player().locked, "조작 가능", 600)

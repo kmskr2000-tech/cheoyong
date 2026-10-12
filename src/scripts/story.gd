@@ -507,7 +507,7 @@ func _inner_room(level: Node) -> void:
 	level.hud.show_boss(boss, "역신(疫神)")
 	Game.death_zone = "pyega2_boss"   # CS-07: 역신전 사망은 폐가2 와 따로 센다
 	# CS-12(OQ-1, 디렉터 확정): 쓰러지면 보스방 입구에서 다시 일어선다. 몹은 되살아나지 않고 역신 HP·페이즈만 초기화된다.
-	p.spawn = level.lift(Vector2(535, 192))
+	p.spawn = level.lift(level.def["anchors"]["boss_respawn"])
 	boss.home_pos = boss.position
 	p.died.connect(_boss_player_died.bind(level, boss))
 	if "--boss-kneel" in OS.get_cmdline_user_args():  # test hook: skip straight to SC1-19

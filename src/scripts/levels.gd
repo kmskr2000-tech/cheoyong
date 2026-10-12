@@ -87,7 +87,7 @@ const DATA := {
 		"triggers": [[Rect2(400, 120, 30, 141), "close"], [Rect2(552, 109, 24, 152), "inner"]],
 		"exits": [[Rect2(262, 408, 44, 11), "pyega1", "fromUp"]],
 		# story.gd: 역신(변장)이 앉은 자리, 최심부 문을 닫는 막, 그 문 바깥으로 쫓겨난 적이 놓이는 자리
-		"anchors": {"boss": Vector2(640, 220), "door": Rect2(536, 109, 12, 152), "door_x": 536.0, "kicked": Vector2(518, 213), "boss_goal": Vector2(600, 213)},
+		"anchors": {"boss": Vector2(640, 220), "door": Rect2(536, 109, 12, 152), "door_x": 536.0, "kicked": Vector2(518, 213), "boss_goal": Vector2(600, 213), "boss_respawn": Vector2(556, 192)},
 	},
 	# 개운포 — 백사장과 해안 마을 (SC1-01~07). 처용이 바다에서 뭍으로 올라오는 곳.
 	# 좌표는 그림(art/collision_author.py)에 맞춘 값: 남쪽 넓은 백사장이 싸움터, 서쪽 모래띠로 올라가면 해안 마을 앞이다.
