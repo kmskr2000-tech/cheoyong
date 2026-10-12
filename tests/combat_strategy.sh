@@ -11,7 +11,7 @@ mkdir -p "$OUT"
 HARNESS="$HERE/tests/godot/harness.gd"
 TIMEOUT="${TIMEOUT:-300}"
 fail=0
-DEFAULT=(cs_parry cs_charge cs_guard cs_targeting cs_economy cs_boss)
+DEFAULT=(cs_parry cs_charge cs_guard cs_targeting cs_economy cs_boss cs_deaths)
 SCNS=("$@"); [ ${#SCNS[@]} -eq 0 ] && SCNS=("${DEFAULT[@]}")
 for name in "${SCNS[@]}"; do
   log="$OUT/$name.log"

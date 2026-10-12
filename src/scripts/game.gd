@@ -42,6 +42,8 @@ var _busy := false
 var _card: VBoxContainer
 var replaying := false   # 회상: the intro was opened from the title and returns there
 var _settings := {}
+var deaths := {}             # CS-07: 구역(level id, 보스전은 "pyega2_boss")별 사망 횟수 — 난이도 측정용
+var death_zone := ""         # 비어 있지 않으면 사망을 level_id 대신 이 키로 센다 (역신전)
 
 
 func _ready() -> void:
@@ -119,6 +121,7 @@ func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 		await card(title, sub)
 	level_id = id
 	spawn_name = spawn
+	death_zone = ""
 	get_tree().change_scene_to_file("res://scenes/level.tscn")
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -307,11 +310,13 @@ const SAVE_DEFAULTS := {
 	"jeonggi": 0, "deok": 0, "lv": 1, "skill_points": 0, "skills": [], "mats": {}, "dogam": {},
 	"tal": "", "tals": [], "accessories": [], "titles": [],
 }
+## 선택 키: SAVE_VERSION 을 올리지 않고 덧붙인 필드(없으면 로드 시 기본값). SAVE_DEFAULTS 는 v1 키 집합으로 고정(tests/save_check.sh).
+const SAVE_OPTIONAL := {"deaths": {}}
 const _SAVE_TYPES := {
 	"flags": TYPE_DICTIONARY, "money": TYPE_FLOAT, "items": TYPE_DICTIONARY, "checkpoint": TYPE_STRING,
 	"jeonggi": TYPE_FLOAT, "deok": TYPE_FLOAT, "lv": TYPE_FLOAT, "skill_points": TYPE_FLOAT,
 	"skills": TYPE_ARRAY, "mats": TYPE_DICTIONARY, "dogam": TYPE_DICTIONARY, "tal": TYPE_STRING,
-	"tals": TYPE_ARRAY, "accessories": TYPE_ARRAY, "titles": TYPE_ARRAY,
+	"tals": TYPE_ARRAY, "accessories": TYPE_ARRAY, "titles": TYPE_ARRAY, "deaths": TYPE_DICTIONARY,
 }
 var _save_extra := {}     # unknown keys from the loaded file, preserved on save
 var _save_version := 0    # version of the last loaded file
@@ -327,7 +332,7 @@ func save() -> void:
 	var data: Dictionary = _save_extra.duplicate(true)
 	data.merge({"flags": flags, "money": money, "items": items, "checkpoint": checkpoint,
 		"jeonggi": jeonggi, "deok": deok, "lv": lv, "skill_points": skill_points, "skills": skills, "mats": mats,
-		"dogam": dogam, "tal": tal, "tals": tals, "accessories": accessories, "titles": titles}, true)
+		"dogam": dogam, "tal": tal, "tals": tals, "accessories": accessories, "titles": titles, "deaths": deaths}, true)
 	# A file from a newer build keeps its version label (and unknown keys); we only update fields we know.
 	# Before the first overwrite of such a file, keep a one-time backup of it.
 	data["save_version"] = maxi(SAVE_VERSION, _save_version)
@@ -445,7 +450,8 @@ func _read_save() -> Dictionary:
 			var want: int = _SAVE_TYPES[k]
 			if t != want and not (want == TYPE_FLOAT and t == TYPE_INT):
 				push_warning("save: key '%s' has wrong type; using default" % k)
-				data[k] = SAVE_DEFAULTS[k].duplicate(true) if SAVE_DEFAULTS[k] is Array or SAVE_DEFAULTS[k] is Dictionary else SAVE_DEFAULTS[k]
+				var dflt = SAVE_DEFAULTS[k] if SAVE_DEFAULTS.has(k) else SAVE_OPTIONAL[k]
+				data[k] = dflt.duplicate(true) if dflt is Array or dflt is Dictionary else dflt
 				repaired = true
 	var ver = data.get("save_version", 1)   # no version field = legacy v1
 	if typeof(ver) != TYPE_FLOAT and typeof(ver) != TYPE_INT:
@@ -489,7 +495,7 @@ func load_save() -> bool:
 	_save_version = int(data["save_version"])
 	_save_extra = {}
 	for k in data:
-		if not SAVE_DEFAULTS.has(k) and k != "save_version":
+		if not SAVE_DEFAULTS.has(k) and not SAVE_OPTIONAL.has(k) and k != "save_version":
 			_save_extra[k] = data[k]
 	var def := SAVE_DEFAULTS
 	flags = _intify(data.get("flags", {}))
@@ -507,6 +513,7 @@ func load_save() -> bool:
 	tals = data.get("tals", [])
 	accessories = data.get("accessories", [])
 	titles = data.get("titles", [])
+	deaths = _intify(data.get("deaths", {}))
 	return true
 
 
@@ -518,8 +525,23 @@ func new_game() -> void:
 	level_id = "beach"
 	spawn_name = "start"
 	jeonggi = 0; deok = 0; lv = 1; skill_points = 0; skills = []
-	mats = {}; dogam = {}; tal = ""; tals = []; accessories = []; titles = []
+	mats = {}; dogam = {}; tal = ""; tals = []; accessories = []; titles = []; deaths = {}; death_zone = ""
 	_save_extra = {}; _save_version = 0; _future_backed_up = false
+
+
+## CS-07: 사망 1회 기록 (Player._die)
+func record_death() -> void:
+	var k := death_zone if death_zone != "" else level_id
+	deaths[k] = int(deaths.get(k, 0)) + 1
+	if "--stats" in OS.get_cmdline_user_args():
+		print("DEATHS ", death_report())
+
+
+func death_report() -> String:
+	var parts := []
+	for k in deaths:
+		parts.append("%s=%d" % [k, deaths[k]])
+	return ", ".join(parts)
 
 
 ## where a fresh start / continue / death puts you

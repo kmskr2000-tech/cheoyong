@@ -473,6 +473,7 @@ func _inner_room(level: Node) -> void:
 	if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the ending sequence
 		boss.hp = 20.0
 	level.hud.show_boss(boss, "역신(疫神)")
+	Game.death_zone = "pyega2_boss"   # CS-07: 역신전 사망은 폐가2 와 따로 센다
 	# falling here means trying the room again from the stair (the door is sealed behind him)
 	p.died.connect(func(): Game.change_level("pyega2", "start"), CONNECT_ONE_SHOT)
 	if "--boss-kneel" in OS.get_cmdline_user_args():  # test hook: skip straight to SC1-19
@@ -505,6 +506,7 @@ func _boss_defeated(level: Node) -> void:
 	for c in pl.died.get_connections():
 		pl.died.disconnect(c["callable"])
 	Game.set_flag("boss_done")
+	Game.death_zone = ""
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	await level.get_tree().create_timer(2.6).timeout

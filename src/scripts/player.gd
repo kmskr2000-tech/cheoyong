@@ -662,6 +662,7 @@ func _process(delta: float) -> void:
 
 
 func _die() -> void:
+	Game.record_death()
 	_end_attack()   # resets state to "move" — must run before "dead" is set
 	state = "dead"
 	velocity = Vector2.ZERO

@@ -251,6 +251,7 @@ func _main() -> void:
 		"cs_targeting": await sc_cs_targeting()
 		"cs_economy": await sc_cs_economy()
 		"cs_boss": await sc_cs_boss()
+		"cs_deaths": await sc_cs_deaths()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -1324,4 +1325,21 @@ func sc_cs_boss() -> void:
 	boss.take_hit(int(boss.hp) + 1, Vector2.ZERO)
 	await until(func(): return boss.state == "kneel", "무릎", 120)
 	await must(boss.is_in_group("downed"), "downed(죽음 아님)")
+	await done()
+
+
+func sc_cs_deaths() -> void:
+	step("CS-07 사망 3회 → 구역별 카운터 → 세이브 → 로드 후 유지")
+	await cs_setup()
+	var p := player()
+	G.deaths = {}
+	var spawn: Vector2 = p.spawn
+	for i in 3:
+		await until(func(): return p.hurt_t <= 0.0 and p.state == "move", "사망 가능 상태 %d" % (i + 1), 600)
+		p.hurt(99999, Vector2.RIGHT)
+		await until(func(): return p.hp == p.max_hp and p.position.distance_to(spawn) < 1.0, "리스폰 %d" % (i + 1), 600)
+	await must(int(G.deaths.get("pyega1", 0)) == 3, "pyega1 사망 3회: " + str(G.deaths))
+	G.save()
+	G.deaths = {}
+	await must(G.load_save() and int(G.deaths.get("pyega1", 0)) == 3, "세이브→로드 후 값 유지")
 	await done()
