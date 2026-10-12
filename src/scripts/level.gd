@@ -877,7 +877,7 @@ func _cull_lights() -> void:
 	for l in flicker:
 		var rng: float = l.texture.get_width() * l.texture_scale * 0.5
 		var reach := view.grow(rng + 48.0)   # 48px: 0.1초 간격 갱신 + 카메라 스무딩 여유
-		if reach.has_point(l.global_position + l.texture_offset):
+		if reach.has_point(l.global_position + l.offset):
 			inside.append(l)
 		elif l.visible:
 			l.visible = false
