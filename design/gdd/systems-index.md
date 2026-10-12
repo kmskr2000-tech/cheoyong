@@ -2,7 +2,7 @@
 
 > **Status**: Draft (brownfield — 구현에서 역산)
 > **Created**: 2026-10-12
-> **Last Updated**: 2026-10-12 (행 30 추가)
+> **Last Updated**: 2026-10-12 (행 31 추가: 챕터 2 구현 설계)
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
@@ -44,11 +44,12 @@
 | 23 | 해상전 (4장 갑판 전투) (inferred) | Gameplay | Feature | Full Vision | Not Started | Not Started | 기획안 §7 BOSS4 | 5, 11 |
 | 24 | 분신·아군화·속성·상태이상·탐지 체계 (inferred) | Gameplay | Feature | Alpha | Not Started | Not Started | growth-system.md §4 ⏳ 8수 | 5, 8 |
 | 25 | 낮/밤 사이클 (inferred, 확인 필요) | Gameplay | Feature | Full Vision | Not Started | Not Started | 기획안 §5 | 3, 9 |
-| 26 | 챕터 콘텐츠 2~5 (레벨·요괴·보스·의뢰) | Narrative | Polish | Full Vision | Not Started | Not Started | 기획안 §3.3·§7 | 3, 8, 9, 11 |
+| 26 | 챕터 콘텐츠 2~5 (레벨·요괴·보스·의뢰) | Narrative | Polish | Full Vision | Not Started | Not Started | 기획안 §3.3·§7, 2장: design/levels/ch2-dokkaebigol.md (3~5장 미설계) | 3, 8, 9, 11 |
 | 27 | 아트 파이프라인 도구 (art/*.py) | Meta | Foundation | MVP | Not Started | Implemented | CLAUDE.md "아트" | — |
 | 28 | 테스트·캡처 하네스 | Meta | Foundation | MVP | Not Started | Capture만 (회귀 없음) | CLAUDE.md "검증" | — |
 | 29 | 빌드·배포 (웹 내보내기·Pages) | Meta | Foundation | MVP | Not Started | **Gap** — 배포는 옛 웹판(루트가 legacy-web로 리다이렉트). 웹 내보내기는 4.4.1에서 성공 | docs/GDD.md PLATFORM.EXPORT | — |
 | 30 | 전투 전략 (적 유형별 정답·자원 트레이드오프·부적 시너지·역신 읽기 구조·터치 범위) | Gameplay | Feature | MVP | Approved | Implemented (CS-01~15, 브랜치 prog/combat-strategy; 검증 tests/combat_strategy.sh) | design/gdd/combat-strategy.md | 5, 7, 8, 11 |
+| 31 | 챕터 2 「도깨비골」 구현 설계 (6맵·요괴 5종 정답표·보스 두억시니 열쇠 구조·엄폐 읽기·씻김 공명·SC2-01~24·아트 자산·구현 태스크 T1~T18) | Narrative | Polish | Full Vision | Approved | Not Started (설계만, 코드 없음) | design/levels/ch2-dokkaebigol.md | 3, 5, 6, 8, 9, 11, 26 |
 
 ---
 
@@ -134,11 +135,11 @@ Effort: S = 1 세션, M = 2~3, L = 4+.
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 30 |
+| Total systems identified | 31 |
 | 코드 Implemented | 17 (1·2·3·4·5·6·8·9·10·11·12·13·15·19·20·21·27) |
 | 코드 Partial | 4 (7·14·16·28) |
-| 코드 Not Started | 8 (17·18·22·23·24·25·26·30) |
-| Template-format GDD 완료 (Approved) | 1 (30 combat-strategy; 5·6은 In Review) |
+| 코드 Not Started | 9 (17·18·22·23·24·25·26·30·31) |
+| Template-format GDD 완료 (Approved) | 2 (30 combat-strategy, 31 ch2-dokkaebigol; 5·6은 In Review) |
 | Gap | 1 (배포) |
 
 ## Next Steps
