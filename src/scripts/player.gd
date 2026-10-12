@@ -10,10 +10,10 @@ signal sin_changed(value: float)
 signal talisman_changed(kind: String)
 
 const SPEED := 72.0
-const FRAME := Vector2i(32, 48)
-const FEET_ROW := 44 # feet row inside the 48px cell; the node origin sits on it
+const FRAME := Vector2i(64, 64)   # Drive 도트 시트 임포트(art/import_hero.py): 64x64 셀, 공격 이펙트가 들어갈 여유
+const FEET_ROW := 58 # feet row inside the 64px cell; the node origin sits on it
 
-# Sheet order written by art/build.py (art/src/cheoyong.py FRAMES).
+# Sheet order written by art/import_hero.py (Drive 주인공 시트 → 87프레임). 70-73 피격(↓↑→←), 74-77 사망, 78-86 달리기(구르기).
 const SHEET := {
 	"down_idle": [18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19], "up_idle": [1], "right_idle": [2],  # 3/4 stance + breath
 	"downl_idle": [20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 21],  # the same, facing left
@@ -93,6 +93,10 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():   # test hook: --sin=100
 		if a.begins_with("--sin="):
 			shinmyeong = float(a.get_slice("=", 1))
+		if a == "--test-hurt":   # 스프라이트 확인용: 0.6초 뒤 맞는다(피해 0)
+			_test_after_unlock(func(): gentle_hits = 1; hurt(5, Vector2.LEFT))
+		if a == "--test-die":    # 스프라이트 확인용: 0.6초 뒤 쓰러진다
+			_test_after_unlock(func(): _die())
 	Game.leveled.connect(_on_leveled)
 	Game.skills_changed.connect(func():  # 심해의 인내 raises the ceiling at once
 		var gain := Game.max_hp() - max_hp
@@ -118,6 +122,11 @@ func _ready() -> void:
 			_add_anim(frames, tex, "%s_atk%d" % [dirs[d], c], [22 + d * 9 + c * 3, 23 + d * 9 + c * 3, 24 + d * 9 + c * 3])
 		_add_anim(frames, tex, dirs[d] + "_song", [66 + d])
 	_add_anim(frames, tex, "spin", [58, 59, 60, 61, 62, 63, 64, 65])
+	for d in 4:
+		_add_anim(frames, tex, dirs[d] + "_hurt", [70 + d])
+	_add_anim(frames, tex, "die", [74, 75, 76, 77])
+	for d in 3:
+		_add_anim(frames, tex, dirs[d] + "_run", [78 + d * 3, 79 + d * 3, 80 + d * 3])
 	sprite.sprite_frames = frames
 	sprite.offset = Vector2(0, FRAME.y / 2.0 - FEET_ROW)
 	sprite.play("down_idle")
@@ -135,10 +144,19 @@ func _ready() -> void:
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	add.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
 	slash.material = add
+	slash.modulate = Color(1, 1, 1, 0.55)   # 새 공격 컷에 검기가 이미 그려져 있다: 덧그림은 옅게
 	slash.visible = false
 	slash.z_index = 40 # effects draw over the y-sorted world
 	slash.z_as_relative = false
 	add_child(slash)
+
+
+## 스프라이트 확인용 훅: 오프닝 잠금이 풀리고 0.6초 뒤에 실행
+func _test_after_unlock(fn: Callable) -> void:
+	while locked or not is_inside_tree():
+		await get_tree().process_frame
+	await get_tree().create_timer(0.6).timeout
+	fn.call()
 
 
 func _add_anim(frames: SpriteFrames, tex: Texture2D, anim: String, idx: Array) -> void:
@@ -228,6 +246,9 @@ func _move(dir: Vector2) -> void:
 		_face(dir)
 	if dir.x != 0.0:
 		_last_h = signf(dir.x)
+	if hurt_pose_t > 0.0:   # 피격 포즈: 드라이브 시트의 움켜쥔 가슴 컷
+		_pose(facing + "_hurt", 0)
+		return
 	var row := "right" if facing == "left" else facing
 	var anim := row + ("_walk" if dir != Vector2.ZERO else "_idle")
 	if anim == "down_idle" and _last_h < 0.0:
@@ -388,6 +409,7 @@ func _spark(at: Vector2) -> void:
 
 # ---------------------------------------------------------------- getting hit
 var hurt_t := 0.0
+var hurt_pose_t := 0.0
 
 
 func hurt(dmg: int, dir: Vector2) -> void:
@@ -410,6 +432,7 @@ func hurt(dmg: int, dir: Vector2) -> void:
 			SoundWave.fire(self, (-dir).angle(), int(round(10 * Game.attack_mult())))
 		return
 	hurt_t = 0.6
+	hurt_pose_t = 0.3
 	Audio.sfx("hurt", -2.0)
 	dmg = int(ceil(dmg * Game.damage_taken_mult() * (0.8 if _frenzy() else 1.0)))   # 탈·가호·무아지경
 	if Game.has_skill("simhae"):  # 심해의 인내
@@ -433,6 +456,7 @@ func hurt(dmg: int, dir: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	hurt_t = maxf(0.0, hurt_t - delta)
+	hurt_pose_t = maxf(0.0, hurt_pose_t - delta)
 	if ki < max_ki and state != "dead":
 		ki = minf(max_ki, ki + KI_REGEN * delta)
 		stats_changed.emit(hp, max_hp, ki, max_ki)
@@ -444,8 +468,13 @@ func _die() -> void:
 	velocity = Vector2.ZERO
 	died.emit()
 	var tw := create_tween()
-	tw.tween_property(sprite, "rotation", PI / 2 * (1 if facing != "left" else -1), 0.25)
-	tw.parallel().tween_property(sprite, "modulate", Color(0.5, 0.6, 0.9, 0.8), 0.6)
+	sprite.rotation = 0.0
+	sprite.animation = "die"   # 쓰러지는 컷(무릎→엎드림): 오른쪽을 향한 시트, 왼쪽이면 뒤집는다
+	sprite.pause()
+	sprite.flip_h = facing == "left"
+	sprite.frame = 0
+	tw.tween_property(sprite, "frame", 3, 0.5)
+	tw.parallel().tween_property(sprite, "modulate", Color(0.7, 0.75, 0.95, 0.9), 0.6)
 	tw.tween_interval(1.4)
 	tw.tween_callback(_respawn)
 
@@ -848,9 +877,9 @@ func _roll(delta: float) -> void:
 	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (2.0 if _dash else 1.0) * (1.0 - k * 0.6)
 	_slide()
 	# 춤 구르기: one full turn on the spot of the step, the robe flaring (rendered, art/hero.py)
-	var start := {"down": 0, "right": 2, "up": 4, "left": 6}[facing] as int
-	var turn := 1 if roll_dir.x >= 0 else -1
-	_pose("spin", posmod(start + turn * int(round(smoothstep(0.0, 1.0, k) * 8.0)), 8))
+	var rrow := "right" if facing == "left" else facing   # 구르기: 드라이브 '달리기' 컷을 낮게 몰아친다
+	_pose(rrow + "_run", int(k * 9.0) % 3)
+	sprite.flip_h = facing == "left"
 	ghost_t -= delta
 	if ghost_t <= 0.0:
 		ghost_t = 0.05

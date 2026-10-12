@@ -32,6 +32,9 @@ func _initialize() -> void:
 	G.save()
 	var out: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("user://save.json"))
 	_ck("a4 resave adds save_version=2 and keeps all old keys", int(out.get("save_version", 0)) == 2 and src.keys().all(func(k): return out.has(k)))
+	# a4b SB-28: title can peek at chapter1_done without loading
+	_put("user://save.json", '{"flags":{"chapter1_done":1,"appointed":1}}')
+	_ck("a4b peek_flag chapter1_done", G.peek_flag("chapter1_done") and not G.peek_flag("boss_done"))
 	# a5 partial legacy (missing keys -> defaults)
 	_put("user://save.json", '{"flags":{"x":1},"lv":3}')
 	_ck("a5 partial legacy loads with defaults", G.load_save() and G.lv == 3 and G.money == 50 and G.skills == [] and G.checkpoint == "beach")

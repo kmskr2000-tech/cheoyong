@@ -104,7 +104,7 @@ func _sprite(path: String, at: Vector2, region := Rect2()) -> Sprite2D:
 	else:
 		s.texture = load(path)
 		if s.texture.get_width() >= 96:   # NPC sheets: front, then 3/4 stances — stand turned
-			s.hframes = s.texture.get_width() / 32
+			s.hframes = s.texture.get_width() / (s.texture.get_height() * 2 / 3)
 			s.frame = 1
 	s.position = at
 	s.offset = Vector2(0, -20)
@@ -190,7 +190,7 @@ func _shot_hall() -> void:
 	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(200, 168))   # 맏형 해강
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
-	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 232), Rect2(32, 0, 32, 48))  # back view (up_idle)
+	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 226), Rect2(64, 0, 64, 64))  # back view (up_idle)
 	await _fade_in()
 	await dialog.say([
 		{"name": "맏형 해강", "text": "용궁의 문을 닫읍시다."},
@@ -210,12 +210,8 @@ func _shot_hall() -> void:
 	if _done: return
 	# 용패: a single glowing scale passes from the king's hand into his
 	var scale_ := Sprite2D.new()
-	var img := Image.create(5, 7, false, Image.FORMAT_RGBA8)
-	for y in 7:
-		for x in 5:
-			if Vector2((x - 2) / 2.5, (y - 3) / 3.5).length() < 1.0:
-				img.set_pixel(x, y, Color(0.75, 0.95, 1.0) if y < 3 else Color(0.35, 0.7, 0.85))
-	scale_.texture = ImageTexture.create_from_image(img)
+	scale_.texture = load("res://assets/ui/icons/item_dragonseal.png")   # 용인: the dragon's teardrop seal
+	scale_.scale = Vector2(0.7, 0.7)
 	scale_.position = king.position + Vector2(-8, -10)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -239,7 +235,7 @@ func _shot_rise() -> void:
 	var sea := _layer("res://assets/intro/intro_sea.png", Vector2(0, -90))
 	sea.scale = Vector2(1, 1.34)
 	_shafts(_shot)
-	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 300), Rect2(32, 0, 32, 48))
+	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 294), Rect2(64, 0, 64, 64))
 	me.modulate = Color(0.25, 0.32, 0.5)
 	var bub := CPUParticles2D.new()
 	bub.amount = 20
@@ -261,7 +257,7 @@ func _shot_rise() -> void:
 	await Game.fade(1.0, 0.25)
 	_new_shot()
 	_layer("res://assets/intro/intro_night.png")
-	var head := _sprite("res://assets/sprites/cheoyong.png", Vector2(250, 196), Rect2(32, 0, 32, 26))  # head and shoulders above the swell
+	var head := _sprite("res://assets/sprites/cheoyong.png", Vector2(250, 197), Rect2(64, 20, 64, 28))  # head and shoulders above the swell
 	head.modulate = Color(0.18, 0.22, 0.35)
 	await _fade_in(1.0)
 	await _narrate("셋째 아들은 노래를 안고 물 위로 올랐다.", 3.2)

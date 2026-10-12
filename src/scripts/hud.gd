@@ -14,6 +14,10 @@ var _ki_w := 72.0
 var _sin_w := 56.0
 var _sin_fill: TextureRect
 var _tal_label: Label
+var _tal_icon: TextureRect   # 고른 부적 아이콘 (Drive 도트)
+var _mask_icon: TextureRect  # 쓰고 있는 탈
+var _flute_icon: TextureRect # 피리를 가졌다
+var _tal_shown := ""
 var _touch_root: Control
 var _base: TextureRect
 var _knob: TextureRect
@@ -45,6 +49,10 @@ func _ready() -> void:
 	_ki_fill = _gauge(root, Vector2(30, 19), _ki_w, "res://assets/ui/gauge_ki.png")
 	_sin_fill = _gauge(root, Vector2(30, 30), _sin_w, "res://assets/ui/gauge_sin.png")   # 신명
 	_sin_fill.size.x = 0.0
+	# carried things, under the level number: the talisman he will draw, the mask he wears, the flute
+	_tal_icon = _item_icon(root, Vector2(8, 54), "res://assets/ui/icons/tal_fire.png")
+	_mask_icon = _item_icon(root, Vector2(30, 56), "res://assets/ui/icons/item_mask.png")
+	_flute_icon = _item_icon(root, Vector2(52, 56), "res://assets/ui/icons/key_flute.png")
 	_touch_root = Control.new()
 	_touch_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -120,6 +128,17 @@ func _ready() -> void:
 	_release_dirs()   # a Hud rebuilt mid-drag (level change) must not inherit a held direction
 
 
+func _item_icon(parent: Node, at: Vector2, path: String) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = load(path)
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.position = at
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.visible = false
+	parent.add_child(r)
+	return r
+
+
 func _exit_tree() -> void:
 	_release_dirs()
 
@@ -156,7 +175,20 @@ func set_talk(on: bool) -> void:
 	_talk_on = on
 
 
+func _update_icons() -> void:
+	var has_flute := Game.flag("flute") == 1
+	if player and player.has_method("current_talisman"):
+		var tk: String = player.current_talisman()
+		if tk != _tal_shown:
+			_tal_shown = tk
+			_tal_icon.texture = load("res://assets/ui/icons/tal_%s.png" % tk)
+	_tal_icon.visible = has_flute and player != null
+	_mask_icon.visible = Game.tal != ""
+	_flute_icon.visible = has_flute
+
+
 func _process(_d: float) -> void:
+	_update_icons()
 	if not _touch_root.visible or _buttons.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
@@ -376,7 +408,22 @@ func _bag_kept(dialog: DialogBox) -> void:
 	lines.append("재료: " + (", ".join(m) if not m.is_empty() else "없음"))
 	if not Game.titles.is_empty():
 		lines.append("칭호: " + ", ".join(Game.titles))
+	# icons of what he carries, laid over the pause screen above the dialog
+	var cl := CanvasLayer.new()
+	cl.layer = 30
+	cl.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(cl)
+	var shown: Array = []
+	if Game.tal != "":
+		shown.append("item_mask")
+	if Game.flag("flute") == 1:
+		shown.append("key_flute")
+		for k in player.talismans():
+			shown.append("tal_" + k)
+	for i in shown.size():
+		_item_icon(cl, Vector2(150 + i * 26, 26), "res://assets/ui/icons/%s.png" % shown[i]).visible = true
 	await dialog.choose({"name": "지닌 것", "text": "\n".join(lines)}, ["닫기"])
+	cl.queue_free()
 
 
 func _gauge(root: Control, at: Vector2, w: float, fill: String) -> TextureRect:

@@ -12,10 +12,10 @@ signal defeated
 signal knelt
 signal phase_two
 
-const CELL := Vector2i(120, 164)   # art/boss3d.py: over three times a man's height
-const FEET_ROW := 158.0
+const CELL := Vector2i(120, 98)   # art/yokai_import.py (Drive boss-plagueking, 96px art = twice a man's height)
+const FEET_ROW := 97.0
 const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
-const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7]}
+const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7], "pulse": [8]}
 
 var hp := MAX_HP
 var phase := 1
@@ -77,9 +77,9 @@ func _ready() -> void:
 	var aura := PointLight2D.new()
 	aura.texture = _radial()
 	aura.color = Color(0.45, 0.95, 0.4)
-	aura.energy = 0.8
+	aura.energy = 0.45
 	aura.texture_scale = 1.8
-	aura.position = Vector2(0, -80)
+	aura.position = Vector2(0, -52)
 	add_child(aura)
 	target = get_tree().current_scene.get_node_or_null("Player")
 
@@ -149,7 +149,7 @@ func _physics_process(delta: float) -> void:
 					g.state = "chase"
 				_begin("idle")
 		"pulse":
-			sprite.play("cast")
+			sprite.play("pulse")
 			if st > 0.6:
 				_clear_tells()
 				_ring(position, 80.0, Color(0.6, 1.0, 0.5))

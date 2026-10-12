@@ -50,6 +50,7 @@ func _ready() -> void:
 		if a.begins_with("--level="): level_id = a.get_slice("=", 1)
 		elif a.begins_with("--spawn="): spawn_name = a.get_slice("=", 1)
 		elif a.begins_with("--deok="): deok = int(a.get_slice("=", 1))   # test hook
+		elif a.begins_with("--tal="): tal = a.get_slice("=", 1)   # test hook: 쓰고 있는 탈
 		elif a.begins_with("--sp="): skill_points = int(a.get_slice("=", 1))   # test hook: 수련 점수
 		elif a.begins_with("--skills="): skills = Array(a.get_slice("=", 1).split(","))   # test hook: 익힌 수
 		elif a.begins_with("--flags="):
@@ -479,6 +480,12 @@ func _intify(d: Dictionary) -> Dictionary:
 func has_save() -> bool:
 	var d := _read_save()
 	return not d.is_empty() or _read_failed   # unreadable-but-present counts as "a save exists"
+
+
+## a flag as stored on disk, without loading the save (title screen uses it for the "1장 완료" mark)
+func peek_flag(k: String) -> bool:
+	var f = _read_save().get("flags", {})
+	return typeof(f) == TYPE_DICTIONARY and int(f.get(k, 0)) != 0
 
 
 func load_save() -> bool:
