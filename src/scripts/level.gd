@@ -694,6 +694,15 @@ func _atmosphere() -> void:
 	pl.position = Vector2(0, -16)
 	pl.height = 30.0
 	$Player.add_child(pl)
+	if dark_k > 0.0:   # 어두운 맵: 발밑 따뜻한 바닥 림라이트로 처용 실루엣을 바닥에서 분리 (아트팀)
+		var rim := PointLight2D.new()
+		rim.texture = light_tex
+		rim.color = Color(1.0, 0.8, 0.55)
+		rim.energy = 1.4 * dark_k
+		rim.texture_scale = 0.4
+		rim.position = Vector2(0, -4)
+		rim.height = 12.0
+		$Player.add_child(rim)
 	# fog over the ground, lit by the lanterns it drifts through
 	var fog := ColorRect.new()
 	var w: float = meta["size"][0]

@@ -282,6 +282,10 @@ func sc_nametag() -> void:
 	e.position = p.position + Vector2(90, 0)
 	await tick(20)
 	await shot("nametag_top", false)
+	e.position = p.position + Vector2(228, 0)
+	e2.position = p.position + Vector2(-60, -150)
+	await tick(20)
+	await shot("nametag_right_top", false)
 
 
 func sc_alley() -> void:

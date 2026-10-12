@@ -112,23 +112,28 @@ static func screen_flash(tree: SceneTree, col: Color, sec: float) -> void:
 static func clamp_label(lbl: Control, margin := 3.0) -> void:
 	if not lbl.is_inside_tree():
 		return
+	if not lbl.has_meta("clamp_base"):
+		lbl.set_meta("clamp_base", lbl.position)
+	var base: Vector2 = lbl.get_meta("clamp_base")
+	lbl.position = base   # 매 프레임 기준 위치에서 재계산 (누적 표류 금지)
 	var vp := lbl.get_viewport_rect().size
 	var r := lbl.get_global_transform_with_canvas()
+	var sc := r.get_scale()
 	var left: float = r.origin.x
-	var right: float = left + lbl.size.x * r.get_scale().x
+	var right: float = left + lbl.size.x * sc.x
 	var top: float = r.origin.y
-	var dy := 0.0
-	if top < margin:
-		dy = margin - top
-	if dy != 0.0:
-		lbl.position.y += dy / r.get_scale().y
+	var bottom: float = top + lbl.size.y * sc.y
 	var dx := 0.0
+	var dy := 0.0
 	if left < margin:
 		dx = margin - left
 	elif right > vp.x - margin:
 		dx = (vp.x - margin) - right
-	if dx != 0.0:
-		lbl.position.x += dx / r.get_scale().x
+	if top < margin:
+		dy = margin - top
+	elif bottom > vp.y - margin:
+		dy = (vp.y - margin) - bottom
+	lbl.position = base + Vector2(dx / sc.x, dy / sc.y)
 
 
 ## 역신 열림: 화면 가장자리에 약한 금빛 비네트가 깃들었다 걷힌다 (시선이 보스의 열린 몸으로 모인다)
