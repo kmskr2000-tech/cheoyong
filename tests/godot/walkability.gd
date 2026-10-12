@@ -22,7 +22,7 @@ const ROUTES := {
 	"old_village": [Vector2(650, 345), Vector2(722, 335), Vector2(736, 176), Vector2(728, 60), Vector2(752, 36)],
 	"den1": [Vector2(30, 181), Vector2(225, 175), Vector2(225, 90), Vector2(420, 56), Vector2(500, 185), Vector2(772, 200)],
 	"den2": [Vector2(24, 200), Vector2(215, 190), Vector2(320, 230), Vector2(430, 200), Vector2(452, 200)],
-	"den3": [Vector2(284, 330), Vector2(284, 308), Vector2(400, 190), Vector2(480, 150), Vector2(700, 200), Vector2(284, 416)],
+	"den3": [Vector2(40, 200), Vector2(320, 235), Vector2(320, 330), Vector2(460, 200)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
 # --live: 요괴를 살려 둔 채 '실제 보행 경로'로 연출 지점·상호작용 지점까지 걸어가며 어그로(state != idle)가 한 번도 없는지 본다 (god/tp 로 가려지는 문제 방지).
@@ -36,7 +36,7 @@ const LIVE := {
 	"den1:fromDen2": [],
 	"den2:start": [],
 	"den2:fromDen3": [],
-	"den3:start": [Vector2(284, 310)],
+	"den3:start": [],
 }
 var live := false
 var G: Node

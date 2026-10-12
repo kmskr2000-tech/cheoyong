@@ -206,9 +206,9 @@ const DATA := {
 		"exits": [[Rect2(0, 181, 6, 50), "hwagae", "fromPath"], [Rect2(620, 0, 76, 20), "old_village", "fromPath"], [Rect2(1106, 64, 14, 64), "den1", "start"]],
 		"anchors": {"exit": Vector2(14, 205)},
 	},
-	# ===== 2장 마일스톤 2: old_village · den1 · den2 · den3 (설계서 §4.3~4.6). 전용 땅그림이 아직 없어 기존 지형으로 폴백 — production/qa/ch2-m2-asset-needs.md.
-	# 좌표는 폴백 지형(걸을 수 있는 자리, tests/art_walk.sh)에 맞춘 값이고, 스폰·연출 트리거는 모든 요괴에서 어그로 130(lift 좌표) 이상 떨어져 있다.
-	# 버려진 마을 — 폴백 지형 village(1장 경주 변두리 땅그림). 서쪽 어귀(무덤)·우물 둘레·북동 끝. SC2-17~20(의뢰 B).
+	# ===== 2장 마일스톤 2: old_village · den1 · den2 · den3 (설계서 §4.3~4.6). 전용 땅그림 적용(asset/ch2-m2, 좌표·근거는 production/qa/asset-import/ch2-m2/README.md).
+	# 좌표는 새 지형(tests/art_walk.sh)에 맞춘 값이고, 스폰·연출 트리거는 모든 요괴에서 어그로 130(lift 좌표) 이상 떨어져 있다.
+	# 버려진 마을 — 지형 old_village. 남쪽 어귀(무덤)·우물 마당·동쪽 샛길(인형). SC2-17~20(의뢰 B).
 	"old_village": {
 		"music": "dread", "amb": "wind",
 		"name": "버려진 마을",
@@ -223,7 +223,7 @@ const DATA := {
 		"exits": [[Rect2(618, 350, 90, 8), "jiri_path", "fromVillage"]],
 		"anchors": {"doll": Vector2(742, 40), "grave": Vector2(722, 335), "exit": Vector2(650, 352)},
 	},
-	# 도깨비 소굴 외곽 — 폴백 지형 pyega1(1장 폐가 마당). 서쪽 입구 홀(A) → 아래 긴 복도 → 동쪽 안쪽(C), 위쪽 곁방(B·샛길). SC2-04·05.
+	# 도깨비 소굴 외곽 — 지형 den1. 서쪽 복도(A) → 북쪽 큰 방(B·우회) / 중앙·동쪽 복도 → 덩굴 방(C). SC2-04·05.
 	"den1": {
 		"music": "dread", "amb": "wind",
 		"name": "도깨비 소굴 외곽",
@@ -239,7 +239,7 @@ const DATA := {
 		"exits": [[Rect2(0, 164, 6, 34), "jiri_path", "fromDen"], [Rect2(778, 180, 8, 40), "den2", "start"]],
 		"anchors": {"exit": Vector2(770, 200)},
 	},
-	# 도깨비 곳간(정예 관문) — 폴백 지형 gwana(1장 관아 마당). 남서 입구 → 마당 → 북동 문(장산범 정화 전엔 막힘). SC2-21.
+	# 도깨비 곳간(정예 관문) — 지형 den2. 서쪽 복도 → 원형 광장 → 동쪽 문(장산범 정화 전엔 막힘). SC2-21.
 	"den2": {
 		"music": "dread", "amb": "wind",
 		"name": "도깨비 곳간",
@@ -253,22 +253,19 @@ const DATA := {
 		"exits": [[Rect2(0, 176, 6, 48), "den1", "fromDen2"], [Rect2(628, 176, 8, 48), "den3", "start"]],
 		"anchors": {"door": Rect2(446, 170, 14, 60), "exit": Vector2(610, 200)},
 	},
-	# 두억시니의 방 — 폴백 지형 pyega2(1장 역신의 방: 보스 실루엣이 그림에 있다). M2 는 입장 연출(SC2-06·07)까지, 전투는 다음 마일스톤.
+	# 두억시니의 방 — 지형 den3(아레나 ≥300×300). M2 는 입장 연출(SC2-06·07)까지, 전투는 다음 마일스톤.
 	"den3": {
 		"music": "dread", "amb": "",
 		"name": "두억시니의 방",
-		"ground": "pyega2",
-		"ambient": Color(0.3, 0.29, 0.44),
-		"spawns": {"start": Vector2(284, 395)},
-		"props": [["pillar", 360, 150, null], ["pillar", 600, 150, null], ["pillar", 360, 236, null], ["pillar", 600, 236, null], ["altar", 480, 190, [-20, CANDLE, 1.1, 1.3]],
-			["jars", 300, 150, null], ["jars", 700, 235, null]],
-		"lights": [[400, 160, GHOSTFIRE, 0.6, 0.8], [282, 309, GHOSTFIRE, 0.5, 0.5], [640, 187, CANDLE, 0.5, 0.7]],
-		"npcs": [],
-		"interact": [],
+		"ground": "den3",
+		"ambient": Color(0.34, 0.33, 0.50),
+		"spawns": {"start": Vector2(40, 200)},
+		"props": [["pillar", 180, 129, null], ["pillar", 460, 129, null], ["pillar", 180, 269, null], ["pillar", 460, 269, null], ["mortar_altar", 320, 200, [-36, GHOSTFIRE, 1.0, 1.4]], ["dok_torch", 70, 64, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 570, 64, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 70, 349, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 570, 349, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 230, 56, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 410, 56, [-46, GHOSTFIRE, 0.8, 0.9]], ["old_tools_mortar", 100, 300, null], ["old_tools_pot", 540, 107, null], ["old_tools_pot", 560, 227, null], ["old_tools_broom", 110, 93, null], ["old_tools_broom", 75, 227, null], ["old_tools_sandals", 520, 320, null], ["old_tools", 260, 340, null], ["old_tools", 390, 340, null]],
+		"lights": [[320, 190, GHOSTFIRE, 0.9, 1.0], [70, 110, GHOSTFIRE, 0.5, 0.6], [570, 110, GHOSTFIRE, 0.5, 0.6]],
+		"npcs": [], "interact": [],
 		"enemies": [],
-		"triggers": [[Rect2(262, 296, 46, 24), "gate"]],
-		"exits": [[Rect2(262, 410, 46, 12), "den2", "fromDen3"]],
-		# door: 입장 뒤 입구 복도를 닫는 막 · hall: 두억시니가 설 홀 중앙(M3)
-		"anchors": {"door": Rect2(262, 344, 46, 12), "hall": Vector2(480, 190), "exit": Vector2(284, 416)},
+		"triggers": [[Rect2(70, 170, 40, 60), "gate"]],
+		"exits": [[Rect2(0, 176, 6, 48), "den2", "fromDen3"]],
+		"anchors": {"door": Rect2(26, 170, 16, 60), "hall": Vector2(460, 200), "exit": Vector2(14, 200)},
 	},
 }
