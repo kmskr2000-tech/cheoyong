@@ -74,5 +74,5 @@ func _physics_process(delta: float) -> void:
 	if bursting and _hit_cd <= 0.0:
 		var p: Node2D = get_tree().current_scene.get_node_or_null("Player")
 		if p and p.global_position.distance_to(global_position) < R and p.has_method("hurt"):
-			p.hurt(6, (p.global_position - global_position).normalized())
+			p.hurt(Game.miasma_dmg(6), (p.global_position - global_position).normalized())
 			_hit_cd = 0.6

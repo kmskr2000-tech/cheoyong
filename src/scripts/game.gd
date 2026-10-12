@@ -149,6 +149,23 @@ func attack_mult() -> float:
 	return 1.0 + (lv - 1) * 0.05
 
 
+## 장신구 「역신의 눈물」: 독기·역병 장판(역신 독안개, 독기 함정)의 지속 피해만 줄인다. 직격(기침·펄스 등)은 그대로.
+const TEAR_NAME := "역신의 눈물"
+const TEAR_MIASMA_CUT := 0.4   # 조정은 이 값 하나로 (0.4 → 안개 5→3, 독기 함정 6→4)
+
+
+func has_tear() -> bool:
+	return TEAR_NAME in accessories
+
+
+func tear_desc() -> String:
+	return "독기 지속 피해 약 %d%% 감소" % roundi(TEAR_MIASMA_CUT * 100.0)
+
+
+func miasma_dmg(base: int) -> int:
+	return maxi(1, int(round(base * (1.0 - TEAR_MIASMA_CUT)))) if has_tear() else base
+
+
 func damage_taken_mult() -> float:
 	var m := 0.9 if tal == "cheoyong" else 1.0
 	if has_skill("bigeul"):

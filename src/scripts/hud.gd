@@ -366,7 +366,10 @@ func _bag_kept(dialog: DialogBox) -> void:
 	var lines := []
 	lines.append("탈: %s" % (Game.TALS[Game.tal]["name"] + " (" + Game.TALS[Game.tal]["desc"] + ")" if Game.tal != "" else "무탈"))
 	if not Game.accessories.is_empty():
-		lines.append("장신구: " + ", ".join(Game.accessories))
+		var acc := []
+		for a in Game.accessories:
+			acc.append(a + (" (%s)" % Game.tear_desc() if a == Game.TEAR_NAME else ""))
+		lines.append("장신구: " + ", ".join(acc))
 	var m := []
 	for k in Game.mats:
 		m.append("%s ×%d" % [k, int(Game.mats[k])])

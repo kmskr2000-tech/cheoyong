@@ -273,7 +273,7 @@ func _poison(at: Vector2) -> void:
 	t.autostart = true
 	t.timeout.connect(func():
 		if is_instance_valid(target) and target.global_position.distance_to(z.global_position) < 22.0 and target.has_method("hurt"):
-			target.hurt(5, Vector2.ZERO))
+			target.hurt(Game.miasma_dmg(5), Vector2.ZERO))
 	z.add_child(t)
 
 
@@ -354,9 +354,9 @@ func _defeat() -> void:
 	_clear_tells()
 	remove_from_group("enemy")
 	Game.reward_purify("plague_god", global_position, get_parent())
-	if not "역신의 눈물" in Game.accessories:
-		Game.accessories.append("역신의 눈물")
-		Game.say_toast("장신구 「역신의 눈물」을 얻었다", Color(0.75, 0.95, 0.7))
+	if not Game.has_tear():
+		Game.accessories.append(Game.TEAR_NAME)
+		Game.say_toast("장신구 「%s」을 얻었다 — %s" % [Game.TEAR_NAME, Game.tear_desc()], Color(0.75, 0.95, 0.7))
 	for e in get_tree().get_nodes_in_group("downed"):
 		e.purify()
 	defeated.emit()
