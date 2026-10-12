@@ -81,7 +81,11 @@ var _last_roll_end := -10.0
 var _dash := false     # 학의 질주: a second roll right after the first
 var _roll_lock_t := 0.0       # CS-01: 구르기 종료 후 재구르기 잠금 (delta 로 감소)
 var _roll_queued := false     # CS-01: 잠금 끝 ROLL_BUFFER 전부터 저장된 선입력
-var _charge_c := 0.0          # CS-02: 강 베기 충전 시간
+var _charge_c := 0.0          # CS-02: 강 베기 충전 시간 (state "charge" 진입 후 경과)
+var _charge_hold := false     # CS-02: 이 눌림이 베기를 시작시켰다(말 걸기에 쓰인 눌림은 충전하지 않는다)
+var _hold_t := 0.0            # CS-02: 베기 버튼을 누르고 있는 시간
+var _charge_full := false
+var _charge_fx: Line2D
 const ULT_TIME := 6.0
 const TAL_COST := {"fire": 25.0, "bind": 30.0, "guard": 20.0, "wave": 20.0}
 const TAL_NAME := {"fire": "화염부", "bind": "결박부", "guard": "수호부", "wave": "파동부"}
@@ -216,7 +220,7 @@ func _physics_process(delta: float) -> void:
 		_talisman()
 	if not locked and Input.is_action_just_pressed("swap"):
 		swap_talisman()
-	if not locked and Input.is_action_just_pressed("dance") and state in ["move", "attack"]:
+	if not locked and Input.is_action_just_pressed("dance") and state in ["move", "attack", "charge", "slash"]:
 		dance()
 	if not locked and Input.is_action_just_pressed("song") and state == "move" and Game.flag("flute"):
 		_start_song()
@@ -231,15 +235,22 @@ func _physics_process(delta: float) -> void:
 			if not queued and Game.has_skill("jangdan") and t >= _swing_time() * 0.55:
 				rhythm += 1  # 장단맞춤: pressed as the swing settles, not mashed
 			queued = true
+			_charge_hold = true   # 누르고 있으면 이 스윙이 끝난 뒤 충전 대기로 이어진다
+			_hold_t = 0.0
 		elif state == "move":
 			if interact.is_valid() and interact.call():
-				return
+				return   # 말 걸기에 쓰인 눌림: 공격도 충전도 일어나지 않는다
 			combo = 0
 			rhythm = 0
 			_start_attack()
+			_charge_hold = true
+			_hold_t = 0.0
+	_update_charge_hold(delta)
 	match state:
 		"move": _move(dir)
 		"attack": _attack(delta)
+		"charge": _charge(delta, dir)
+		"slash": _slash(delta)
 		"roll": _roll(delta)
 		"song": _song(delta)
 
@@ -345,7 +356,7 @@ func _attack(delta: float) -> void:
 			combo += 1
 			_start_attack()
 		else:
-			_end_attack()
+			_end_attack(true)   # 버튼이 계속 눌려 있으면 충전 대기(_charge_hold)가 이어진다
 
 
 func _swing_time() -> float:
@@ -357,11 +368,18 @@ func _frenzy() -> bool:
 	return Game.has_skill("muaji") and hp <= max_hp * 0.3
 
 
-func _end_attack() -> void:
+func _end_attack(keep_hold := false) -> void:
 	state = "move"
 	arm.visible = false
 	slash.visible = false
 	combo = 0
+	_charge_c = 0.0   # 맞음·기절·끌림·구르기·노래 등 어떤 끊김도 충전을 버린다
+	_charge_full = false
+	if _charge_fx:
+		_charge_fx.visible = false
+	if not keep_hold:
+		_charge_hold = false
+		_hold_t = 0.0
 
 
 func _resolve_hit(c: Dictionary, base: float) -> void:
@@ -427,6 +445,154 @@ func _spark(at: Vector2) -> void:
 	var tw := s.create_tween()
 	tw.tween_property(s, "frame", 2, 0.12)
 	tw.tween_callback(s.queue_free)
+
+
+# ---------------------------------------------------------------- 강 베기 (D2, 차징)
+## 베기 버튼을 계속 누르고 있는 시간을 잰다. 버튼을 떼거나 컷신이 되면 대기를 버리고, CHARGE_ENTER 에 이르면 충전 상태로 들어간다.
+func _update_charge_hold(delta: float) -> void:
+	if not _charge_hold:
+		return
+	if locked or not Input.is_action_pressed("attack"):
+		_charge_hold = false
+		_hold_t = 0.0
+		return
+	_hold_t += delta
+	if state == "move" and _hold_t >= CT.CHARGE_ENTER:
+		_enter_charge()
+
+
+func _enter_charge() -> void:
+	_charge_hold = false
+	_hold_t = 0.0
+	state = "charge"
+	_charge_c = 0.0
+	_charge_full = false
+	t = 0.0
+	velocity = Vector2.ZERO
+	arm.visible = false
+	slash.visible = false
+	_pose("%s_atk2" % facing, 0)   # 대금을 뒤로 당긴 자세
+	Audio.sfx("slash", -12.0, 0.2)
+
+
+func _charge(delta: float, dir: Vector2) -> void:
+	if locked:
+		_end_attack()   # 컷신·대사 중에는 충전을 버린다
+		return
+	if dir != Vector2.ZERO:
+		_face(dir)   # 이동은 못 하지만 스틱으로 조준한다
+	velocity = Vector2.ZERO
+	_pose("%s_atk2" % facing, 0)
+	_charge_c += delta
+	_charge_fx_update()
+	if _charge_c >= CT.CHARGE_FULL and not _charge_full:
+		_charge_full = true   # 만충 번쩍임 + 진동
+		_ring_fx(Color(1.0, 0.95, 0.7), 30.0, 0.25)
+		_haptic()
+	if not Input.is_action_pressed("attack"):
+		if _charge_c >= CT.CHARGE_MIN:
+			_release_charge()
+		else:
+			_end_attack()   # 너무 일찍 뗌: 조용히 취소(후딜·손실 없음)
+	elif _charge_c >= CT.CHARGE_MAX:
+		_release_charge()   # 손가락이 멈춘 경우의 무한 대기 방지
+
+
+## 발치 충전 링: 눈이 전투에 있어도 보인다 (0.35 지점에 표식)
+func _charge_fx_update() -> void:
+	if _charge_fx == null:
+		_charge_fx = Line2D.new()
+		_charge_fx.width = 1.5
+		_charge_fx.material = slash.material
+		_charge_fx.z_index = 40
+		_charge_fx.z_as_relative = false
+		_charge_fx.position = Vector2(0, -4)
+		add_child(_charge_fx)
+	_charge_fx.visible = true
+	var k := clampf(_charge_c / CT.CHARGE_FULL, 0.0, 1.0)
+	var pts := PackedVector2Array()
+	var n := maxi(2, int(k * 32.0))
+	for i in n + 1:
+		pts.append(Vector2.from_angle(-PI / 2 + TAU * k * float(i) / float(n)) * Vector2(15.0, 8.0))
+	_charge_fx.points = pts
+	_charge_fx.default_color = Color(1.0, 0.95, 0.65, 0.95) if _charge_c >= CT.CHARGE_MIN else Color(0.7, 0.8, 1.0, 0.6)
+
+
+func charge_ratio() -> float:
+	return clampf(_charge_c / CT.CHARGE_FULL, 0.0, 1.0) if state == "charge" else 0.0
+
+
+func _bind_mult(e: Node) -> float:
+	if e.get("bind_t") != null and e.bind_t > 0.0:
+		return CT.BIND_HIT_MULT_SKILL if Game.has_skill("gyeolbak2") else CT.BIND_HIT_MULT
+	return 1.0
+
+
+## 손을 뗐다: 충전량 tt(0=최소, 1=만충)로 강 베기. 장갑 무시·예고 끊기·넉백. 소리는 쓰지 않는다.
+func _release_charge() -> void:
+	var tt := clampf((_charge_c - CT.CHARGE_MIN) / (CT.CHARGE_FULL - CT.CHARGE_MIN), 0.0, 1.0)
+	var dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if dir != Vector2.ZERO:
+		_face(dir)
+	else:
+		var best: Node2D = null
+		var bd := CT.CHARGE_AUTOAIM   # 스틱이 없으면 발동 시점에 가까운 적을 향한다
+		for e in get_tree().get_nodes_in_group("enemy"):
+			var dd: float = (e.global_position - global_position).length()
+			if dd < bd:
+				bd = dd; best = e
+		if best:
+			_face(best.global_position - global_position)
+	_charge_c = 0.0
+	_charge_full = false
+	if _charge_fx:
+		_charge_fx.visible = false
+	state = "slash"
+	t = 0.0
+	hit_done = true
+	var base: float = FACE_ANGLE[facing]
+	var origin := global_position + Vector2(0, -14)
+	var reach := CT.CHARGE_REACH_MIN + CT.CHARGE_REACH_SPAN * tt
+	var arc := CT.CHARGE_ARC_MIN + CT.CHARGE_ARC_SPAN * tt
+	var mult := Game.attack_mult() * (1.5 if parry_bonus else 1.0)
+	parry_bonus = false
+	Audio.sfx("slash", 0.0, 0.0)
+	_slash_scale = 1.0 + 0.6 * tt
+	if tt >= 1.0:
+		_haptic()
+	for e in get_tree().get_nodes_in_group("enemy"):
+		var to: Vector2 = (e.global_position + Vector2(0, -10)) - origin
+		if to.length() > reach:
+			continue
+		if absf(wrapf(to.angle() - base, -PI, PI)) > arc and to.length() > 10:
+			continue
+		if e.has_method("take_hit"):
+			var dmg := int(round(CT.CHARGE_BASE_DMG * (CT.CHARGE_DMG_BASE + CT.CHARGE_DMG_SPAN * tt) * mult * _bind_mult(e)))
+			e.take_hit(dmg, to.normalized(), true, false, true, tt)
+			add_sin(CT.SIN_PER_CHARGED)
+			_spark(e.global_position + Vector2(0, -12))
+			hit_landed.emit(e)
+	slash_base = base
+
+
+var _slash_scale := 1.0
+var slash_base := 0.0
+
+
+## 강 베기 직후 후딜 (구르기로 취소 가능)
+func _slash(delta: float) -> void:
+	var k := clampf(t / CT.CHARGE_RECOVER, 0.0, 1.0)
+	velocity = Vector2.ZERO
+	_pose("%s_atk2" % facing, 1 if k < 0.5 else 2)
+	var swing := k < 0.6
+	slash.visible = swing
+	if swing:
+		slash.frame = mini(3, int(k / 0.6 * 4.0))
+		slash.position = Vector2(0, -16) + Vector2.from_angle(slash_base) * 12.0
+		slash.rotation = slash_base
+		slash.scale = Vector2(0.9, 0.9) * _slash_scale
+	if k >= 1.0:
+		_end_attack()
 
 
 # ---------------------------------------------------------------- getting hit
@@ -644,6 +810,8 @@ func slow(sec: float) -> void:
 
 ## drag toward a point for a while (the hero can still roll to break free)
 func pull(to: Vector2, sec: float) -> void:
+	if state == "charge":
+		_end_attack()   # 끌려가면 충전이 끊긴다
 	pull_to = to
 	pull_t = sec
 

@@ -12,6 +12,7 @@ signal defeated
 signal knelt
 signal phase_two
 
+const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
 const CELL := Vector2i(120, 98)   # art/yokai_import.py (Drive boss-plagueking, 96px art = twice a man's height)
 const FEET_ROW := 97.0
 const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
@@ -310,14 +311,14 @@ func _clear_tells() -> void:
 
 
 # ---------------------------------------------------------------- taking hits
-func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
+func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged := false, charge_t := -1.0) -> void:
 	if state not in ["dead", "kneel", "wait"] and not quiet:
 		Audio.sfx("hit", -3.0)
 	if state == "dead" or state == "kneel" or state == "wait":
 		return
 	hp -= dmg
 	flash = 0.08
-	knock = dir * (60.0 if heavy else 30.0)
+	knock = dir * (lerpf(CT.CHARGE_BOSS_KNOCK_MIN, CT.CHARGE_BOSS_KNOCK_MAX, charge_t) if charge_t >= 0.0 else (60.0 if heavy else 30.0))
 	hp_changed.emit(hp, MAX_HP)
 	if phase == 1 and hp <= MAX_HP * 0.5:
 		phase = 2

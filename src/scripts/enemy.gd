@@ -12,6 +12,8 @@ extends CharacterBody2D
 ## Hit: white flash + knockback. At 0 HP it does not die: it collapses, still wreathed in 탁기
 ## (group "downed"). Only 처용가 purifies it (purify()); left alone it rises again.
 
+const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+
 const KINDS := {
 	"dog": {"sheet": "plague_dog", "cell": Vector2i(44, 30), "feet": 28, "hp": 30, "speed": 62.0,
 		"anims": {"move": [0, 1, 2, 3], "tell": [5], "strike": [4], "hurt": [5]},
@@ -578,7 +580,9 @@ func _poof() -> void:
 
 
 ## quiet: damage over time (부적의 불길·결계) — no flinch, no sound
-func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
+## charged: 장갑 무시(강 베기·처용무). charge_t >= 0: 강 베기 충전량(0=최소, 1=만충)이면 넉백이 충전에 따라 커진다.
+## Enemy 와 PlagueGod 는 같은 시그니처를 유지한다 (플레이어가 group "enemy" 전체에 호출).
+func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged := false, charge_t := -1.0) -> void:
 	if state == "dead" or state == "downed":
 		return
 	if is_clone:
@@ -594,9 +598,11 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
 		return
 	var mult := 1.0
 	if state == "stagger":
-		mult = 2.0 if kind == "jangseung_taki" else 1.5
-	elif kind == "jangseung_taki":
-		mult = 0.4
+		mult = CT.STAGGER_MULT.get(kind, CT.STAGGER_DEFAULT_MULT)   # 후딜은 장갑을 푼다
+	elif charged:
+		mult = 1.0   # 강 베기·처용무는 장갑 무시
+	elif CT.ARMOR.has(kind):
+		mult = CT.ARMOR[kind]
 	dmg = int(ceil(dmg * mult))
 	reveal_t = 2.0
 	if not quiet:
@@ -609,7 +615,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
 	hp -= dmg
 	flash = 0.08
 	hit_taken.emit()
-	knock = dir * (220.0 if heavy else 130.0)
+	knock = dir * (lerpf(CT.CHARGE_KNOCK_MIN, CT.CHARGE_KNOCK_MAX, charge_t) if charge_t >= 0.0 else (220.0 if heavy else 130.0))
 	if hp <= 0:
 		_down()
 	elif state == "stagger" or quiet:

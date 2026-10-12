@@ -246,6 +246,7 @@ func _main() -> void:
 		"boss_retry": await sc_boss_retry()
 		# ---- 전투 전략(combat-strategy) 시나리오: tests/combat_strategy.sh 로 실행 (기본 chapter1 목록과 분리)
 		"cs_parry": await sc_cs_parry()
+		"cs_charge": await sc_cs_charge()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -720,4 +721,195 @@ func sc_cs_parry() -> void:
 	await until(func(): return p._dash, "질주(_dash) 시작", 20)
 	G.skills = []
 	await cs_idle()
+	await done()
+
+
+func cs_dummy(kind: String, at: Vector2, hp_override := -1):
+	var e = cs_spawn(kind, at)
+	e.set_physics_process(false)   # 가만히 서 있는 표적 (take_hit 은 그대로 동작)
+	e.state = "idle"
+	if hp_override > 0:
+		e.hp = hp_override
+	return e
+
+
+func sc_cs_charge() -> void:
+	step("CS-02 준비")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+	p.facing = "right"
+
+	step("탭 경로 회귀: 짧게 누르면 지금처럼 즉시 1타, 충전 없음")
+	var d1 = cs_dummy("ghoul", p.position + Vector2(24, 0))
+	Input.action_press("attack")
+	await tick(2)
+	await must(p.state == "attack", "누르자마자 1타(state=attack)")
+	Input.action_release("attack")
+	await until(func(): return p.state == "move", "1타 종료", 60)
+	await must(d1.hp < d1.cfg["hp"], "1타가 적중했다")
+	await must(p._charge_c == 0.0 and not p._charge_hold, "충전 상태 없음")
+	await cs_idle()
+
+	step("느린 탭(0.3초 누름)은 충전으로 오인되지 않는다")
+	p.facing = "right"
+	Input.action_press("attack")
+	await tick(18)
+	Input.action_release("attack")
+	await tick(30)
+	await must(p.state != "charge" and p._charge_c == 0.0, "0.3초 누름 → 충전 없음")
+	await cs_idle()
+	d1.queue_free()
+
+	step("0.45초 이상 누르면 충전 상태: 이동 불가, 스틱으로 방향만 바꾼다")
+	p.facing = "right"
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전 진입", 90)
+	var pos1: Vector2 = p.position
+	Input.action_press("move_up")
+	await tick(10)
+	await must(p.state == "charge" and p.position.distance_to(pos1) < 0.01 and p.velocity == Vector2.ZERO, "충전 중 이동 불가(위치 고정)")
+	await must(p.facing == "up", "스틱으로 조준(방향 전환)")
+	Input.action_release("move_up")
+	Input.action_release("attack")   # c < 0.35 → 조용히 취소
+	await tick(3)
+	await must(p.state == "move" and p._charge_c == 0.0, "일찍 떼면 조용히 취소(후딜 없음)")
+	await cs_idle()
+
+	step("만충(c≥0.90) 강 베기: Lv.1 피해 45·장갑 무시·소리 소모 없음·넉백")
+	p.position = home
+	p.facing = "right"
+	p.ki = 60.0
+	var mama = cs_dummy("mama", p.position + Vector2(40, 0))
+	var mhp: int = mama.hp
+	await must(mhp == 70, "마마귀신 HP 70")
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.92, "만충 대기", 240)
+	var ki_before: float = p.ki
+	Input.action_release("attack")
+	await tick(2)
+	await must(p.state == "slash", "발동 후 후딜(state=slash)")
+	await must(mhp - mama.hp == 45, "Lv.1 만충 피해 45 (장갑 ×0.6 무시): " + str(mhp - mama.hp))
+	await must(p.ki >= ki_before, "소리 소모 없음")
+	await must(mama.knock.length() > 250.0, "넉백")
+	await cs_idle()
+	var sin_a: float = p.shinmyeong
+	await must(sin_a >= 5.0, "신명 +5/체: " + str(sin_a))
+
+	step("같은 마마귀신에 일반 타격(3타 마지막 18)은 장갑 ×0.6 → 11")
+	var h0: int = mama.hp
+	mama.take_hit(18, Vector2.RIGHT)
+	await must(h0 - mama.hp == 11, "일반 18 → 11")
+	mama.queue_free()
+
+	step("최소 충전(c≈0.35)은 Lv.1 피해 23 근처")
+	p.position = home
+	p.facing = "right"
+	var mama2 = cs_dummy("mama", p.position + Vector2(40, 0))
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.36, "최소 충전", 240)
+	Input.action_release("attack")
+	await tick(2)
+	var dm: int = 70 - mama2.hp
+	await must(dm >= 23 and dm <= 27, "최소~조금 더 충전 피해 23~27: " + str(dm))
+	await cs_idle()
+	mama2.queue_free()
+
+	step("쓰러지면 죽지 않고 downed 로 남는다 (정화는 노래로만)")
+	p.position = home
+	p.facing = "right"
+	var low = cs_dummy("ghoul", p.position + Vector2(30, 0), 10)
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.4, "충전", 240)
+	Input.action_release("attack")
+	await tick(2)
+	await must(low.state == "downed" and low.is_in_group("downed"), "강 베기로 HP 0 → downed(죽음 아님)")
+	await cs_idle()
+	low.queue_free()
+
+	step("충전 중 구르기: c<0.35 는 취소+구르기, c≥0.35 는 무시")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	await press("roll")
+	await tick(2)
+	await must(p.state == "roll", "c<0.35: 충전 취소 + 구르기 즉시")
+	Input.action_release("attack")
+	await cs_idle()
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.4, "충전 0.4", 240)
+	await press("roll")
+	await tick(3)
+	await must(p.state == "charge", "c≥0.35: 구르기 입력 무시")
+	Input.action_release("attack")
+	await cs_idle()
+
+	step("충전 중 피해 → 끊김 / 수호부로 막은 피격은 안 끊김")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.2, "충전", 240)
+	p.shield = 1
+	p.shield_t = 10.0
+	p.hurt(10, Vector2.LEFT, true)
+	await tick(1)
+	await must(p.state == "charge" and p.shield == 0, "수호부가 막았다 → 충전 유지")
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 60)
+	var hp1: float = p.hp
+	p.hurt(10, Vector2.LEFT, true)
+	await tick(1)
+	await must(p.hp < hp1 and p.state != "charge" and p._charge_c == 0.0, "실제 피해 → 충전 끊김")
+	Input.action_release("attack")
+	await cs_idle()
+
+	step("충전 중 기절 / 끌림도 끊는다")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	p.pull(home + Vector2(30, 0), 0.5)
+	await tick(1)
+	await must(p.state != "charge", "끌림 → 충전 끊김")
+	Input.action_release("attack")
+	await cs_idle()
+	p.pull_t = 0.0
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	p.stun(0.3)
+	await tick(1)
+	await must(p.state != "charge" and p.stun_t > 0.0, "기절 → 충전 끊김")
+	Input.action_release("attack")
+	await until(func(): return p.stun_t <= 0.0, "기절 끝", 120)
+	await cs_idle()
+
+	step("2.0초가 되면 손가락이 멈춰도 자동 발동")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "slash", "자동 발동(state=slash)", 400)
+	Input.action_release("attack")
+	await cs_idle()
+
+	step("충전 중 신명 100이면 처용무를 쓸 수 있다")
+	p.position = home
+	G.set_flag("flute")
+	p.shinmyeong = 100.0
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	await press("dance")
+	await tick(2)
+	await must(p.ult_t > 0.0, "충전 중 처용무 발동")
+	Input.action_release("attack")
+	p.ult_t = 0.0
+	await cs_idle()
+
+	step("말 걸기에 쓰인 눌림은 공격도 충전도 일으키지 않는다")
+	p.position = home
+	var talked := [0]
+	p.interact = func():
+		talked[0] += 1
+		return true
+	Input.action_press("attack")
+	await tick(60)
+	await must(p.state == "move" and p._charge_c == 0.0 and not p._charge_hold, "길게 눌러도 차징 시작 안 함")
+	await must(talked[0] == 1, "상호작용은 1회")
+	Input.action_release("attack")
 	await done()
