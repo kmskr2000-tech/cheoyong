@@ -9,7 +9,7 @@
 
 ## Overview
 
-1장이 Godot에 구현돼 있으므로 이 표는 "앞으로 설계할 것"이 아니라 **이미 있는 시스템에 GDD가 없다는 사실**을 기록한다. `Design Doc` 칸의 `GDD.md`·`growth-system.md`는 템플릿 형식(8섹션)이 아닌 기존 문서다. 템플릿 파이프라인이 요구하는 형식의 GDD는 `/reverse-document`로 코드에서 역산해 만든다(스프린트 1~2). `Status`는 **템플릿 형식 GDD의 상태**(템플릿이 허용하는 값만 사용 — 괄호·자유 문구 금지)이고, 코드 구현 현황은 `Implementation` 열에 따로 둔다. 템플릿 형식 GDD가 없으므로 전부 `Not Started`다.
+1장이 Godot에 구현돼 있으므로 이 표는 "앞으로 설계할 것"이 아니라 **이미 있는 시스템에 GDD가 없다는 사실**을 기록한다. `Design Doc` 칸의 `GDD.md`·`growth-system.md`는 템플릿 형식(8섹션)이 아닌 기존 문서다. 템플릿 파이프라인이 요구하는 형식의 GDD는 `/reverse-document`로 코드에서 역산해 만든다(스프린트 1~2). `Status`는 **템플릿 형식 GDD의 상태**(템플릿이 허용하는 값만 사용 — 괄호·자유 문구 금지)이고, 코드 구현 현황은 `Implementation` 열에 따로 둔다. 템플릿 형식 GDD가 없는 시스템은 `Not Started`이고, 행 5·6은 `/reverse-document`로 역산한 GDD가 생겨 `In Review`다.
 
 원본 현황표: `docs/GDD.md` 부록 A (ID 단위 상태). 스토리·장면: `docs/story-bible.md`.
 
@@ -23,8 +23,8 @@
 | 2 | 플레이어 컨트롤러 (이동·구르기·상태이상) | Core | Core | MVP | Not Started | Implemented (GDD 없음) | docs/GDD.md §7 | 1 |
 | 3 | 레벨 시스템 (레벨 데이터·지형·충돌·출입구·카메라) | Core | Foundation | MVP | Not Started | Implemented (GDD 없음) | CLAUDE.md "엔진·구조" | — |
 | 4 | 세이브·체크포인트 | Persistence | Core | MVP | Not Started | Implemented (단일 슬롯) | — | 3, 9 |
-| 5 | 전투 코어 (대금 3연타·강 베기·받아넘기기·신명) | Gameplay | Core | MVP | Not Started | Implemented (GDD 없음) | 기획안 §6 | 2 |
-| 6 | 정화 시스템 (쓰러짐→처용가→한풀이) | Gameplay | Feature | MVP | Not Started | Implemented (GDD 없음) | growth-system.md §1 | 5 |
+| 5 | 전투 코어 (대금 3연타·강 베기·받아넘기기·신명) | Gameplay | Core | MVP | In Review | Implemented | design/gdd/combat-core.md | 2 |
+| 6 | 정화 시스템 (쓰러짐→처용가→한풀이) | Gameplay | Feature | MVP | In Review | Implemented | design/gdd/purification.md | 5 |
 | 7 | 부적 (화염·결박·수호·파동) | Gameplay | Feature | MVP | Not Started | Implemented, 현혹·뇌성 미구현 | 기획안 §6.3 | 5, 18 |
 | 8 | 적 AI·요괴 기믹 (17종) | Gameplay | Feature | MVP | Not Started | Implemented (GDD 없음) | story-bible.md 부록 E | 5, 6 |
 | 9 | 스토리 비트·진행 플래그·대화 (SC ID) | Narrative | Core | MVP | Not Started | Implemented | story-bible.md | 3 |
