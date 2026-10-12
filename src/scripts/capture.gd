@@ -17,6 +17,7 @@ var _pf: Array[float] = []   # _physics_process ms
 var _pd: Array[float] = []   # draw calls
 var _po: Array[float] = []   # canvas items drawn (objects in frame)
 var _last_us := 0
+var _finishing := false
 
 
 func _ready() -> void:
@@ -109,8 +110,9 @@ func _process(_delta: float) -> void:
 			ev.pressed = f == frame_i
 			Input.parse_input_event(ev)
 	frames -= 1
-	if frames > 0:
+	if frames > 0 or _finishing:
 		return
+	_finishing = true
 	await RenderingServer.frame_post_draw
 	if perf: _perf_report()
 	get_viewport().get_texture().get_image().save_png(out)
