@@ -212,18 +212,16 @@ const DATA := {
 	"old_village": {
 		"music": "dread", "amb": "wind",
 		"name": "버려진 마을",
-		"ground": "village",
-		"ambient": Color(0.30, 0.31, 0.46),
-		"spawns": {"start": Vector2(26, 382), "fromPath": Vector2(26, 382)},
-		"props": [["jars", 205, 318, null], ["jars", 168, 262, null], ["cairn", 96, 392, null]],
-		"lights": [[135, 232, GHOSTFIRE, 0.5, 0.5], [160, 340, GHOSTFIRE, 0.5, 0.55], [520, 90, GHOSTFIRE, 0.45, 0.5]],
-		"npcs": [["girl_soul", "npc_ghost", 150, 336, "빈집의 넋"]],
-		# doll(짚인형, 의뢰 B)은 girl_soul 사연을 들은 뒤 story.gd 가 add_interact 로 켠다. grave = 마을 어귀 무덤
-		"interact": [["grave", 96, 380, "무덤"]],
-		# 불도깨비 3 · 외눈박이 1. 폴백 지형엔 우회로가 없어 요괴를 피해 갈 수는 없지만, 사연·인형·무덤은 서쪽 절반(요괴 어그로 밖)에 둬서 전투 없이 의뢰를 끝낼 수 있다.
-		"enemies": [["dokkaebi_fire", 360, 225], ["dokkaebi_fire", 425, 175], ["dokkaebi_fire", 480, 112], ["dokkaebi_oneeye", 535, 60]],
-		"exits": [[Rect2(0, 355, 6, 48), "jiri_path", "fromVillage"]],
-		"anchors": {"doll": Vector2(126, 250), "grave": Vector2(96, 380), "exit": Vector2(14, 380)},
+		"ground": "old_village",
+		"ambient": Color(0.34, 0.36, 0.54),
+		"spawns": {"start": Vector2(650, 345), "fromPath": Vector2(650, 345)},
+		"props": [["hut_ruin", 268, 317, null], ["hut_ruin", 70, 247, null], ["hut_ruin_b", 40, 360, null], ["old_tools_mortar", 500, 227, null], ["old_tools_broom", 625, 320, null], ["old_tools_pot", 585, 269, null], ["old_tools_sandals", 690, 347, null], ["old_tools", 448, 131, null], ["doll", 742, 40, null]],
+		"lights": [[300, 60, GHOSTFIRE, 0.6, 0.6], [425, 205, GHOSTFIRE, 0.6, 0.6], [695, 165, GHOSTFIRE, 0.6, 0.6], [188, 8, GHOSTFIRE, 0.5, 0.5], [300, 255, GHOSTFIRE, 0.5, 0.5]],
+		"npcs": [["girl_soul", "npc_ghost", 748, 160, "빈집의 넋"]],
+		"interact": [["grave", 722, 335, "무덤"]],
+		"enemies": [["dokkaebi_fire", 510, 288], ["dokkaebi_fire", 470, 200], ["dokkaebi_fire", 565, 140], ["dokkaebi_oneeye", 330, 53]],
+		"exits": [[Rect2(618, 350, 90, 8), "jiri_path", "fromVillage"]],
+		"anchors": {"doll": Vector2(742, 40), "grave": Vector2(722, 335), "exit": Vector2(650, 352)},
 	},
 	# 도깨비 소굴 외곽 — 폴백 지형 pyega1(1장 폐가 마당). 서쪽 입구 홀(A) → 아래 긴 복도 → 동쪽 안쪽(C), 위쪽 곁방(B·샛길). SC2-04·05.
 	"den1": {
