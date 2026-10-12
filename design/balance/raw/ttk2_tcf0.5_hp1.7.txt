@@ -34,3 +34,17 @@ RES ttk2 pack=egg_ghost pol=reader win=6/6 ttk=3.5 dmg=3.3 dmgmax=10 hits=0.3 pa
 RES ttk2 pack=egg_ghost pol=guard win=6/6 ttk=3.9 dmg=0.0 dmgmax=0 hits=0.0 parries=0.0
 RES ttk2 pack=egg_ghost pol=bind_tap win=6/6 ttk=1.9 dmg=0.0 dmgmax=0 hits=0.0 parries=0.0
 RES ttk2 pack=egg_ghost pol=lag_tap win=6/6 ttk=3.0 dmg=5.0 dmgmax=10 hits=0.5 parries=0.0
+RES ttk2 pack=mama pol=tap win=6/6 ttk=6.4 dmg=8.0 dmgmax=8 hits=1.0 parries=0.0
+RES ttk2 pack=mama pol=rollspam win=6/6 ttk=5.6 dmg=16.0 dmgmax=16 hits=2.0 parries=0.0
+RES ttk2 pack=mama pol=reader win=6/6 ttk=6.4 dmg=0.0 dmgmax=0 hits=0.0 parries=0.0
+RES ttk2 pack=mama pol=guard win=6/6 ttk=6.0 dmg=0.0 dmgmax=0 hits=0.0 parries=0.0
+RES ttk2 pack=mama pol=bind_tap win=6/6 ttk=5.0 dmg=8.0 dmgmax=8 hits=1.0 parries=0.0
+RES ttk2 pack=mama pol=lag_tap win=6/6 ttk=7.7 dmg=20.0 dmgmax=24 hits=2.5 parries=0.0
+RES ttk2 pack=dog+ghoul+dog pol=tap win=6/6 ttk=4.9 dmg=26.7 dmgmax=32 hits=3.3 parries=0.0
+RES ttk2 pack=dog+ghoul+dog pol=rollspam win=6/6 ttk=5.5 dmg=17.7 dmgmax=26 hits=2.2 parries=0.8
+RES ttk2 pack=dog+ghoul+dog pol=reader win=6/6 ttk=5.5 dmg=18.7 dmgmax=24 hits=2.3 parries=3.8
+RES ttk2 pack=dog+ghoul+dog pol=guard win=6/6 ttk=4.4 dmg=12.0 dmgmax=24 hits=1.5 parries=0.0
+RES ttk2 pack=dog+ghoul+dog pol=bind_tap win=6/6 ttk=3.4 dmg=16.0 dmgmax=16 hits=2.0 parries=0.0
+RES ttk2 pack=dog+ghoul+dog pol=lag_tap win=6/6 ttk=4.7 dmg=26.7 dmgmax=32 hits=3.3 parries=0.0
+RES ttk2 pack=ghoul+egg_ghost+maiden_ghost pol=tap win=6/6 ttk=11.5 dmg=22.0 dmgmax=22 hits=4.0 parries=0.0
+RES ttk2 pack=ghoul+egg_ghost+maiden_ghost pol=rollspam win=6/6 ttk=11.0 dmg=35.7 dmgmax=44 hits=4.7 parries=2.2

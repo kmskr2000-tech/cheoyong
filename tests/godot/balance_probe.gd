@@ -229,9 +229,9 @@ func _reader(e, to: Vector2, d: float, frame_n: int) -> void:
 # ================================================================ boss
 ## 역신 전투 봇. skill: 0=완벽한 리더 … 1=전혀 안 읽음. miss = 각 예고를 놓칠 확률.
 func sc_boss() -> void:
-	var pols := [["tap", 1.0, false], ["reader", 0.0, false], ["reader", 0.5, false], ["reader", 0.7, false], ["reader", 0.0, true]]
+	var pols := [["reader", 0.0, false], ["tap", 1.0, false], ["reader", 0.5, false]]
 	var boss = await cs_wake_boss()
-	var n := 4
+	var n := 2
 	for spec in pols:
 		var wins := 0
 		var deaths_sum := 0
@@ -239,7 +239,7 @@ func sc_boss() -> void:
 		var p1_sum := 0.0
 		var p2_sum := 0.0
 		for i in n:
-			var r: Dictionary = await run_boss(boss, spec[0], spec[1], spec[2], 240.0)
+			var r: Dictionary = await run_boss(boss, spec[0], spec[1], spec[2], 150.0)
 			deaths_sum += r["deaths"]
 			if r["win"]:
 				wins += 1
