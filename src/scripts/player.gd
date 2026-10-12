@@ -427,6 +427,7 @@ func _resolve_hit(c: Dictionary, base: float) -> void:
 			add_sin(SIN_PER_HIT)
 			_spark(e.global_position + Vector2(0, -12))
 			hit_landed.emit(e)
+			_hit_stop(CT.HITSTOP_HEAVY if (last or parry_bonus) else CT.HITSTOP_LIGHT)
 	if parry_bonus:
 		parry_bonus = false
 
@@ -597,10 +598,24 @@ func _release_charge() -> void:
 			_spark(e.global_position + Vector2(0, -12))
 			CFX.pierce(get_parent(), e.global_position + Vector2(0, -14), to.normalized(), tt, CT.ARMOR.has(e.get("kind")))
 			hit_landed.emit(e)
+			_hit_stop(CT.HITSTOP_HEAVY)
 	slash_base = base
 
 
 var _slash_scale := 1.0
+var _hitstop_until := 0
+
+
+## 적중 정지: 짧게 시간을 거의 멈춘다. 받아넘기기 슬로모(time_scale≠1)나 다른 정지 중이면 겹치지 않는다.
+func _hit_stop(frames: int) -> void:
+	if frames <= 0 or not is_equal_approx(Engine.time_scale, 1.0) or Time.get_ticks_msec() < _hitstop_until:
+		return
+	var sec := float(frames) / 60.0
+	_hitstop_until = Time.get_ticks_msec() + int(sec * 1000.0) + 20   # 같은 정지가 연달아 걸리지 않게(다중 적중)
+	Engine.time_scale = 0.05
+	get_tree().create_timer(sec * 0.05, true, false, false).timeout.connect(func():   # 게임 시계 기준(time_scale 0.05 에서 sec*0.05 = 실시간 sec): 고정 프레임 하네스에서도 같은 프레임 수
+		if is_equal_approx(Engine.time_scale, 0.05):
+			Engine.time_scale = 1.0)
 var slash_base := 0.0
 
 

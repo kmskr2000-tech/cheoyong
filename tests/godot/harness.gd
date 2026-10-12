@@ -9,7 +9,7 @@ extends SceneTree
 
 signal _halt   # 절대 emit 안 함 — 실패 후 코루틴을 멈춰 두는 용도
 
-const BOSS_MAX := 480.0   # PlagueGod.MAX_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
+const BOSS_MAX := 1200.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
 const SPEED := 4.0          # Engine.time_scale (대사·페이드·카드가 실시간이라 가속)
 var scn := ""
 var G: Node                 # autoload Game
@@ -1221,11 +1221,11 @@ func sc_cs_boss() -> void:
 
 	step("받는 피해 배율: 평시 ×1, 열림 ×1.5, 안개·졸개 시전 ×1.25")
 	for spec in [["idle", 50], ["open", 75], ["fog", 63], ["clones", 63]]:
-		boss.hp = 480.0
+		boss.hp = BOSS_MAX
 		boss.state = spec[0]
 		boss.take_hit(50, Vector2.RIGHT)
-		await must(int(480.0 - boss.hp) == spec[1], "%s: 50 → %d (실제 %d)" % [spec[0], spec[1], int(480.0 - boss.hp)])
-	boss.hp = 480.0
+		await must(int(BOSS_MAX - boss.hp) == spec[1], "%s: 50 → %d (실제 %d)" % [spec[0], spec[1], int(BOSS_MAX - boss.hp)])
+	boss.hp = BOSS_MAX
 	boss.state = "idle"
 
 	step("패턴 순서는 그대로: 1페이즈 안개-기침-졸개-기침, 2페이즈 안개-기침-졸개-기침-안개-졸개")
@@ -1257,9 +1257,9 @@ func sc_cs_boss() -> void:
 	var bp: Vector2 = boss.position
 	await tick(20)
 	await must(boss.state == "open" and boss.position.distance_to(bp) < 6.0, "열림 중 이동하지 않는다")
-	boss.hp = 480.0
+	boss.hp = BOSS_MAX
 	boss.take_hit(50, Vector2.ZERO)
-	await must(int(480.0 - boss.hp) == 75, "열림 중 만충 강 베기 50 → 75")
+	await must(int(BOSS_MAX - boss.hp) == 75, "열림 중 만충 강 베기 50 → 75")
 	await until(func(): return boss.state == "idle", "열림 종료 → idle", 120)
 
 	step("2페이즈 기침은 2연속, 두 번째 뒤에 0.9초 열림")
@@ -1287,7 +1287,7 @@ func sc_cs_boss() -> void:
 
 	step("풀 충전 강 베기가 시전 중(안개/졸개)인 역신에 맞으면 시전 중단 + 열림 1.2초, 소환 취소")
 	for pat in ["clones", "fog"]:
-		boss.hp = 480.0
+		boss.hp = BOSS_MAX
 		boss._begin(pat)
 		boss.take_hit(30, Vector2.RIGHT, true, false, true, 0.5)
 		await must(boss.state == pat, "충전 0.5(반충전)는 끊지 못한다: " + pat)
@@ -1334,9 +1334,9 @@ func sc_cs_boss() -> void:
 	god = true
 	pump = true
 	p.ki = 10.0
-	boss.hp = 480.0
+	boss.hp = BOSS_MAX
 	boss.state = "idle"
-	boss.take_hit(int(boss.hp - 480.0 * 0.5) + 1, Vector2.ZERO)
+	boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO)
 	await must(boss.phase == 2, "2페이즈 진입")
 	await tick(2)
 	await must(get_nodes_in_group("fog").is_empty(), "안개 제거")
