@@ -57,3 +57,5 @@ RES ttk2 pack=mama+ghoul+ghoul pol=rollspam win=6/6 ttk=5.8 dmg=15.0 dmgmax=26 h
 RES ttk2 pack=mama+ghoul+ghoul pol=reader win=6/6 ttk=7.9 dmg=8.0 dmgmax=8 hits=1.0 parries=0.0
 RES ttk2 pack=mama+ghoul+ghoul pol=guard win=6/6 ttk=5.8 dmg=9.3 dmgmax=16 hits=1.2 parries=0.0
 RES ttk2 pack=mama+ghoul+ghoul pol=bind_tap win=6/6 ttk=4.0 dmg=9.3 dmgmax=16 hits=1.2 parries=0.0
+RES ttk2 pack=mama+ghoul+ghoul pol=lag_tap win=6/6 ttk=7.5 dmg=21.3 dmgmax=24 hits=2.7 parries=0.0
+SCN_RESULT ttk2 PASS (0 steps, known-bugs 0)
