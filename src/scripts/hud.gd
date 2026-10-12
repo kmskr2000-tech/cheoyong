@@ -5,6 +5,7 @@ extends CanvasLayer
 ## left half (it appears where the thumb lands) and lacquer buttons on the right.
 
 const STICK_R := 20.0
+const CT := preload("res://scripts/combat_tuning.gd")
 
 var player: Node
 var _hp_fill: TextureRect
@@ -14,6 +15,13 @@ var _ki_w := 72.0
 var _sin_w := 56.0
 var _sin_fill: TextureRect
 var _tal_label: Label
+var _tal_icon: TextureRect   # 고른 부적 아이콘 (Drive 도트)
+var _mask_icon: TextureRect  # 쓰고 있는 탈
+var _flute_icon: TextureRect # 피리를 가졌다
+var _tal_shown := ""
+var _charge_ring: Line2D     # CS-08: 베기 버튼 둘레 충전 링 (0.35 지점 표식, 만충 번쩍임)
+var _charge_mark: Line2D
+var _sin_last := 0.0
 var _touch_root: Control
 var _base: TextureRect
 var _knob: TextureRect
@@ -45,6 +53,10 @@ func _ready() -> void:
 	_ki_fill = _gauge(root, Vector2(30, 19), _ki_w, "res://assets/ui/gauge_ki.png")
 	_sin_fill = _gauge(root, Vector2(30, 30), _sin_w, "res://assets/ui/gauge_sin.png")   # 신명
 	_sin_fill.size.x = 0.0
+	# carried things, under the level number: the talisman he will draw, the mask he wears, the flute
+	_tal_icon = _item_icon(root, Vector2(8, 54), "res://assets/ui/icons/tal_fire.png")
+	_mask_icon = _item_icon(root, Vector2(30, 56), "res://assets/ui/icons/item_mask.png")
+	_flute_icon = _item_icon(root, Vector2(52, 56), "res://assets/ui/icons/key_flute.png")
 	_touch_root = Control.new()
 	_touch_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_touch_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -85,6 +97,19 @@ func _ready() -> void:
 		tb.passby_press = true
 		_touch_root.add_child(tb)
 		_buttons[b[0]] = tb
+	_charge_ring = Line2D.new()
+	_charge_ring.width = 2.0
+	_charge_ring.visible = false
+	_charge_ring.position = Vector2(430, 222)
+	_touch_root.add_child(_charge_ring)
+	_charge_mark = Line2D.new()   # CHARGE_MIN 표식: 이 선을 넘기면 놓았을 때 발동한다
+	_charge_mark.width = 2.0
+	_charge_mark.default_color = Color(1.0, 1.0, 1.0, 0.9)
+	var ma := -PI / 2 + TAU * (CT.CHARGE_MIN / CT.CHARGE_FULL)
+	_charge_mark.points = PackedVector2Array([Vector2.from_angle(ma) * 25.0, Vector2.from_angle(ma) * 32.0])
+	_charge_mark.visible = false
+	_charge_mark.position = Vector2(430, 222)
+	_touch_root.add_child(_charge_mark)
 	_tal_label = Label.new()   # which talisman the button will draw
 	_tal_label.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
 	_tal_label.add_theme_font_size_override("font_size", 12)
@@ -118,6 +143,17 @@ func _ready() -> void:
 	if _touch_root.visible:
 		_show_stick(Vector2(70, 214))  # resting position hint
 	_release_dirs()   # a Hud rebuilt mid-drag (level change) must not inherit a held direction
+
+
+func _item_icon(parent: Node, at: Vector2, path: String) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = load(path)
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	r.position = at
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.visible = false
+	parent.add_child(r)
+	return r
 
 
 func _exit_tree() -> void:
@@ -156,7 +192,21 @@ func set_talk(on: bool) -> void:
 	_talk_on = on
 
 
+func _update_icons() -> void:
+	var has_flute := Game.flag("flute") == 1
+	if player and player.has_method("current_talisman"):
+		var tk: String = player.current_talisman()
+		if tk != _tal_shown:
+			_tal_shown = tk
+			_tal_icon.texture = load("res://assets/ui/icons/tal_%s.png" % tk)
+	_tal_icon.visible = has_flute and player != null
+	_mask_icon.visible = Game.tal != ""
+	_flute_icon.visible = has_flute
+
+
 func _process(_d: float) -> void:
+	_update_icons()
+	_update_charge_ring()
 	if not _touch_root.visible or _buttons.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
@@ -376,7 +426,22 @@ func _bag_kept(dialog: DialogBox) -> void:
 	lines.append("재료: " + (", ".join(m) if not m.is_empty() else "없음"))
 	if not Game.titles.is_empty():
 		lines.append("칭호: " + ", ".join(Game.titles))
+	# icons of what he carries, laid over the pause screen above the dialog
+	var cl := CanvasLayer.new()
+	cl.layer = 30
+	cl.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(cl)
+	var shown: Array = []
+	if Game.tal != "":
+		shown.append("item_mask")
+	if Game.flag("flute") == 1:
+		shown.append("key_flute")
+		for k in player.talismans():
+			shown.append("tal_" + k)
+	for i in shown.size():
+		_item_icon(cl, Vector2(150 + i * 26, 26), "res://assets/ui/icons/%s.png" % shown[i]).visible = true
 	await dialog.choose({"name": "지닌 것", "text": "\n".join(lines)}, ["닫기"])
+	cl.queue_free()
 
 
 func _gauge(root: Control, at: Vector2, w: float, fill: String) -> TextureRect:
@@ -403,7 +468,32 @@ func bind(p: Node) -> void:
 	_on_sin(p.shinmyeong)
 
 
+## CS-08: 충전 중에만 보이는 링. 눈이 전투에 있어도 캐릭터 발치 링(player.gd)이 같은 값을 보여 준다.
+func _update_charge_ring() -> void:
+	if _charge_ring == null:
+		return
+	var k: float = player.charge_ratio() if player and player.has_method("charge_ratio") else 0.0
+	var on := k > 0.0 and _touch_root.visible
+	_charge_ring.visible = on
+	_charge_mark.visible = on
+	if not on:
+		return
+	var n := maxi(2, int(k * 40.0))
+	var pts := PackedVector2Array()
+	for i in n + 1:
+		pts.append(Vector2.from_angle(-PI / 2 + TAU * k * float(i) / float(n)) * 28.0)
+	_charge_ring.points = pts
+	var full := k >= 1.0
+	var ready: bool = player.get("_charge_c") != null and player._charge_c >= CT.CHARGE_MIN
+	_charge_ring.default_color = Color(1.0, 1.0, 0.8, 0.7 + 0.3 * sin(Time.get_ticks_msec() / 40.0)) if full else (Color(1.0, 0.9, 0.5, 0.95) if ready else Color(0.7, 0.8, 1.0, 0.6))
+
+
 func _on_sin(v: float) -> void:
+	if v < _sin_last - 0.5:   # 신명이 깎이면 짧게 붉게 점멸
+		var tw := create_tween()
+		tw.tween_property(_sin_fill, "self_modulate", Color(2.0, 0.3, 0.3), 0.06)
+		tw.tween_property(_sin_fill, "self_modulate", Color.WHITE, 0.2)
+	_sin_last = v
 	_sin_fill.size.x = roundf(_sin_w * clampf(v / 100.0, 0, 1))
 	_sin_fill.modulate = Color(1.4, 1.3, 1.0) if v >= 100.0 else Color.WHITE
 

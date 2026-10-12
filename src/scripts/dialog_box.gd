@@ -89,7 +89,21 @@ static func _pixel_font(path: String) -> FontFile:
 	return f
 
 
+var _waiters: Array = []   # SB-29: say() calls queued behind the running dialogue (FIFO)
+
+
+func busy() -> bool:
+	return _active or _choosing or not _waiters.is_empty()
+
+
+## Dialogues never overwrite one another: a second say() waits its turn, then plays whole.
 func say(lines: Array) -> void:
+	if _active or _choosing or not _waiters.is_empty():
+		var ticket := {}
+		_waiters.append(ticket)
+		while _active or _choosing or _waiters[0] != ticket:
+			await finished
+		_waiters.pop_front()
 	_lines = lines
 	_i = 0
 	_active = true
@@ -152,6 +166,8 @@ var _choosing := false
 ## show a prompt line and a list of options above the box; returns the picked index
 ##   var i := await dialog.choose({"name": "약방 주인", "text": "무엇을 드릴까?"}, ["인삼정기탕 30냥", "그만두겠소"])
 func choose(line, options: Array) -> int:
+	while _active or _choosing:   # never open a menu over a running dialogue
+		await finished
 	_lines = [line]
 	_i = 0
 	_active = false
@@ -211,6 +227,7 @@ func _pick() -> void:
 	_menu = null
 	_root.visible = false
 	chosen.emit(_sel)
+	finished.emit()   # wake dialogues queued behind the menu (SB-29)
 
 
 func _unhandled_input(event: InputEvent) -> void:

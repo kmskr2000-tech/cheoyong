@@ -50,7 +50,7 @@ func _ready() -> void:
 	layer.add_child(han)
 	var items := [["처음부터", "new"]]
 	if Game.has_save():
-		items.append(["이어하기", "continue"])
+		items.append(["이어하기 (1장 완료)" if Game.peek_flag("chapter1_done") else "이어하기", "continue"])
 	if Game.setting("intro_seen"):
 		items.append(["회상", "replay"])
 	var font := DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf")

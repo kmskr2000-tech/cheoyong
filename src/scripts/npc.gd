@@ -17,9 +17,10 @@ func setup(npc_id: String, sheet: String, shown_name: String) -> void:
 	display_name = shown_name
 	sprite = Sprite2D.new()
 	sprite.texture = Tex.lit("res://assets/sprites/%s.png" % sheet)
-	sprite.hframes = maxi(1, sprite.texture.get_width() / 32)
+	var cell_h := sprite.texture.get_height()   # 48 (people) or 72 (큰 존재: 용왕·설문대); cell width = 2/3 of height
+	sprite.hframes = maxi(1, sprite.texture.get_width() / (cell_h * 2 / 3))
 	sprite.frame = 1 if sprite.hframes >= 5 else 0
-	sprite.offset = Vector2(0, 24 - 44) # 32x48 cell, feet on row 44
+	sprite.offset = Vector2(0, cell_h / 2 - (cell_h - 4)) # feet on row cell_h-4 (48: 24-44)
 	_left = randf() < 0.5   # people stand turned one way or the other, not square to us
 	add_child(sprite)
 	var col := CollisionShape2D.new()

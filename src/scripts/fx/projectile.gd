@@ -54,6 +54,9 @@ func _physics_process(delta: float) -> void:
 	if p and homing > 0.0:
 		var want := (p.global_position - global_position).normalized() * vel.length()
 		vel = vel.lerp(want, homing * delta)
+	if _blocked(vel * delta):   # CS-10 엄폐: 지형·소품(StaticBody2D)에 막힌다
+		_end()
+		return
 	position += vel * delta
 	if _line and is_instance_valid(tether):
 		_line.points = PackedVector2Array([tether.global_position + Vector2(0, -16), global_position + Vector2(0, -12)])
@@ -66,6 +69,24 @@ func _physics_process(delta: float) -> void:
 		return
 	if life <= 0.0:
 		_end()
+
+
+## 이번 프레임의 이동 선분이 정적 물체(소품 충돌체·절벽·세계 가장자리)를 가로지르는가. 캐릭터(처용·요괴)는 제외한다.
+func _blocked(step: Vector2) -> bool:
+	if not is_inside_tree():
+		return false
+	var q := PhysicsRayQueryParameters2D.create(global_position, global_position + step + step.normalized() * 2.0)
+	var ex: Array[RID] = []
+	for g in ["enemy", "downed"]:
+		for e in get_tree().get_nodes_in_group(g):
+			if e is CollisionObject2D:
+				ex.append(e.get_rid())
+	var pl: Node = get_tree().current_scene.get_node_or_null("Player")
+	if pl is CollisionObject2D:
+		ex.append(pl.get_rid())
+	q.exclude = ex
+	var hit := get_world_2d().direct_space_state.intersect_ray(q)
+	return not hit.is_empty() and hit["collider"] is StaticBody2D
 
 
 func _end() -> void:

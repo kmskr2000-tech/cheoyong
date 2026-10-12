@@ -12,10 +12,11 @@ signal defeated
 signal knelt
 signal phase_two
 
-const CELL := Vector2i(120, 164)   # art/boss3d.py: over three times a man's height
-const FEET_ROW := 158.0
+const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CELL := Vector2i(120, 98)   # art/yokai_import.py (Drive boss-plagueking, 96px art = twice a man's height)
+const FEET_ROW := 97.0
 const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
-const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7]}
+const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7], "pulse": [8]}
 
 var hp := MAX_HP
 var phase := 1
@@ -28,6 +29,12 @@ var knock := Vector2.ZERO
 var bind_t := 0.0             # 결박부: held to a crawl
 var aim := 0.0
 var coughs := 0
+var aura: PointLight2D
+const AURA_IDLE := Color(0.45, 0.95, 0.4)
+const AURA_COLOR := {"fog": Color(0.35, 1.0, 0.35), "cough": Color(1.0, 0.3, 0.25), "clones": Color(0.7, 0.35, 1.0)}   # 안개 녹 / 기침 적 / 졸개 보라
+const AURA_WARN := 0.5        # 패턴 직전 이 시간 동안 다음 패턴의 색 오라 (글 없이 색만)
+var home_pos := Vector2.ZERO   # 재도전 때 돌아갈 자리 (스토리가 깨울 때 기록)
+var open_t := 0.0             # CS-06: 열림(후딜) 지속 — 이동·공격 불가, 받는 피해 ×1.5
 var sprite: AnimatedSprite2D
 var target: Node2D
 var tells: Array[Node2D] = []
@@ -74,12 +81,12 @@ func _ready() -> void:
 	mi.color = Color(0.45, 0.85, 0.35, 0.35)
 	mi.z_index = -1
 	add_child(mi)
-	var aura := PointLight2D.new()
+	aura = PointLight2D.new()
 	aura.texture = _radial()
 	aura.color = Color(0.45, 0.95, 0.4)
-	aura.energy = 0.8
-	aura.texture_scale = 1.8
-	aura.position = Vector2(0, -80)
+	aura.energy = 0.85   # 위압감: 어두운 밤 배경에서 묻히지 않게 오라 강화 (2x 확대안은 화면 과점유+도트 밀도 불일치로 기각)
+	aura.texture_scale = 2.6
+	aura.position = Vector2(0, -52)
 	add_child(aura)
 	target = get_tree().current_scene.get_node_or_null("Player")
 
@@ -108,7 +115,7 @@ func _physics_process(delta: float) -> void:
 	var d := to.length()
 	var fast := 1.35 if phase == 2 else 1.0
 	var v := Vector2.ZERO
-	close_t = close_t + delta if d < 58.0 else 0.0
+	close_t = close_t + delta if (d < 58.0 and state != "open") else 0.0   # 열림 중 붙어 때리는 것은 펄스 한도에 세지 않는다
 	match state:
 		"idle":
 			sprite.play("idle")
@@ -118,6 +125,8 @@ func _physics_process(delta: float) -> void:
 				_begin("pulse")
 			elif st > (1.0 if phase == 2 else 1.4):
 				_next_pattern()
+			else:
+				_aura_warn()
 		"fog":
 			sprite.play("cast")
 			if st > 0.9 / fast:
@@ -134,7 +143,7 @@ func _physics_process(delta: float) -> void:
 				if phase == 2 and coughs < 2:
 					_begin("cough_again")
 				else:
-					_begin("idle")
+					_open(CT.BOSS_OPEN_COUGH_P2 if phase == 2 else CT.BOSS_OPEN_COUGH)   # 읽고 피했으면 열린다
 		"cough_again":
 			_aim_cough()
 			state = "cough"; st = 0.45
@@ -149,13 +158,17 @@ func _physics_process(delta: float) -> void:
 					g.state = "chase"
 				_begin("idle")
 		"pulse":
-			sprite.play("cast")
+			sprite.play("pulse")
 			if st > 0.6:
 				_clear_tells()
 				_ring(position, 80.0, Color(0.6, 1.0, 0.5))
 				if d < 80.0 and target.has_method("hurt"):
-					target.hurt(12, to.normalized())
+					target.hurt(12, to.normalized(), true)
 				close_t = 0.0
+				_open(CT.BOSS_OPEN_PULSE)   # 펄스 후 탈진
+		"open":
+			sprite.play("hurt")
+			if st >= open_t:
 				_begin("idle")
 		"hurt":
 			sprite.play("hurt")
@@ -173,6 +186,39 @@ func disguise() -> void:
 	sprite.play("human")
 
 
+## CS-12: 처용이 쓰러진 동안 역신은 가만히 선다 (패턴·안개 정리)
+func stand_down() -> void:
+	_clear_tells()
+	_clear_fog()
+	state = "wait"
+	velocity = Vector2.ZERO
+	sprite.play("idle")
+
+
+## CS-12: 재도전 — HP·페이즈·패턴 순서 초기화, 소환된 졸개와 안개 제거 (다락의 몹은 되살아나지 않는다)
+func reset_fight() -> void:
+	hp = MAX_HP
+	phase = 1
+	pat_i = 0
+	coughs = 0
+	close_t = 0.0
+	open_t = 0.0
+	knock = Vector2.ZERO
+	sprite.self_modulate = Color.WHITE
+	_clear_tells()
+	_clear_fog()
+	for g in ["enemy", "downed"]:
+		for e in get_tree().get_nodes_in_group(g):
+			if e != self and e.get("kind") != null:
+				e.remove_from_group("enemy")
+				e.remove_from_group("downed")
+				e.queue_free()
+	if home_pos != Vector2.ZERO:
+		position = home_pos
+	hp_changed.emit(hp, MAX_HP)
+	_begin("idle")
+
+
 func awaken() -> void:
 	Audio.override("boss")
 	_ring(position, 70.0, Color(0.6, 1.0, 0.5))
@@ -185,8 +231,64 @@ func _begin(s: String) -> void:
 	st = 0.0
 
 
+## 열림: 패턴이 끝난 뒤의 후딜. 이동·공격 없이 서 있고 받는 피해가 BOSS_OPEN_MULT 배 (CS-06)
+func _open(sec: float) -> void:
+	_begin("open")
+	open_t = sec
+
+
+## 받는 피해 배율: 열림 ×1.5, 안개·졸개 시전 중 ×1.25 ("시전 노출"), 평시 ×1.0
+func exposure() -> float:
+	match state:
+		"open":
+			return CT.BOSS_OPEN_MULT
+		"fog", "clones":
+			return CT.BOSS_CAST_MULT
+	return 1.0
+
+
+func _clear_fog() -> void:
+	for f in get_tree().get_nodes_in_group("fog"):
+		f.queue_free()
+
+
+## 2페이즈 전환 연출 (스토리 대사가 끝난 뒤 호출): 안개 제거, 열림 1.2초, 플레이어 소리 +30
+func phase_shift() -> void:
+	_clear_tells()
+	_clear_fog()
+	if is_instance_valid(target) and target.has_method("gain_ki"):
+		target.gain_ki(CT.BOSS_PHASE_KI)
+	_open(CT.BOSS_PHASE_SHIFT)
+
+
+## 고정 순서 (학습 가능): 1페이즈 안개-기침-졸개-기침, 2페이즈 안개-기침-졸개-기침-안개-졸개
+func _cycle() -> Array:
+	return ["fog", "cough", "clones", "cough", "fog", "clones"] if phase == 2 else ["fog", "cough", "clones", "cough"]
+
+
+func next_pattern_name() -> String:
+	var c := _cycle()
+	return c[pat_i % c.size()]
+
+
+## CS-11: 패턴 직전 0.5초 동안 역신 둘레 오라가 다음 패턴의 색으로 바뀐다
+func _aura_warn() -> void:
+	if aura == null:
+		return
+	var wait := 1.0 if phase == 2 else 1.4
+	if st > wait - AURA_WARN:
+		aura.color = AURA_COLOR[next_pattern_name()]
+		aura.energy = 0.9
+	else:
+		aura.color = AURA_IDLE
+		aura.energy = 0.45
+
+
 func _next_pattern() -> void:
-	var cycle := ["fog", "cough", "clones", "cough", "fog", "clones"] if phase == 2 else ["fog", "cough", "clones", "cough"]
+	if aura:
+		aura.color = AURA_IDLE
+		aura.energy = 0.45
+	var cycle := _cycle()
 	var p: String = cycle[pat_i % cycle.size()]
 	pat_i += 1
 	match p:
@@ -236,7 +338,7 @@ func _breath() -> void:
 		tw.chain().tween_callback(p.queue_free)
 	var to := target.global_position - global_position
 	if to.length() < 125.0 and absf(wrapf(to.angle() - aim, -PI, PI)) < 0.55 and target.has_method("hurt"):
-		target.hurt(14, to.normalized())
+		target.hurt(14, to.normalized(), true)
 
 
 func _mark(at: Vector2, r: float) -> Node2D:
@@ -252,6 +354,7 @@ func _mark(at: Vector2, r: float) -> Node2D:
 
 func _poison(at: Vector2) -> void:
 	var z := Area2D.new()
+	z.add_to_group("fog")
 	z.position = at
 	var fog := CPUParticles2D.new()
 	fog.amount = 24
@@ -273,7 +376,7 @@ func _poison(at: Vector2) -> void:
 	t.autostart = true
 	t.timeout.connect(func():
 		if is_instance_valid(target) and target.global_position.distance_to(z.global_position) < 22.0 and target.has_method("hurt"):
-			target.hurt(Game.miasma_dmg(5), Vector2.ZERO))
+			target.hurt(Game.miasma_dmg(5), Vector2.ZERO, false, "miasma"))
 	z.add_child(t)
 
 
@@ -310,20 +413,29 @@ func _clear_tells() -> void:
 
 
 # ---------------------------------------------------------------- taking hits
-func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
+func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged := false, charge_t := -1.0) -> void:
 	if state not in ["dead", "kneel", "wait"] and not quiet:
 		Audio.sfx("hit", -3.0)
 	if state == "dead" or state == "kneel" or state == "wait":
 		return
+	dmg = int(ceil(dmg * exposure()))
 	hp -= dmg
 	flash = 0.08
-	knock = dir * (60.0 if heavy else 30.0)
+	knock = dir * (lerpf(CT.CHARGE_BOSS_KNOCK_MIN, CT.CHARGE_BOSS_KNOCK_MAX, charge_t) if charge_t >= 0.0 else (60.0 if heavy else 30.0))
 	hp_changed.emit(hp, MAX_HP)
 	if phase == 1 and hp <= MAX_HP * 0.5:
 		phase = 2
 		_ring(position, 90.0, Color(0.7, 1.0, 0.5))
 		sprite.self_modulate = Color(1.1, 1.25, 1.0)
+		_clear_tells()
+		_clear_fog()
 		phase_two.emit()
+		if state != "wait":
+			phase_shift()   # 스토리가 가져가지 않았으면 바로 전환 열림
+	elif charged and charge_t >= 1.0 and hp > 0.0 and state in ["fog", "clones"]:
+		_clear_tells()   # 풀 충전 강 베기: 시전 중단(소환 취소), 역신은 열린다
+		_open(CT.BOSS_INTERRUPT_OPEN)
+		Game.say_toast("시전이 끊겼다", Color(1.0, 0.9, 0.55))
 	if hp <= 0.0:
 		_kneel()
 

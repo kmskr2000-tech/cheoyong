@@ -1,10 +1,11 @@
 extends Node2D
+const CT := preload("res://scripts/combat_tuning.gd")
 ## A playable level built from Levels.DATA[Game.level_id]: baked tiered ground (art/ground3d.py),
 ## voxel and hand-drawn props, NPCs, enemies, exits, lighting and the HD-2D finishing pass.
 ## Story beats hook in through Story (story.gd).
 
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
+const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6), "board": Vector2(18, 8)}
 
 var light_tex: Texture2D
 
@@ -26,6 +27,8 @@ func _ready() -> void:
 		if p.size() > 4 and not Game.flag(p[4]):
 			continue  # story-gated prop
 		_prop(p[0], lift(Vector2(p[1], p[2])), p[3])
+	for L in def.get("lights", []):   # [x, y, colour, energy, scale] — a lit window / painted lamp on the ground picture
+		_glow_light(lift(Vector2(L[0], L[1])), L[2], L[3], L[4])
 	_atmosphere()
 	var size: Array = meta["size"]
 	var tier: float = meta["tier"]
@@ -56,6 +59,16 @@ func _ready() -> void:
 		var ip := {"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]}
 		if it.size() > 4 and it[4] == "glint":
 			ip["node"] = _glint(ip["pos"])
+			var icon_path := "res://assets/ui/icons/key_%s.png" % it[0]   # e.g. the 피리 lying on the sand
+			if ResourceLoader.exists(icon_path):
+				var ic := Sprite2D.new()
+				ic.texture = load(icon_path)
+				ic.position = Vector2(0, -9)
+				ic.z_index = 1
+				ip["node"].add_child(ic)
+				var bob := ic.create_tween().set_loops()
+				bob.tween_property(ic, "position:y", -11.0, 0.9).set_trans(Tween.TRANS_SINE)
+				bob.tween_property(ic, "position:y", -8.0, 0.9).set_trans(Tween.TRANS_SINE)
 		interact_points.append(ip)
 	for c in def.get("crabs", []):
 		var crab := Crab.new()
@@ -227,7 +240,9 @@ func _glint(at: Vector2) -> Node2D:
 ## true when a screen position lies over open water
 func is_water(p: Vector2) -> bool:
 	var rows: Array = meta["heights"]
-	var cy := clampi(int(p.y / depth_k() / meta["ts"]), 0, rows.size() - 1)
+	# flat-baked maps ("land_tier"): the screen position sits land_tier*TIER px above its footprint row
+	var lift_px: float = float(meta.get("land_tier", 0)) * float(meta["tier"])
+	var cy := clampi(int((p.y + lift_px) / depth_k() / meta["ts"]), 0, rows.size() - 1)
 	var cx := clampi(int(p.x / meta["ts"]), 0, String(rows[0]).length() - 1)
 	return String(rows[cy])[cx] == "0"
 
@@ -286,6 +301,9 @@ func on_purified(r: Dictionary, where: Vector2) -> void:
 		Game.set_flag(key)
 		Game.say_toast("한풀이 — 이곳의 원혼이 모두 풀렸다", Color(0.75, 0.9, 1.0))
 		Game.reward_bonus(_earned_j / 2, _earned_d / 2, where, self)   # 정화율 100%: ×1.5 in total
+		var pl: Node = get_node_or_null("Player")   # CS-05: 한풀이 성립 시 체력 +15%
+		if pl and pl.has_method("heal"):
+			pl.heal(pl.max_hp * CT.HP_HANPURI)
 
 
 # ---------------------------------------------------------------- 전투 음악: 요괴가 쫓아오면 자진모리
@@ -373,7 +391,7 @@ func _update_guide(d: float) -> void:
 func _wet_feet(d: float) -> void:
 	_splash_cd -= d
 	var p: CharacterBody2D = $Player
-	if _splash_cd > 0.0 or p.velocity.length() < 10.0 or not is_water(p.global_position + Vector2(0, 30)):  # screen → roughly the footprint just ahead
+	if _splash_cd > 0.0 or p.velocity.length() < 10.0 or not is_water(p.global_position + Vector2(0, 12)):  # screen → roughly the footprint just ahead
 		return
 	_splash_cd = 0.22
 	Audio.sfx("splash", -16.0, 0.15)
@@ -397,18 +415,25 @@ func _wet_feet(d: float) -> void:
 
 
 ## run a dialogue with the hero frozen
+var _talking := 0          # dialogues running or queued; the hero/enemies stay frozen until the last one ends
+var _talk_frozen: Array = []
+
 func talk(lines: Array) -> void:
 	$Player.locked = true
+	_talking += 1
 	# the world holds its breath while someone speaks: 요괴 don't get free hits during dialogue
-	var frozen: Array = []
 	for e in get_tree().get_nodes_in_group("enemy") + get_tree().get_nodes_in_group("downed"):
 		if e.is_physics_processing():
 			e.set_physics_process(false)
-			frozen.append(e)
+			_talk_frozen.append(e)
 	await dialog.say(lines)
-	for e in frozen:
+	_talking -= 1
+	if _talking > 0:
+		return
+	for e in _talk_frozen:
 		if is_instance_valid(e):
 			e.set_physics_process(true)
+	_talk_frozen.clear()
 	$Player.locked = false
 
 
@@ -466,7 +491,10 @@ func _ground() -> void:
 		ec.shape = es
 		ec.position = r.get_center()
 		body.add_child(ec)
-	for r in meta["collision"]:
+	var extra: Array = []
+	for wr in def.get("walls", []):   # hand-placed seals for holes in the baked cliff collision (lifted px)
+		extra.append([wr.position.x, wr.position.y, wr.size.x, wr.size.y])
+	for r in meta["collision"] + extra:
 		var col := CollisionShape2D.new()
 		var sh := RectangleShape2D.new()
 		sh.size = Vector2(r[2], r[3])
@@ -527,6 +555,20 @@ func _prop(name: String, at: Vector2, light) -> void:
 		l.set_meta("base", light[2])
 		body.add_child(l)
 		flicker.append(l)
+
+
+## a light with no sprite: warms a window or lamp that is already painted into the ground picture
+func _glow_light(at: Vector2, col: Color, energy: float, scl: float) -> void:
+	var l := PointLight2D.new()
+	l.texture = light_tex
+	l.position = at
+	l.color = col
+	l.energy = energy
+	l.texture_scale = scl
+	l.height = 24.0
+	l.set_meta("base", energy)
+	add_child(l)
+	flicker.append(l)
 
 
 var flicker: Array[PointLight2D] = []

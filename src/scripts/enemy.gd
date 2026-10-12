@@ -12,28 +12,30 @@ extends CharacterBody2D
 ## Hit: white flash + knockback. At 0 HP it does not die: it collapses, still wreathed in 탁기
 ## (group "downed"). Only 처용가 purifies it (purify()); left alone it rises again.
 
+const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+
 const KINDS := {
 	"dog": {"sheet": "plague_dog", "cell": Vector2i(44, 30), "feet": 28, "hp": 30, "speed": 62.0,
 		"anims": {"move": [0, 1, 2, 3], "tell": [5], "strike": [4], "hurt": [5]},
 		"range": 46.0, "tell": 0.4, "strike": 0.28, "dmg": 8, "faces_right": true},
-	"ghoul": {"sheet": "ghoul", "cell": Vector2i(30, 42), "feet": 40, "hp": 40, "speed": 30.0,
-		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [0]},
+	"ghoul": {"sheet": "ghoul", "cell": Vector2i(90, 66), "feet": 65, "hp": 40, "speed": 30.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5, 7], "hurt": [6]},
 		"range": 22.0, "tell": 0.5, "strike": 0.25, "dmg": 10, "faces_right": false},
-	"sea": {"sheet": "gaetgwi", "cell": Vector2i(44, 54), "feet": 52, "hp": 44, "speed": 24.0,
-		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
+	"sea": {"sheet": "gaetgwi", "cell": Vector2i(94, 66), "feet": 65, "hp": 44, "speed": 24.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5, 7], "hurt": [6]},
 		"range": 30.0, "tell": 0.9, "strike": 0.3, "dmg": 12, "faces_right": false},
 	# ---- 설화 요괴 (art/monsters.py, 7-frame sheets: move0-3, tell, strike, hurt). Baseline AI; gimmicks per kind later.
-	"mama": {"sheet": "mama", "cell": Vector2i(48, 58), "feet": 56, "hp": 70, "speed": 22.0,
-		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
+	"mama": {"sheet": "mama", "cell": Vector2i(48, 66), "feet": 65, "hp": 70, "speed": 22.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5, 7], "hurt": [6]},
 		"range": 60.0, "tell": 0.8, "strike": 0.35, "dmg": 12, "faces_right": false},
-	"egg_ghost": {"sheet": "egg_ghost", "cell": Vector2i(34, 56), "feet": 54, "hp": 36, "speed": 46.0,
-		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
+	"egg_ghost": {"sheet": "egg_ghost", "cell": Vector2i(104, 66), "feet": 65, "hp": 36, "speed": 46.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5, 7], "hurt": [6]},
 		"range": 26.0, "tell": 0.5, "strike": 0.25, "dmg": 10, "faces_right": false},
-	"maiden_ghost": {"sheet": "maiden_ghost", "cell": Vector2i(34, 56), "feet": 54, "hp": 40, "speed": 28.0,
-		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
+	"maiden_ghost": {"sheet": "maiden_ghost", "cell": Vector2i(66, 66), "feet": 65, "hp": 40, "speed": 28.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5, 7], "hurt": [6]},
 		"range": 48.0, "tell": 0.9, "strike": 0.4, "dmg": 6, "faces_right": false},
-	"mulgwi": {"sheet": "mulgwi", "cell": Vector2i(56, 46), "feet": 40, "hp": 44, "speed": 18.0,
-		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
+	"mulgwi": {"sheet": "mulgwi", "cell": Vector2i(72, 66), "feet": 65, "hp": 44, "speed": 18.0,
+		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5, 7], "hurt": [6]},
 		"range": 40.0, "tell": 0.7, "strike": 0.35, "dmg": 10, "faces_right": false},
 	"dokkaebi_oneeye": {"sheet": "dokkaebi_oneeye", "cell": Vector2i(48, 56), "feet": 54, "hp": 60, "speed": 30.0,
 		"anims": {"move": [0, 1, 2, 3], "tell": [4], "strike": [5], "hurt": [6]},
@@ -266,7 +268,7 @@ func _physics_process(delta: float) -> void:
 		"strike":
 			v = _strike_vel(to, d)
 			if ex.get("melee", true) and d < ex.get("contact", cfg["range"] * 0.7) and target.has_method("hurt"):
-				target.hurt(_dmg(), to.normalized())
+				target.hurt(_dmg(), to.normalized(), true)   # 근접 접촉: 받아넘기기 대상
 			if st >= cfg["strike"]:
 				_after_strike(to, d)
 		"stagger":   # vulnerable after a charge, a slam or an eclipse
@@ -320,6 +322,13 @@ func _begin_tell(to: Vector2) -> void:
 	sprite.play("tell")
 	reveal_t = maxf(reveal_t, cfg["tell"] + cfg["strike"] + 0.3)
 	telegraph.emit()
+
+
+## 예고·타격 중단 (파동부·강 베기·되받아치기 공용, CS-04)
+func _interrupt() -> void:
+	if state in ["tell", "strike", "vanish", "lure"]:
+		state = "hurt"; st = 0.0
+		cd = 0.6
 
 
 func _stagger(sec: float) -> void:
@@ -454,7 +463,7 @@ func _on_strike(to: Vector2, d: float) -> void:
 			aux_t = 1.4   # blackout
 		"jeoseung_guard":
 			if d < 62.0 and to.normalized().dot(lunge_dir) > 0.75 and target.has_method("hurt"):
-				target.hurt(_dmg(), lunge_dir)
+				target.hurt(_dmg(), lunge_dir, true)   # 찌르기: 근접 접촉
 
 
 func _strike_vel(to: Vector2, d: float) -> Vector2:
@@ -478,6 +487,8 @@ func _after_strike(to: Vector2, d: float) -> void:
 			Audio.sfx("fire", -8.0)
 			h.position = position + lunge_dir * 22.0
 			get_parent().add_child(h)
+		"dog", "sea", "mama":
+			_stagger(CT.STAGGER_AFTER[kind])   # 후딜: ×1.5 피해 창 (읽고 피했으면 열린다)
 		"sangun", "pado":
 			_stagger(1.0)
 		"jangseung_taki":
@@ -571,7 +582,9 @@ func _poof() -> void:
 
 
 ## quiet: damage over time (부적의 불길·결계) — no flinch, no sound
-func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
+## charged: 장갑 무시(강 베기·처용무). charge_t >= 0: 강 베기 충전량(0=최소, 1=만충)이면 넉백이 충전에 따라 커진다.
+## Enemy 와 PlagueGod 는 같은 시그니처를 유지한다 (플레이어가 group "enemy" 전체에 호출).
+func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged := false, charge_t := -1.0) -> void:
 	if state == "dead" or state == "downed":
 		return
 	if is_clone:
@@ -587,9 +600,11 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
 		return
 	var mult := 1.0
 	if state == "stagger":
-		mult = 2.0 if kind == "jangseung_taki" else 1.5
-	elif kind == "jangseung_taki":
-		mult = 0.4
+		mult = CT.STAGGER_MULT.get(kind, CT.STAGGER_DEFAULT_MULT)   # 후딜은 장갑을 푼다
+	elif charged:
+		mult = 1.0   # 강 베기·처용무는 장갑 무시
+	elif CT.ARMOR.has(kind):
+		mult = CT.ARMOR[kind]
 	dmg = int(ceil(dmg * mult))
 	reveal_t = 2.0
 	if not quiet:
@@ -602,7 +617,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false) -> void:
 	hp -= dmg
 	flash = 0.08
 	hit_taken.emit()
-	knock = dir * (220.0 if heavy else 130.0)
+	knock = dir * (lerpf(CT.CHARGE_KNOCK_MIN, CT.CHARGE_KNOCK_MAX, charge_t) if charge_t >= 0.0 else (220.0 if heavy else 130.0))
 	if hp <= 0:
 		_down()
 	elif state == "stagger" or quiet:
