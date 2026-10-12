@@ -782,6 +782,7 @@ func _hwagae_enter(level: Node) -> void:
 func _raid(level: Node) -> void:
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
+	await level.get_tree().process_frame   # 트리거 콜백(물리 질의 중) 밖에서 노드를 만든다
 	var raiders: Array = []
 	for at in level.def["anchors"]["raiders"]:
 		var e: Enemy = level.spawn_enemy("dokkaebi_oneeye", at)
