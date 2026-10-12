@@ -244,7 +244,7 @@ func exposure() -> float:
 			return CT.BOSS_OPEN_MULT
 		"fog", "clones":
 			return CT.BOSS_CAST_MULT
-	return 1.0
+	return CT.BOSS_IDLE_MULT
 
 
 func _clear_fog() -> void:

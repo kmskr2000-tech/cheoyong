@@ -5,6 +5,7 @@ extends "harness.gd"
 ## 시간은 프레임/60 (--fixed-fps 60 이면 time_scale 1 에서 프레임당 1/60초).
 
 var _dbg := false
+var _last_php := 1000.0
 var T := 0.0          # 측정용 게임 시간(초)
 var rng := RandomNumberGenerator.new()
 
@@ -252,7 +253,7 @@ func _reader(e, to: Vector2, d: float, frame_n: int) -> void:
 ## 역신 전투 봇. skill: 0=완벽한 리더 … 1=전혀 안 읽음. miss = 각 예고를 놓칠 확률.
 func sc_boss(dbg := false) -> void:
 	_dbg = dbg
-	var pols := [["reader", 0.0, true], ["reader", 0.0, false], ["tap", 1.0, false], ["reader", 0.5, false]]
+	var pols := [["window", 0.0, false], ["reader", 0.0, false], ["tap", 1.0, false]]
 	if dbg:
 		pols = [[OS.get_environment("POL") if OS.get_environment("POL") != "" else "tap", float(OS.get_environment("MISS")) if OS.get_environment("MISS") != "" else 1.0, OS.get_environment("CHG") == "1"]]
 	var boss = await cs_wake_boss()
@@ -325,6 +326,9 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 			p2_start = -1.0
 			await tick(3)
 			continue
+		if _dbg and p.hp < _last_php - 0.01:
+			print("RES DBG HURT t=%.1f -%.0f boss=%s ph=%d pstate=%s d=%.0f bhp=%.0f" % [tt, _last_php - p.hp, boss.state, boss.phase, p.state, (boss.global_position - p.global_position).length(), boss.hp])
+		_last_php = p.hp
 		if boss.phase == 2 and p2_start < 0.0:
 			p2_start = tt
 		var to: Vector2 = boss.global_position - p.global_position
@@ -347,10 +351,21 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 				var dd: float = (e.global_position - p.global_position).length()
 				if dd < nd:
 					nd = dd; nearest = e
+		# ----- 안개 예고(붉은 고리): 0.9초 뒤 독이 깔리는 자리 — 숙련자는 고리 밖(>34px)으로 비킨다
+		if (pol == "reader" or pol == "window") and read and boss.state == "fog":
+			var flee := false
+			for tm in boss.tells:
+				if is_instance_valid(tm) and tm.position.distance_to(p.global_position) < 34.0:
+					bot_dir((p.global_position - tm.position).normalized())
+					Input.action_release("attack")
+					flee = true
+					break
+			if flee:
+				continue
 		# ----- 안개: 읽었다면 안개 중심에서 벗어난다
 		var in_fog := false
 		for f in get_nodes_in_group("fog"):
-			if f.global_position.distance_to(p.global_position) < 30.0:
+			if f.global_position.distance_to(p.global_position) < 34.0:
 				in_fog = true
 				var away: Vector2 = (p.global_position - f.global_position).normalized()
 				if rng.randf() >= miss or pol == "reader":
@@ -359,7 +374,7 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 		if in_fog and read and pol == "reader":
 			continue
 		# ----- 기침 읽기: 숨결이 나가기 직전(0.1초 전) 구르기 → 받아넘기기 (읽었을 때), 못 읽으면 그대로 서 있는다
-		if st == "cough" and pol == "reader" and read and p.state != "roll":
+		if st == "cough" and (pol == "reader" or pol == "window") and read and p.state != "roll":
 			var left: float = 1.0 / fast - boss.st
 			if left < 0.1 and left > -0.01 and d < 130.0 and p._roll_lock_t <= 0.0:
 				bot_dir((boss.global_position - p.global_position).normalized())
@@ -377,6 +392,16 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 		var tto: Vector2 = tgt.global_position - p.global_position
 		var td := tto.length()
 		var closing: bool = boss.close_t > 1.0 and tgt == boss
+		if pol == "window" and tgt == boss and st != "open":
+			# 열림 창에서만 달려들어 친다: 평시엔 사거리 밖(65~95px)에서 대기, 안개 중심은 피한다
+			Input.action_release("attack")
+			if d < 62.0:
+				bot_dir(-tto.normalized())
+			elif d > 95.0:
+				bot_dir(tto.normalized())
+			else:
+				bot_dir(Vector2.ZERO)
+			continue
 		if closing and pol == "reader":
 			bot_dir(-tto.normalized())
 			Input.action_release("attack")
