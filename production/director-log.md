@@ -171,6 +171,11 @@
 - [검토] 22:19 아트팀-전투이펙트 — asset/combat-fx(f4f3930) 완료 보고: 이펙트 8종+예고 굳음 단서 구현(받아넘기기, 충전 오라·만충 번쩍임, 풀 충전 관통, 수호부 소리 환급, 적 후딜·역신 열림 약점 표식, 결박·화염 ×1.6, 정화, 예고 굳음), combat_fx.gd 연결, 전/후 스크린샷 86개+README(production/qa/asset-import/combat-fx/), tests/fx_shots.sh, 검증 combat_strategy 11/11·save_check 42·smoke 6/6(boss는 부하 타임아웃 후 단독 128초 PASS). 변경: 받아넘기기 슬로모션 시작 0.07초 정지 후 0.35배속(총 0.35초 불변), enemy/boss/talisman_zone 에 호출 한두 줄, player.gd _ring_fx 고리 흰 원판 버그 수정. 한계: 슬로모션 체감은 캡처로만 확인, 예고 굳음은 후 샷만.
 - [지시] 22:19 감사팀-진전검증 — combat-fx 검증(스크린샷 육안 6~8장, fx_shots.sh, 수치 불변 diff, balance-apply 병합 포함으로 인한 머지 순서 의견). 통과 시 승인하되 main 머지는 prog/balance-apply 완료 후(의존).
 
+- [배포] 22:21 프로그래밍팀-통합배포 — PR #40(release/ch1-integ → main) MERGED 확인(사용자 조치로 추정, 분류기 차단 해소). 1장 통합 릴리스가 main 에 들어감.
+- [지시] 22:21 프로그래밍팀-통합배포 — 승인분 즉시 머지: design/gdd-review·story-audit·ch2-detail(·combat-balance는 balance-apply 포함 여부 확인) 개별 PR→main, 머지 후 main smoke·save_check·combat_strategy·라이브 diff 확인.
+- [결정] 22:21 전 팀 — Godot 직렬화(감사팀 22:10 지적: 동시 Godot 약 6개, load 12~18이 보스 타임아웃·측정 오염의 주원인): 무거운 Godot 실행은 flock ~/workspace/goals/rpg/hidden_files/godot.lock 으로 직렬화. agent-rules.md 규칙 9.
+- [재촉] 22:21 QA팀-유저플레이테스트 — 마지막 커밋 27분 전(폐가 소감 이후), 체크포인트 21:53. 보스·엔딩·이어하기 진행·커밋 지시.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
