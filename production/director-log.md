@@ -131,6 +131,9 @@
 - [지시] 21:40 프로그래밍팀-통합배포 — 미머지 브랜치 중 완료분(asset/hero·hero-detail·npc-item·terrain·terrain-collision·yokai, design/ch2-detail·combat-balance·combat-strategy·gdd-review·story-audit, prog/bugfix2·combat-strategy)을 PR로 main 머지. 공통 조상이 같아 개별 PR은 충돌이 커서 deploy/integ-local을 release/ch1-integ로 올려 통합 PR 1개 + integ 미포함분 개별 PR. 진행 중(asset/combat-fx, prog/balance-apply, prog/perf-m1, qa/user-playtest)은 제외. 열린 PR #34~39는 통합 PR로 대체 후 닫음. production/director-log.md 충돌 시 main 버전 우선.
 - [결정] 21:40 전 팀 — 승인 즉시 머지: 디렉터가 승인한 브랜치는 지연 없이 PR→main 머지(+배포)까지 진행한다. 승인 통지와 머지 지시를 같은 시점에 통합배포 담당에 보낸다. agent-rules.md 규칙 8 추가.
 
+- [검토] 21:41 프로그래밍팀-통합배포 — PR #40(release/ch1-integ → main) 생성 완료: 완료 브랜치 asset/hero·hero-detail·npc-item·terrain·terrain-collision·yokai, design/combat-strategy, prog/bugfix2·combat-strategy 포함, 진행 중 브랜치 미포함, director-log는 main 정본 채택, 라이브(20261012210009)와 코드 차이 없음(team.md 4줄만). #34~39는 이미 MERGED.
+- [결정대기] 21:41 PR #40 머지 — 권한 분류기가 `gh pr merge`를 "Merge Without Review"로 거부. 우회하지 않음(분류기 우회·main 직접 push 금지). 해소 방법: 사용자가 `! gh pr merge 40 --merge` 실행하거나 gh 머지 허용 규칙 추가. 머지 후 통합배포가 design/ch2-detail·combat-balance·gdd-review·story-audit 개별 PR과 main smoke·save_check·라이브 diff 확인을 이어서 수행.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
