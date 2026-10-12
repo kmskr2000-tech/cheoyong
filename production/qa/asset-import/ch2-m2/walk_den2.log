@@ -1,0 +1,26 @@
+Godot Engine v4.4.1.stable.official.49a5bc7b6 - https://godotengine.org
+
+INFO den2 도달 가능 칸 3369 (격자 160x81)
+  ok   적 jangsanbeom
+  ok   적 dokkaebi_oneeye
+  ok   적 dokkaebi_oneeye
+  ok   적 dokkaebi_fire
+  ok   spawn start
+  ok   spawn fromDen3
+  ok   구역 (3.0, 98.0)
+  ok   구역 (632.0, 98.0)
+  ok   ROUTE 0
+  ok   ROUTE 1
+  ok   ROUTE 2
+  ok   ROUTE 3
+  ok   ROUTE 4
+  walk ROUTE 0 도착 (24.0, 98.0)
+  walk ROUTE 1 도착 (214.5961, 90.09974)
+  walk ROUTE 2 도착 (318.1656, 121.1433)
+  walk ROUTE 3 도착 (430.5555, 98.47243)
+  walk ROUTE 4 도착 (449.7502, 98.06355)
+WALK_RESULT den2 PASS
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+     at: cleanup (core/object/object.cpp:2378)
+ERROR: 2 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:614)

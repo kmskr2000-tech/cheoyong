@@ -30,8 +30,8 @@ Y_, G_, C_, B_, O_, M_ = (255, 255, 60), (80, 255, 120), (80, 255, 255), (90, 16
 
 # 소품 충돌 반크기(footprint) — level.gd OCCLUDE 값 + 이번에 새로 만든 소품 제안값(README 와 동일)
 OCCLUDE = {'pillar': (7, 5), 'jars': (16, 6), 'beam': (24, 6), 'altar': (20, 6), 'house': (50, 28), 'dodam': (32, 6), 'cairn': (3, 3),
-           'rockwall': (32, 20), 'seonang': (8, 6), 'lantern': (8, 6),
-           'hut_ruin': (40, 16), 'hut_ruin_b': (40, 16), 'old_tools': (10, 4), 'dok_torch': (4, 3), 'mortar_altar': (30, 12), 'doll': (3, 3)}
+           'rockwall': (32, 20), 'old_tools_mortar': (10, 4), 'old_tools_broom': (3, 2), 'old_tools_pot': (11, 4), 'old_tools_sandals': (8, 3), 'seonang': (8, 6), 'lantern': (8, 6),
+           'hut_ruin': (40, 16), 'hut_ruin_b': (40, 16), 'old_tools': (14, 5), 'dok_torch': (4, 3), 'mortar_altar': (30, 12), 'doll': (3, 3)}
 
 MARKERS, PROPS, REACH = {}, {}, {}   # 맵별 정의는 ch2m2_markers.py 에서 채운다
 import ch2m2_markers as MK
@@ -101,6 +101,18 @@ def pt(fx, fy):
     return int(round(fx / 4)), int(round((K * fy + OFFSET - TIER * 2) / 4))
 
 
+def near_label(lab, x, y, rad_px):
+    """(x,y) 칸 반경 rad_px 안의 성분 번호들(walkability.gd _near 와 같은 허용 반경)"""
+    r = int(rad_px / 4) + 1
+    out = set()
+    for dy in range(-r, r + 1):
+        for dx in range(-r, r + 1):
+            yy, xx = y + dy, x + dx
+            if 0 <= yy < lab.shape[0] and 0 <= xx < lab.shape[1] and lab[yy, xx] and (dx * 4) ** 2 + (dy * 4) ** 2 <= rad_px ** 2:
+                out.add(int(lab[yy, xx]))
+    return out
+
+
 def components(free):
     return ndi.label(free, structure=np.ones((3, 3)))[0]
 
@@ -149,9 +161,23 @@ def check(names):
                     f2[iy, ix] = (ii[yb, xb] - ii[ya, xb] - ii[yb, xa] + ii[ya, xa]) == 0
             l2 = components(f2)
             ax, ay = pt(ms[a][2], ms[a][3]); bx, by = pt(ms[b][2], ms[b][3])
-            conn = l2[ay, ax] != 0 and l2[ay, ax] == l2[by, bx]
+            conn = l2[ay, ax] != 0 and int(l2[ay, ax]) in near_label(l2, bx, by, 26 if ms[b][0] in (NP, IT) else 6)
             lines.append(f'- 우회로 [{label}] {a}→{b} 막은 채로 {"이어짐 (OK)" if conn else "끊김 (FAIL)"}')
             ok_all &= conn
+        if n in MK.STEALTH:                         # 어그로(화면 좌표 130px) 안을 지우고도 의뢰 동선이 이어지는가
+            start2, tgts, enemies, rad = MK.STEALTH[n]
+            fr2 = free_grid(n)[0].copy()
+            yy, xx = np.mgrid[0:fr2.shape[0], 0:fr2.shape[1]]
+            sx_, sy_ = xx * 4.0, yy * 4.0 - OFFSET
+            for e in enemies:
+                ex, ey = ms[e][2], K * ms[e][3] - TIER * 2
+                fr2 &= ((sx_ - ex) ** 2 + (sy_ - ey) ** 2) >= rad ** 2
+            l3 = components(fr2)
+            a_ = pt(ms[start2][2], ms[start2][3])
+            for t in tgts:
+                bx_, by_ = pt(ms[t][2], ms[t][3])
+                ok = bool(fr2[a_[1], a_[0]]) and int(l3[a_[1], a_[0]]) in near_label(l3, bx_, by_, 26 if ms[t][0] in (NP, IT) else 6)
+                lines.append(f'- 무전투 동선(어그로 {rad}px 밖만): {start2}→{t} {"가능 (OK)" if ok else "불가 (요괴 어그로를 지나야 함)"}')
         if n in MK.BOXES:
             bw, bh = MK.BOXES[n]
             for with_props in (False, True):
