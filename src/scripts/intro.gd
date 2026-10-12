@@ -190,7 +190,7 @@ func _shot_hall() -> void:
 	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(200, 168))   # 맏형 해강
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
-	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 232), Rect2(32, 0, 32, 48))  # back view (up_idle)
+	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 226), Rect2(64, 0, 64, 64))  # back view (up_idle)
 	await _fade_in()
 	await dialog.say([
 		{"name": "맏형 해강", "text": "용궁의 문을 닫읍시다."},
@@ -235,7 +235,7 @@ func _shot_rise() -> void:
 	var sea := _layer("res://assets/intro/intro_sea.png", Vector2(0, -90))
 	sea.scale = Vector2(1, 1.34)
 	_shafts(_shot)
-	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 300), Rect2(32, 0, 32, 48))
+	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 294), Rect2(64, 0, 64, 64))
 	me.modulate = Color(0.25, 0.32, 0.5)
 	var bub := CPUParticles2D.new()
 	bub.amount = 20
@@ -257,7 +257,7 @@ func _shot_rise() -> void:
 	await Game.fade(1.0, 0.25)
 	_new_shot()
 	_layer("res://assets/intro/intro_night.png")
-	var head := _sprite("res://assets/sprites/cheoyong.png", Vector2(250, 196), Rect2(32, 0, 32, 26))  # head and shoulders above the swell
+	var head := _sprite("res://assets/sprites/cheoyong.png", Vector2(250, 197), Rect2(64, 20, 64, 28))  # head and shoulders above the swell
 	head.modulate = Color(0.18, 0.22, 0.35)
 	await _fade_in(1.0)
 	await _narrate("셋째 아들은 노래를 안고 물 위로 올랐다.", 3.2)
