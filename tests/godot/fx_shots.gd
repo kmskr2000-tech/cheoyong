@@ -6,6 +6,7 @@ var out := "/tmp/fxshots"
 var tag := "after"
 var only := []
 var G: Node
+var level_id := ""
 
 
 func _initialize() -> void:
@@ -13,6 +14,7 @@ func _initialize() -> void:
 		if a.begins_with("--out="): out = a.get_slice("=", 1)
 		elif a.begins_with("--tag="): tag = a.get_slice("=", 1)
 		elif a.begins_with("--only="): only = a.get_slice("=", 1).split(",")
+		elif a.begins_with("--level="): level_id = a.get_slice("=", 1)
 	DirAccess.make_dir_recursive_absolute(out)
 	G = root.get_node("Game")
 	_main.call_deferred()
@@ -36,6 +38,8 @@ func player() -> Node:
 
 func boot() -> void:
 	await process_frame
+	if level_id != "":
+		G.level_id = level_id
 	change_scene_to_file("res://scenes/level.tscn")
 	var n := 0
 	while lvl() == null and n < 600:
@@ -98,6 +102,7 @@ func _main() -> void:
 	if want("tell"): await sc_tell()
 	if want("dark"): await sc_dark()
 	if want("nametag"): await sc_nametag()
+	if want("alley"): await sc_alley()
 	print("FXSHOTS DONE ", tag)
 	quit(0)
 
@@ -272,3 +277,18 @@ func sc_nametag() -> void:
 	e._bar.visible = true
 	await tick(20)
 	await shot("nametag_edge")
+	var e2 = dummy(kind, p.position + Vector2(0, -140))
+	e2._bar.visible = true
+	e.position = p.position + Vector2(90, 0)
+	await tick(20)
+	await shot("nametag_top", false)
+
+
+func sc_alley() -> void:
+	level_id = "gyeongju"
+	await boot()
+	var p := player()
+	for pos in [Vector2(345, 256), Vector2(200, 330), Vector2(450, 150)]:
+		p.position = lvl().lift(pos)
+		await tick(40)
+		await shot("alley_%d_%d" % [int(pos.x), int(pos.y)], false)

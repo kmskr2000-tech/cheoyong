@@ -15,12 +15,20 @@ func _ready() -> void:
 	_ring.z_as_relative = true
 	_ring.position = Vector2(0, -2)
 	_ring.scale = Vector2(1.2, 1.2)   # 어두운 맵에서도 읽히도록 크게·밝게 (아트팀)
-	_ring.modulate = Color(1.5, 1.35, 1.1)
+	_ring.modulate = Color(1.2, 0.95, 0.6)
 	add_child(_ring)
 	_mark = CFX.sheet("weak", 4)
 	_mark.position = Vector2(0, -78.0 if big else -40.0)
 	_mark.scale = Vector2(2.4, 2.4) if big else Vector2(1.9, 1.9)
-	_mark.modulate = Color(1.5, 1.4, 1.2)
+	_mark.modulate = Color(1.0, 0.72, 0.3)   # 금빛 틴트, 흰 판으로 날지 않게 과밝 제거 (아트팀)
+	var sh := CFX.sheet("weak", 4)   # 어두운 외곽 그림자 — 흰 표식도 윤곽이 서도록
+	sh.name = "Shadow"
+	sh.scale = _mark.scale * 1.35
+	sh.modulate = Color(0, 0, 0, 0.75)
+	sh.position = _mark.position
+	sh.z_index = -1
+	sh.z_as_relative = true
+	add_child(sh)
 	add_child(_mark)
 	# 열리는 순간의 번쩍임
 	var par := get_parent().get_parent()
@@ -35,6 +43,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	_ring.frame = (1 if big else 0) * 3 + int(_t * 8.0) % 3
 	_mark.frame = int(_t * 8.0) % 4
+	var shd := get_node_or_null("Shadow")
+	if shd:
+		shd.frame = _mark.frame
+		shd.position = _mark.position
 	_mark.position.y += sin(_t * 9.0) * 0.12
 	if _t >= sec:
 		var a := modulate.a - delta * 4.0

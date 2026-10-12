@@ -116,6 +116,12 @@ static func clamp_label(lbl: Control, margin := 3.0) -> void:
 	var r := lbl.get_global_transform_with_canvas()
 	var left: float = r.origin.x
 	var right: float = left + lbl.size.x * r.get_scale().x
+	var top: float = r.origin.y
+	var dy := 0.0
+	if top < margin:
+		dy = margin - top
+	if dy != 0.0:
+		lbl.position.y += dy / r.get_scale().y
 	var dx := 0.0
 	if left < margin:
 		dx = margin - left
@@ -251,7 +257,7 @@ static func synergy(host: Node2D, mult_text: String) -> void:
 				n += 1
 		var par := host.get_parent()
 		play_once(par, host.global_position + Vector2(18, -34), "bindmark", 4, 14.0, 1.0, 2, 1).modulate.a = 0.7
-		pop_text(par, host.global_position + Vector2(0, -66), mult_text if n <= 1 else "%s ·%d" % [mult_text, n], COL_FIRE, 12)
+		pop_text(par, host.global_position + Vector2(0, -66), mult_text, COL_FIRE, 12)
 
 
 # ---------------------------------------------------------------- 예고 굳음 (tell_lock, 진행 50%)
