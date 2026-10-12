@@ -4,7 +4,7 @@ He is modelled as a little figure of primitives (ellipsoids and tapered cylinder
 with a material. Every pixel of the 32x48 cell casts an orthographic ray through a camera that looks
 down ~18 degrees; the nearest hit gives material, surface normal and a surface position. Light is
 one key from the upper left (+ a cool moon rim from behind-right), posterized onto 6-tone ramps, so
-it stays pixel art. Details live on the surfaces (eyes, brows, the 용비늘 shawl, 철릭 pleats, the
+it stays pixel art. Details live on the surfaces (eyes, brows, the 용비늘 shawl, 철릭 pleats (고증 미확정), the
 동정 collar) and therefore turn with him: front, 3/4, side and back are the same figure.
 Outlines are sel-out: a dark shade of the colour beside them, softer on inner overlaps.
 
@@ -130,7 +130,7 @@ HERO = {'shawl': True, 'flute': True, 'ribbon': True, 'scale': 0.82}   # ~36px t
 
 def figure(pose, sp=HERO):
     """pose: walk (0-3 or None), breath (bool), armless (None | 'L' | 'R'), flute (bool).
-    sp: the character (art/people.py) — hat, hair, beard, chima, badge, staff, shawl, flute, ribbon."""
+    sp: the character (art/people.py) — hat, hair, beard, chima, badge (belt-plate material: 과대), staff, shawl, flute, ribbon."""
     walk, breath = pose.get('walk'), pose.get('breath', False)
     lf = lz = rz = rf = 0.0
     bob = 0.0
@@ -147,7 +147,7 @@ def figure(pose, sp=HERO):
         x = side * 2.7
         P.append(Cone((x, f, z - 0.3), (x, 6 + f, z - 0.3), 1.9, 1.7, 'boot', kz=1.1))
         P.append(Ell((x, 0.9 + f, z + 1.1), (1.8, 1.0, 2.2), 'boot'))
-    # 철릭 skirt (pleated), its red hem, the belt and brass buckle
+    # 철릭 skirt (pleated; 고증 미확정 — see design/art/costume-audit.md A9), its red hem, the belt and brass buckle
     sway = (lz - rz) * 0.12
     if sp.get('chima'):   # 치마 from high under the arms, a short 저고리 above
         P.append(Cone((sway, 4.2 + up * 0.3, 0), (0, 22.0 + up, 0), 9.6, 6.0, 'robe', kz=0.8, tag='skirt'))
@@ -163,7 +163,7 @@ def figure(pose, sp=HERO):
         for side in (-1, 1):
             P.append(Ell((side * 5.9, 25.2 + up, 0), (2.9, 2.2, 2.6), 'robe', tag='torso'))
     sleeve = 'top' if sp.get('chima') else 'robe'
-    # arms: wide 도포 sleeves, dark 토시 cuffs, hands
+    # arms: wide straight-collared 직령포 sleeves, dark 토시 cuffs, hands
     for side, swing in ((-1, -lz * 0.6), (1, -rz * 0.6)):
         if pose.get('armless') == ('L' if side < 0 else 'R'):
             continue
@@ -189,21 +189,24 @@ def figure(pose, sp=HERO):
     if sp.get('long_hair'):   # 쪽진 머리: a low bun, the hair drawn smooth to the back
         P.append(Ell((0, 31.5 + up, -5.6), (2.6, 2.2, 2.0), 'hair', tag='knot'))
         P.append(Ell((2.6, 31.8 + up, -5.4), (1.6, 0.5, 0.5), 'gold'))                              # 비녀
-    elif hat not in ('samo', 'ikseon', 'kerchief'):
+    elif hat not in ('bokdu', 'geumgwan', 'kerchief'):
         P.append(Ell((0, 40.4 + up, -0.9), (2.2, 2.3, 2.1), 'hair', tag='knot'))
     if sp.get('ribbon'):
         P.append(Cone((0, 38.3 + up, -0.9), (0, 39.3 + up, -0.9), 2.5, 2.4, 'red'))
         P.append(Cone((1.4, 39.4 + up, -2.0), (6.2, 35.0 + up, -3.0), 0.7, 0.9, 'red', caps=True))   # 댕기 tails
         P.append(Cone((1.0, 39.2 + up, -2.2), (5.0, 33.8 + up, -3.6), 0.6, 0.8, 'red', caps=True))
-    if hat in ('samo', 'ikseon'):   # 사모 / 익선관: a black gauze crown, a raised back, two wings
-        P.append(Cone((0, 37.0 + up, -0.4), (0, 41.0 + up, -0.6), 5.6, 4.6, 'hat', kz=0.95))
-        P.append(Ell((0, 41.6 + up, -2.0), (3.6, 2.6, 2.4), 'hat'))
-        if hat == 'samo':
-            for side in (-1, 1):
-                P.append(Ell((side * 6.6, 40.2 + up, -2.2), (2.6, 1.0, 0.45), 'hat'))
-        else:
-            for side in (-1, 1):
-                P.append(Ell((side * 2.6, 44.0 + up, -3.0), (1.6, 2.3, 0.5), 'hat'))
+    if hat == 'bokdu':              # 복두형 근사(고증 미확정): a round black cap, a soft raised top, two 각 drooping behind
+        P.append(Ell((0, 37.6 + up, -0.5), (6.7, 3.9, 6.5), 'hat', tag='bokdu'))
+        P.append(Ell((0, 40.0 + up, -1.2), (4.6, 2.5, 4.2), 'hat', tag='bokdu'))
+        for side in (-1, 1):
+            P.append(Cone((side * 3.4, 39.0 + up, -3.0), (side * 8.2, 35.2 + up, -4.6), 1.2, 0.9, 'hat', caps=True))
+    elif hat == 'geumgwan':         # 신라 금관 형태(고증 미확정): gold band, 出-shaped uprights, two antler tines
+        P.append(Cone((0, 37.8 + up, -0.4), (0, 40.4 + up, -0.5), 6.1, 6.3, 'gold', kz=0.97, caps=False))
+        for x, top in ((-3.8, 44.4), (0.0, 46.0), (3.8, 44.4)):
+            P.append(Cone((x, 40.0 + up, -0.5), (x, top + up, -0.5), 0.9, 0.8, 'gold', caps=True))
+            P.append(Ell((x, top + 0.2 + up, -0.5), (0.9, 0.9, 0.6), 'coral'))
+        for side in (-1, 1):
+            P.append(Cone((side * 5.6, 40.0 + up, -0.8), (side * 7.2, 43.4 + up, -1.0), 0.7, 0.6, 'gold', caps=True))
     elif hat == 'crown':            # 용왕의 관: gold band, coral points
         P.append(Cone((0, 38.0 + up, -0.5), (0, 40.6 + up, -0.5), 5.3, 5.6, 'gold', kz=0.95, caps=False))
         for k in range(5):
@@ -338,6 +341,9 @@ def details(pr, p, n, tone, mat, lam, sp=HERO):
     elif pr.tag == 'belt':
         buckle = (np.abs(x) < 1.3) & (z > 0)
         mat = np.where(buckle, 'brass', mat)
+        if sp.get('badge'):   # 과대: studded plates along the belt (gold, or silver for lower ranks)
+            plates = (z > -2.0) & (np.abs(x) >= 1.3) & (np.abs(x) < 6.4) & ((np.floor(np.abs(x) / 2.1)) % 2 == 0)
+            mat = np.where(plates, sp['badge'], mat)
     elif pr.tag == 'torso':
         # 동정 collar: a pale V opening from the neck
         vy = y - (pr.a[1] if hasattr(pr, 'a') else 18.5)
@@ -345,9 +351,6 @@ def details(pr, p, n, tone, mat, lam, sp=HERO):
         mat = np.where(collar, 'collar', mat)
         inner = (z > 0) & (np.abs(x) < (y - 21.5) * 0.55 - 0.7) & (y > 21.5)
         mat = np.where(inner, 'robe_in', mat)
-        if sp.get('badge'):   # 흉배: the rank square on the chest
-            badge = (z > 0) & (np.abs(x) < 2.4) & (y > 19.6) & (y < 23.6)
-            mat = np.where(badge, sp['badge'], mat)
         # 용비늘 shawl: a band from his left shoulder down across the chest to the right hip
         band = np.abs((x - 0.5) - (y - 22.0) * 0.95) < 2.4
         shawl = band & (y > 18.5) & bool(sp.get('shawl'))

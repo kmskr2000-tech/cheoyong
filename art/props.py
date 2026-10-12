@@ -277,7 +277,7 @@ def tal():
     MASK = R('#3a0a0c', '#6a1416', '#9a2420', '#c4382a', '#e05a3a')
     cx, cy = 9, 15
     c.dome(cx, cy, 6.5, 7.5, MASK, 2.6, top_only=False)
-    for x in range(cx - 6, cx + 7):           # black 사모 brim on top, peony blossoms either side
+    for x in range(cx - 6, cx + 7):           # black 복두 brim on top, peony blossoms either side
         c.set(x, cy - 7, INK)
     for x in range(cx - 4, cx + 5):
         c.set(x, cy - 8, INK); c.set(x, cy - 9, INK)
