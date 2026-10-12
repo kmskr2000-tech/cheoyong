@@ -1,9 +1,10 @@
 # 전투 코어 (Combat Core)
 
-> **Status**: In Review
+> **Status**: Approved (2026-10-12 검토 — `REVIEW-2026-10-12.md`)
 > **Author**: game-designer (reverse-document: 코드에서 역산)
 > **Last Updated**: 2026-10-12
-> **Last Verified**: 2026-10-12 — `src/scripts/player.gd`, `fx/talisman_zone.gd`, `fx/sound_wave.gd`, `game.gd`, `enemy.gd`(피격 부분), `skills.gd`를 커밋 `d6435c9` 기준으로 대조
+> **Last Verified**: 2026-10-12 — `src/scripts/player.gd`, `fx/talisman_zone.gd`, `fx/sound_wave.gd`, `game.gd`, `enemy.gd`(피격 부분), `skills.gd`를 커밋 `d6435c9` 기준으로 대조. 2026-10-12 검토에서 `08294f2` 기준으로 수치 재대조(변경분: `_die` 호출 순서, 역신의 눈물 효과, 세이브 버전 — 아래 규칙 30·32 참조)
+> **미결 불일치 규칙**: 아래 [불일치](#불일치-의도-vs-구현) C1~C9는 사용자 결정 전까지 **상위 문서(story-bible > growth-system > 기획안)가 우선**하며, 이 문서는 현재 구현을 기록할 뿐 상위 문서를 덮어쓰지 않는다.
 > **Implements Pillar**: 1 정화, 처치가 아니다 / 2 노래가 무기다 / 3 손가락으로 배운다 (`design/gdd/game-concept.md`)
 > **Rigor**: standard (`project.yaml` modes.rigor) — 필수 섹션 Overview·Player Fantasy·Detailed Rules·Dependencies·Tuning Knobs·Acceptance Criteria + 수치 규칙이 있으므로 Formulas. Edge Cases는 선택이지만 코드에서 읽은 것을 남겼다.
 
@@ -93,9 +94,9 @@
 
 **피격** (`player.gd:hurt`)
 
-30. 무시 조건 순서: 처용무 중 또는 사망 → `invuln`(구르기) → `hurt_t > 0`(피격 유예) → 수호부. 통과하면 `hurt_t = 0.6`초, 피해 `ceil(dmg × damage_taken_mult × (무아지경이면 0.8))`, 심해의 인내면 소리 +5(이 보너스는 튜토리얼 `gentle_hits` 확인보다 먼저라 피해 0 피격에도 오른다).
+30. 무시 조건 순서: 처용무 중 또는 사망 → `invuln`(구르기) → `hurt_t > 0`(피격 유예) → 수호부. 통과하면 `hurt_t = 0.6`초, 피해 `ceil(dmg × damage_taken_mult × (무아지경이면 0.8))`, 심해의 인내면 소리 +5(이 보너스는 튜토리얼 `gentle_hits` 확인보다 먼저라 피해 0 피격에도 오른다). 참고: 장신구 「역신의 눈물」(`Game.has_tear()`)을 가지면 역신 독안개·독기 함정의 지속 피해만 `Game.miasma_dmg`로 40% 줄어든다(5→3, 6→4; `TEAR_MIASMA_CUT = 0.4`). 이 감소는 `hurt()` 호출 전에 적용되고, 직격은 그대로다. 장비 시스템(#16) 소유 효과다.
 31. 튜토리얼 `gentle_hits`가 남아 있으면 피해 0(경직·연출만). 현재 사용처: 갯귀 튜토리얼에서 3회(`story.gd:_fight`).
-32. HP 0이면 `dead` → 약 2.0초(회전·변색 0.6 + 대기 1.4, `_die` 트윈) 뒤 `spawn` 위치에서 HP·기력 가득, `hurt_t = 1.0`으로 부활(`_die`, `_respawn`). 레벨별 재시작 규칙(보스방 → 다락)은 `story.gd:_inner_room`이 `died`에 `change_level("pyega2", "start")`를 연결해 처리한다(이 문서 범위 밖).
+32. HP 0이면 `dead` → 약 2.0초(회전·변색 0.6 + 대기 1.4, `_die` 트윈; `_die`는 `_end_attack()`을 먼저 호출해 상태를 `move`로 되돌린 뒤 `dead`를 세팅한다 — 08294f2에서 순서 수정됨) 뒤 `spawn` 위치에서 HP·기력 가득, `hurt_t = 1.0`으로 부활(`_die`, `_respawn`). 레벨별 재시작 규칙(보스방 → 다락)은 `story.gd:_inner_room`이 `died`에 `change_level("pyega2", "start")`를 연결해 처리한다(이 문서 범위 밖).
 33. 상태이상(기절·둔화·끌림)은 요괴 쪽 기믹이 처용에게 거는 효과로 `stun()`, `slow()`, `pull()`이 받는다. `stun`은 `invuln`이나 사망 중이면 무시, 걸리면 공격을 끊는다. `slow`·`pull`은 아무 조건도 검사하지 않는다(→ 플레이어 컨트롤러 #2와 경계, `Edge Cases` 참조).
 
 **스킬 연동 요약** (`skills.gd:LIST`, 모두 `live: true`인 것만; 설명은 `skills.gd` 문구)
@@ -254,6 +255,7 @@ ki' = min(100, ki + 6·Δt − 부적 비용) (+5 per 피격, 심해의 인내) 
 | 부적 (#7) | #7 depends on this | 이 문서가 부적 4종의 효과 수치를 소유(색인 행 7 "부적 GDD"가 따로 생기면 이관) |
 | 적 AI·요괴 기믹 (#8) | #8 depends on this | `take_hit` 시그니처, 사거리 판정 |
 | 보스 프레임워크 (#11) | #11 depends on this | 보스 12% 계수, `kneel` 진입 |
+| 장비 (#16) | This depends on #16 | 「역신의 눈물」이 독기 피해를 40% 줄임(규칙 30 참고) |
 | 성장 코어 (#13) | This depends on #13 | `attack_mult`, `max_hp`, `damage_taken_mult`, 레벨업 회복 |
 | 스킬 트리 (#14) | This depends on #14 | 28개 중 동작(live) 20개 가운데 이 문서에서 쓰이는 것은 위 표 |
 | HUD (#19) | #19 depends on this | 버튼 가이드·게이지 신호 |
@@ -291,7 +293,7 @@ ki' = min(100, ki + 6·Δt − 부적 비용) (+5 per 피격, 심해의 인내) 
 (검증 훅은 `CLAUDE.md` "검증": `--sin=100`, `--skills=id,id`, `--sp=N`, `--test-enemies=키`, `--level=<id>`)
 
 - [ ] Lv.1, 스킬 없음: `--test-enemies=dog`에서 베기 3연타로 들개(HP 30)가 쓰러지고(소멸하지 않고 `downed` 그룹으로 이동) 정화 전에는 사라지지 않는다.
-- [ ] 3타째에 앞으로 짧게 돌진하고 heavy 넉백(일반 요괴 220 vs 일반 130)이 일어난다.
+- [ ] 3타째에 앞으로 짧게 돌진하고 heavy 넉백(요괴 넉백 속도 heavy 220 vs 일반 130)이 일어난다.
 - [ ] 스윙 중 한 번 더 누르면 시점과 무관하게 다음 타로 이어지고, 누르지 않으면 다음 입력은 1타부터 시작한다.
 - [ ] 스틱 입력이 없을 때 70px 이내에 요괴가 있으면 그쪽을 향해 휘두른다.
 - [ ] 구르기는 0.32초 동안 무적이며 베기를 취소하고 시작된다.
