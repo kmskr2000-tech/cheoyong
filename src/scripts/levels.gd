@@ -154,52 +154,54 @@ const DATA := {
 		"wisps": Vector2(230, 360),
 	},
 	# ===== 2장 「도깨비골」 (design/levels/ch2-dokkaebigol.md) — 마일스톤 1: hwagae + jiri_path =====
-	# 임시 지형: 전용 땅그림(hwagae/jiri)이 아직 없어 hwagae 는 1장 'village', jiri_path 는 'pyega1' 지형을 빌려 쓴다.
-	# 좌표는 그 지형에서 걸을 수 있는 자리로 옮긴 값이다(거리 관계는 설계서 §4.1~4.2 의도). 필요한 에셋은 production/qa/ch2-asset-needs.md.
+	# 지형: 아트팀 전용 땅그림(hwagae 800×400 / jiri 1120×400, 브랜치 asset/ch2-m1). 좌표는 그 그림 기준 footprint
+	# (production/qa/asset-import/ch2-m1/README.md §3~4). 필요한 에셋은 production/qa/ch2-asset-needs.md.
 	# 화개 저자 — SC2-01~03 (도입). 이번 마일스톤의 동쪽 출구는 gates.path (SC2-03 후 story.gd 가 연다).
 	"hwagae": {
 		"music": "night", "amb": "wind",
 		"name": "화개 저자",
-		"ground": "village",
+		"ground": "hwagae",
 		"time": "dusk",
-		"spawns": {"start": Vector2(140, 245), "fromPath": Vector2(562, 48), "fromBoss": Vector2(345, 256)},
+		"spawns": {"start": Vector2(312, 342), "fromPath": Vector2(706, 14), "fromBoss": Vector2(360, 320)},
+		# 등롱 8개·기와집은 그림에 이미 그려져 있어 소품으로 얹지 않는다(이중 표시 방지). burnt_stall 2개는 털린 좌판 자리(좌판 3·4 대신).
 		"props": [
-			["stall", 262, 288, [-20, WARM, 0.7, 0.8]],
-			["board", 350, 155, null],
-			["jangseung_m", 14, 355, null], ["jangseung_f", 14, 403, null],
-			["cairn", 200, 384, null],
+			["stall", 300, 296, [-20, WARM, 0.7, 0.8]], ["stall", 500, 190, null],
+			["tent", 252, 352, null], ["tent", 420, 347, null],
+			["burnt_stall", 345, 296, null], ["burnt_stall", 390, 290, null],
+			["board", 430, 230, null],
 		],
-		"lights": [[97, 293, WARM, 0.9, 0.55], [283, 315, WARM, 1.0, 0.6], [402, 189, WARM, 1.0, 0.6], [322, 155, WARM, 0.9, 0.5],
-			[491, 109, WARM, 0.9, 0.5], [545, 69, WARM, 0.9, 0.5], [497, 33, WARM, 0.7, 0.45],
-			[235, 157, WARM, 0.6, 0.4], [300, 120, WARM, 0.6, 0.4], [440, 29, WARM, 0.6, 0.4], [480, 340, WARM, 0.5, 0.4]],
+		# 그림에 그려진 등롱 위치 (x, fy)
+		"lights": [[122, 329, WARM, 0.9, 0.55], [400, 157, WARM, 1.0, 0.6], [533, 68, WARM, 0.9, 0.5], [619, 8, WARM, 0.9, 0.5],
+			[673, 45, WARM, 0.9, 0.5], [617, 103, WARM, 0.9, 0.5], [500, 209, WARM, 0.9, 0.5], [362, 360, WARM, 0.7, 0.45]],
 		"npcs": [
-			["sangin", "npc_dolsoe", 292, 277, "장사치"],
-			["jumo", "npc_villager_f", 318, 213, "주모"],
-			["victim", "npc_sick", 170, 360, "털린 짐꾼"],
-			["elder", "npc_elder", 385, 173, "노인", "hidden"],
+			["sangin", "npc_dolsoe", 330, 330, "장사치"],
+			["jumo", "npc_villager_f", 190, 262, "주모"],
+			["victim", "npc_sick", 290, 335, "털린 짐꾼"],
+			["elder", "npc_elder", 580, 120, "노인", "hidden"],
 		],
-		"interact": [["board", 350, 155, "의뢰 게시판"]],
+		"interact": [["board", 430, 230, "의뢰 게시판"]],
 		"enemies": [],
 		"exits": [],
-		"gates": {"path": [Rect2(550, 19, 24, 19), "jiri_path", "fromHwagae"]},
+		"gates": {"path": [Rect2(690, 2, 32, 14), "jiri_path", "fromHwagae"]},
 		# raid: SC2-02 습격 무대(트리거) · raiders: 난입한 외눈박이 자리 · exit: 열린 출구 안쪽(용패 길잡이)
-		"anchors": {"raid": Rect2(300, 225, 90, 50), "raiders": [Vector2(330, 238), Vector2(362, 262)], "exit": Vector2(562, 27)},
+		"anchors": {"raid": Rect2(280, 290, 170, 70), "raiders": [Vector2(330, 320), Vector2(390, 300)], "exit": Vector2(706, 9)},
 	},
 	# 지리산 산길 — 산군·불도깨비·장승(SC2-15)·산신각(SC2-16). 이번 마일스톤은 서쪽 출구(화개)만 있고, 북(버려진 마을)·동(소굴)은 다음 마일스톤.
+	# 그림에 거송·숲·산신각·제상이 이미 있어 pine·seonang·산신각 소품은 얹지 않는다. 길목(x538~625) 폭 약 64.
 	"jiri_path": {
 		"music": "dread", "amb": "wind",
 		"name": "지리산 산길",
-		"ground": "pyega1",
-		"ambient": Color(0.26, 0.29, 0.42),
-		"spawns": {"fromHwagae": Vector2(26, 387), "start": Vector2(26, 387)},
-		"props": [["cairn", 120, 420, null], ["seonang", 150, 215, null], ["jangseung_m", 470, 350, null], ["jangseung_f", 500, 350, null]],
-		"lights": [[146, 193, WARM, 0.7, 0.5], [60, 400, WARM, 0.4, 0.5]],
-		"npcs": [["sansin", "npc_sansin", 120, 240, "산신령"]],
-		"interact": [["shrine", 150, 232, "산신각"]],
-		# 산군 2(의뢰 A 「길목의 범」 대상) · 불도깨비 1 · 길목 직후 단독 장승 1 (jangseung_taki 트리거 = SC2-15)
-		"enemies": [["sangun", 260, 300], ["dokkaebi_fire", 330, 330], ["sangun", 420, 387], ["jangseung_taki", 520, 387]],
-		"triggers": [[Rect2(470, 360, 30, 50), "jangseung"]],
-		"exits": [[Rect2(0, 360, 6, 53), "hwagae", "fromPath"]],
-		"anchors": {"exit": Vector2(14, 387)},
+		"ground": "jiri",
+		"ambient": Color(0.40, 0.44, 0.60),
+		"spawns": {"fromHwagae": Vector2(24, 205), "start": Vector2(24, 205)},
+		"props": [["rockwall", 556, 152, null], ["rockwall", 604, 152, null], ["rockwall", 556, 310, null], ["rockwall", 604, 310, null], ["cairn", 430, 240, null]],
+		"lights": [],
+		"npcs": [["sansin", "npc_sansin", 250, 175, "산신령"]],
+		"interact": [["shrine", 258, 158, "산신각"]],
+		# 산군 3(의뢰 A 「길목의 범」 대상은 산군) · 불도깨비 2 · 길목 직후 단독 장승 1 (jangseung_taki 트리거 = SC2-15). 도착 후 x≈355 까지 적 없음.
+		"enemies": [["sangun", 355, 165], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 665, 95], ["sangun", 765, 260], ["sangun", 940, 100], ["dokkaebi_fire", 960, 260]],
+		"triggers": [[Rect2(625, 75, 30, 40), "jangseung"]],
+		"exits": [[Rect2(0, 181, 6, 50), "hwagae", "fromPath"]],
+		"anchors": {"exit": Vector2(14, 205)},
 	},
 }
