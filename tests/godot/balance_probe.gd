@@ -52,11 +52,12 @@ func tap(action: String) -> void:
 	Input.action_release(action)
 
 
-func probe_reset(lv := 2) -> void:
+func probe_reset(lv := 2, keep_boss := false) -> void:
 	bot_release_all()
 	G.lv = lv
 	G.skills = []
-	cs_purge()
+	if not keep_boss:
+		cs_purge()
 	var p := player()
 	p.max_hp = 1000.0
 	p.hp = 1000.0
@@ -251,7 +252,7 @@ func sc_boss() -> void:
 
 func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) -> Dictionary:
 	var p := player()
-	probe_reset(3)
+	probe_reset(3, true)
 	var real_max: float = G.max_hp()   # 가상 사망 판정용 (실제 사망은 레벨 재로드를 일으키므로 hp 를 1000 으로 두고 누적 피해로 센다)
 	p.max_hp = 1000.0
 	p.hp = 1000.0
