@@ -21,7 +21,7 @@ const ROUTES := {
 	# 2장 M2 (폴백 지형 village/pyega1/gwana/pyega2 — 걸을 수 있는 자리에 맞춘 좌표, 마지막 지점이 출구 안쪽)
 	"old_village": [Vector2(650, 345), Vector2(722, 335), Vector2(736, 176), Vector2(728, 60), Vector2(752, 36)],
 	"den1": [Vector2(30, 181), Vector2(225, 175), Vector2(225, 90), Vector2(420, 56), Vector2(500, 185), Vector2(772, 200)],
-	"den2": [Vector2(150, 350), Vector2(240, 282), Vector2(272, 228), Vector2(330, 200), Vector2(390, 160), Vector2(490, 64), Vector2(490, 44), Vector2(100, 405)],
+	"den2": [Vector2(24, 200), Vector2(215, 190), Vector2(320, 230), Vector2(430, 200), Vector2(452, 200)],
 	"den3": [Vector2(284, 330), Vector2(284, 308), Vector2(400, 190), Vector2(480, 150), Vector2(700, 200), Vector2(284, 416)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }

@@ -243,17 +243,15 @@ const DATA := {
 	"den2": {
 		"music": "dread", "amb": "wind",
 		"name": "도깨비 곳간",
-		"ground": "gwana",
-		"ambient": Color(0.30, 0.30, 0.46),
-		"spawns": {"start": Vector2(95, 395), "fromDen3": Vector2(490, 64)},
-		"props": [["pillar", 250, 252, null], ["pillar", 330, 255, null], ["pillar", 385, 195, null], ["pillar", 372, 150, null], ["jars", 240, 300, null], ["jars", 300, 300, null], ["beam", 140, 340, null]],
-		"lights": [[200, 204, GHOSTFIRE, 0.7, 0.5], [343, 100, GHOSTFIRE, 0.6, 0.5], [496, 80, GHOSTFIRE, 0.5, 0.5], [148, 416, GHOSTFIRE, 0.4, 0.5]],
-		"npcs": [],
-		"interact": [],
-		"enemies": [["jangsanbeom", 272, 228], ["dokkaebi_oneeye", 235, 282], ["dokkaebi_oneeye", 358, 185], ["dokkaebi_fire", 385, 235]],
-		"exits": [[Rect2(50, 400, 100, 19), "den1", "fromDen2"], [Rect2(450, 36, 80, 12), "den3", "start"]],
-		# door: 동쪽 문 앞을 막는 막(정예 정화 전). 열림 = den2_gate_cleared
-		"anchors": {"door": Rect2(430, 66, 110, 12), "exit": Vector2(490, 44)},
+		"ground": "den2",
+		"ambient": Color(0.34, 0.33, 0.50),
+		"spawns": {"start": Vector2(24, 200), "fromDen3": Vector2(600, 200)},
+		"props": [["pillar", 210, 140, null], ["pillar", 430, 140, null], ["pillar", 210, 260, null], ["pillar", 430, 260, null], ["dok_torch", 222, 104, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 418, 104, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 222, 309, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 418, 309, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 120, 157, [-46, GHOSTFIRE, 0.8, 0.9]], ["dok_torch", 520, 157, [-46, GHOSTFIRE, 0.8, 0.9]], ["old_tools_mortar", 180, 213, null], ["old_tools_pot", 470, 193, null], ["old_tools_broom", 260, 293, null], ["old_tools_sandals", 380, 304, null], ["old_tools", 260, 109, null], ["old_tools", 380, 109, null]],
+		"lights": [[320, 200, GHOSTFIRE, 0.7, 0.7], [210, 150, GHOSTFIRE, 0.5, 0.5], [430, 150, GHOSTFIRE, 0.5, 0.5]],
+		"npcs": [], "interact": [],
+		"enemies": [["jangsanbeom", 320, 200], ["dokkaebi_oneeye", 215, 190], ["dokkaebi_oneeye", 220, 285], ["dokkaebi_fire", 430, 200]],
+		"exits": [[Rect2(0, 176, 6, 48), "den1", "fromDen2"], [Rect2(628, 176, 8, 48), "den3", "start"]],
+		"anchors": {"door": Rect2(446, 170, 14, 60), "exit": Vector2(610, 200)},
 	},
 	# 두억시니의 방 — 폴백 지형 pyega2(1장 역신의 방: 보스 실루엣이 그림에 있다). M2 는 입장 연출(SC2-06·07)까지, 전투는 다음 마일스톤.
 	"den3": {
