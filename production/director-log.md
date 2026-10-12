@@ -127,6 +127,10 @@
 - [결정] 챕터2 구현 착수는 챕터1 최종 배포 후(10/14 낮 이후)로 한다. 사유: VM 부하(load 11~20)로 챕터1 검증(smoke boss 타임아웃)이 불안정해 병렬 가동을 줄여야 함. 그 전까지 기획팀은 설계 보강만, 구현·아트 신규 가동은 보류.
 - [수령] 기획팀-전투밸런스점검 보고서 중복 수신(21:35 처리와 동일, 추가 조치 없음). 참고: 완화 실험 일부 파일이 커밋과 다름(2판 미반영) — 프로그래밍팀-전투밸런스적용이 필요 시 재측정.
 
+### 2026-10-12 머지 방침 (사장님 지시)
+- [지시] 21:40 프로그래밍팀-통합배포 — 미머지 브랜치 중 완료분(asset/hero·hero-detail·npc-item·terrain·terrain-collision·yokai, design/ch2-detail·combat-balance·combat-strategy·gdd-review·story-audit, prog/bugfix2·combat-strategy)을 PR로 main 머지. 공통 조상이 같아 개별 PR은 충돌이 커서 deploy/integ-local을 release/ch1-integ로 올려 통합 PR 1개 + integ 미포함분 개별 PR. 진행 중(asset/combat-fx, prog/balance-apply, prog/perf-m1, qa/user-playtest)은 제외. 열린 PR #34~39는 통합 PR로 대체 후 닫음. production/director-log.md 충돌 시 main 버전 우선.
+- [결정] 21:40 전 팀 — 승인 즉시 머지: 디렉터가 승인한 브랜치는 지연 없이 PR→main 머지(+배포)까지 진행한다. 승인 통지와 머지 지시를 같은 시점에 통합배포 담당에 보낸다. agent-rules.md 규칙 8 추가.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
