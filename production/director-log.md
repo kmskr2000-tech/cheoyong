@@ -260,3 +260,7 @@
   - 머지 순서: prog/balance-apply 먼저 머지, asset/combat-fx는 그 위에 rebase (combat_tuning.gd 값 충돌).
   - QA: 엔딩 구간 부분 진전, 이어하기 미착수. 머지·승인한 브랜치 없음.
 - [보고] 01:33 프로그래밍팀-통합배포 — main 검증 통과(smoke 7/7, save_check 44, combat_strategy 11/11), perf-m1 포함 배포(라이브 20261013012449), 로그를 main에 푸시(6df9905). 실패 원인은 --import 미선행 + smoke 경로 오기(코드 회귀 아님). 미머지: prog/balance-apply(스윕 중)·asset/combat-fx(머지 순서: balance 먼저).
+- [지시] 01:37 — 에이전트 배정: Agent "감사팀-진전검증" finished · 1m 25s
+- [지시] 01:37 — 에이전트 배정: 감사 순회 5 결과를 받아 3개 팀에 지시를 보냈습니다.
+- [지시] 01:37 — 에이전트 배정: Agent "프로그래밍팀-통합배포" finished · 38m 35s
+- [지시] 01:37 — 에이전트 배정: main 검증이 통과했고, perf-m1을 포함해 배포했습니다. 라이브 version.json을 직접 확인했고 20261013012449로 바뀌어 있습니다. 로그는 main에 푸시했습니다(6df9905).
