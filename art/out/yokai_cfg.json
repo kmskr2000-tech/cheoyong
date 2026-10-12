@@ -1,0 +1,184 @@
+{
+ "mama": {
+  "cell": [
+   48,
+   66
+  ],
+  "feet": 65
+ },
+ "egg_ghost": {
+  "cell": [
+   104,
+   66
+  ],
+  "feet": 65
+ },
+ "maiden_ghost": {
+  "cell": [
+   66,
+   66
+  ],
+  "feet": 65
+ },
+ "mulgwi": {
+  "cell": [
+   72,
+   66
+  ],
+  "feet": 65
+ },
+ "gaetgwi": {
+  "cell": [
+   94,
+   66
+  ],
+  "feet": 65
+ },
+ "ghoul": {
+  "cell": [
+   90,
+   66
+  ],
+  "feet": 65
+ },
+ "dokkaebi_oneeye": {
+  "cell": [
+   74,
+   66
+  ],
+  "feet": 65
+ },
+ "dokkaebi_fire": {
+  "cell": [
+   74,
+   66
+  ],
+  "feet": 65
+ },
+ "jangsanbeom": {
+  "cell": [
+   126,
+   98
+  ],
+  "feet": 97
+ },
+ "sangun": {
+  "cell": [
+   84,
+   66
+  ],
+  "feet": 65
+ },
+ "fox_minion": {
+  "cell": [
+   102,
+   66
+  ],
+  "feet": 65
+ },
+ "jangseung_taki": {
+  "cell": [
+   102,
+   98
+  ],
+  "feet": 97
+ },
+ "songaksi": {
+  "cell": [
+   74,
+   66
+  ],
+  "feet": 65
+ },
+ "haetae": {
+  "cell": [
+   108,
+   98
+  ],
+  "feet": 97
+ },
+ "eodukssini": {
+  "cell": [
+   88,
+   66
+  ],
+  "feet": 65
+ },
+ "pado": {
+  "cell": [
+   106,
+   66
+  ],
+  "feet": 65
+ },
+ "bulgae": {
+  "cell": [
+   114,
+   98
+  ],
+  "feet": 97
+ },
+ "mangja": {
+  "cell": [
+   94,
+   66
+  ],
+  "feet": 65
+ },
+ "jeoseung_guard": {
+  "cell": [
+   62,
+   66
+  ],
+  "feet": 65
+ },
+ "dokkaebi_extra": {
+  "cell": [
+   72,
+   66
+  ],
+  "feet": 65
+ },
+ "gumiho": {
+  "cell": [
+   96,
+   66
+  ],
+  "feet": 65
+ },
+ "reaper": {
+  "cell": [
+   78,
+   66
+  ],
+  "feet": 65
+ },
+ "plague_extra": {
+  "cell": [
+   102,
+   98
+  ],
+  "feet": 97
+ },
+ "imugi": {
+  "cell": [
+   76,
+   98
+  ],
+  "feet": 96
+ },
+ "plague_king": {
+  "cell": [
+   120,
+   98
+  ],
+  "feet": 97
+ },
+ "plague_king_unused": {
+  "cell": [
+   120,
+   98
+  ],
+  "feet": 97
+ }
+}
