@@ -211,7 +211,7 @@ def fullflash():
             L = (22 if i % 2 == 0 else 13) * k
             col = W if f < 2 else G1 if f < 4 else G2
             sh.line(f, c + math.cos(a) * 3, c + math.sin(a) * 3, c + math.cos(a) * L, c + math.sin(a) * L, col, thick=2 if (f in (1, 2) and i % 2 == 0) else 1)
-        sh.disc(f, c, c, (5, 7, 5, 3, 1)[f], W)
+        sh.disc(f, c, c, (2, 3, 2, 1, 0)[f], W)
         if f >= 1:
             sh.ring(f, c, c, 8 + f * 4, 8 + f * 4, G2 if f < 3 else G3, dotted=1 if f > 2 else 0)
     sh.save('fullflash.png')
@@ -230,7 +230,7 @@ def pierce():
         for f in range(6):
             k = f / 5
             if f < 2:
-                sh.disc(f, c, c, (9, 6)[f], W, row=row)
+                sh.disc(f, c, c, (4, 2)[f], W, row=row)
             body = (W, G1, G2, G3, G3, G3) if row else (W, IC, CY, BL, BL, DB)
             # crossing slashes (X) — the cut that goes straight through the shell
             for sgn in (1, -1):
@@ -270,7 +270,7 @@ def guard():
                 sh.line(f, c - 3, c - r * 0.25, c + 3, c - r * 0.25, G2)
                 sh.line(f, c - 3, c + r * 0.25, c + 3, c + r * 0.25, G2)
             if f == 0:
-                sh.disc(f, c, c, 5, W)
+                sh.disc(f, c, c, 2, W)
         for i in range(6):
             if f >= 2:
                 a = math.tau * i / 6 + math.pi / 6
@@ -330,7 +330,7 @@ def bindmark():
                 for dx in range(-3, 4):
                     for dy in range(-2, 3):
                         if (abs(dx) == 3 or abs(dy) == 2) and not (abs(dx) == 3 and abs(dy) == 2):
-                            sh.put(f, cx + dx - 1, cy + dy, a if (f + dx + dy) % 5 else hi, row=row)
+                            sh.put(f, cx + dx - 1, cy + dy, a if (f + dx + dy) % 5 else b, row=row)
             if row == 1:   # a flame licking above the chain
                 for i, x0 in enumerate((5, 9, 13, 16)):
                     h = 5 + ((f + i) % 3) * 2

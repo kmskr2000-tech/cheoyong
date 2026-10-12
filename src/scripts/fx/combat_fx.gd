@@ -116,7 +116,7 @@ static func parry(pl: Node2D, ki_gain: float) -> void:
 	play_once(par, at, "parry", 6, 16.0, 2.6, 1, 0, true)   # 바깥 파문: 한 번 더 크게
 	screen_flash(pl.get_tree(), Color(1, 1, 1, 0.55), 0.2)
 	screen_flash(pl.get_tree(), Color(0.2, 0.3, 0.7, 0.28), 0.45)   # 시간이 멈춘 듯한 푸른 가라앉음
-	pop_text(par, pl.global_position + Vector2(22, -26), "+%d 소리" % int(ki_gain), COL_KI, 11, true)
+	pop_text(par, pl.global_position + Vector2(0, -68), "+%d 소리" % int(ki_gain), COL_KI, 11, true)
 
 
 # ---------------------------------------------------------------- 강 베기 충전
@@ -140,16 +140,16 @@ static func aura_step(s: Sprite2D, c: float, ready_at: float, full_at: float) ->
 
 ## 만충 번쩍임: 황금 해 + 몸이 잠깐 밝아진다
 static func full_flash(pl: Node2D, body: CanvasItem) -> void:
-	play_once(pl.get_parent(), pl.global_position + Vector2(0, -14), "fullflash", 5, 18.0, 1.5)
+	play_once(pl.get_parent(), pl.global_position + Vector2(0, -14), "fullflash", 5, 18.0, 1.1)
 	var tw := body.create_tween()
-	tw.tween_property(body, "modulate", Color(2.2, 2.0, 1.3), 0.05)
+	tw.tween_property(body, "modulate", Color(1.7, 1.55, 1.15), 0.05)
 	tw.tween_property(body, "modulate", Color(1.35, 1.25, 1.0), 0.2)
 
 
 # ---------------------------------------------------------------- 강 베기 적중 (장갑 무시)
 ## pos: 적 중심, dir: 베는 방향, tt: 충전 0~1, armored: 장갑이 있는 적(껍질이 깨져 튄다)
 static func pierce(parent: Node, pos: Vector2, dir: Vector2, tt: float, armored: bool) -> void:
-	var sc := 0.9 + 0.7 * tt
+	var sc := 0.8 + 0.5 * tt
 	play_once(parent, pos, "pierce", 6, 20.0, sc, 2, 1 if armored else 0, false, dir.angle())
 	if armored:
 		pop_text(parent, pos + Vector2(0, -34), "관통", COL_GUARD, 11)
@@ -162,7 +162,7 @@ static func guard(pl: Node2D, last: bool, refund := 0.0) -> void:
 	var at := pl.global_position + Vector2(0, -16)
 	play_once(par, at, "guard", 6, 16.0 if last else 22.0, 1.5 if last else 1.0)
 	if last and refund > 0.0:
-		pop_text(par, pl.global_position + Vector2(22, -26), "+%d 소리" % int(refund), COL_GUARD, 11)
+		pop_text(par, pl.global_position + Vector2(0, -68), "+%d 소리" % int(refund), COL_GUARD, 11)
 
 
 # ---------------------------------------------------------------- 열림(후딜) 단서
@@ -196,7 +196,7 @@ static func synergy(host: Node2D, mult_text: String) -> void:
 	if now - int(host.get_meta("syn_text_ms", -9999)) >= 900:
 		host.set_meta("syn_text_ms", now)
 		var par := host.get_parent()
-		play_once(par, host.global_position + Vector2(0, -22), "bindmark", 4, 14.0, 2.2, 2, 1)
+		play_once(par, host.global_position + Vector2(0, -22), "bindmark", 4, 14.0, 1.4, 2, 1)
 		pop_text(par, host.global_position + Vector2(0, -46), mult_text, COL_FIRE, 12)
 
 

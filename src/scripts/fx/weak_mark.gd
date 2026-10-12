@@ -22,7 +22,7 @@ func _ready() -> void:
 	# 열리는 순간의 번쩍임
 	var par := get_parent().get_parent()
 	if par:
-		CFX.play_once(par, get_parent().global_position + Vector2(0, -(48.0 if big else 18.0)), "fullflash", 5, 22.0, 1.6 if big else 0.9)
+		CFX.play_once(par, get_parent().global_position + Vector2(0, -(48.0 if big else 18.0)), "fullflash", 5, 22.0, 0.9 if big else 0.5)
 		if big:
 			CFX.pop_text(par, get_parent().global_position + Vector2(0, -96), "열렸다!", CFX.COL_OPEN, 12)
 

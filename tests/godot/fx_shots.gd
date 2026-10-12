@@ -74,8 +74,9 @@ func shot(name: String, zoom := true) -> void:
 	var img: Image = root.get_viewport().get_texture().get_image()
 	img.save_png("%s/%s_%s.png" % [out, name, tag])
 	if zoom:
-		var c: Vector2i = lvl().get_viewport().get_visible_rect().size / 2
-		var r := Rect2i(c.x - 80, c.y - 62, 160, 110)
+		var sp: Vector2 = player().get_global_transform_with_canvas().origin
+		var vs := img.get_size()
+		var r := Rect2i(clampi(int(sp.x) - 80, 0, vs.x - 160), clampi(int(sp.y) - 80, 0, vs.y - 110), 160, 110)
 		var crop := img.get_region(r)
 		crop.resize(r.size.x * 4, r.size.y * 4, Image.INTERPOLATE_NEAREST)
 		crop.save_png("%s/%s_%s_zoom.png" % [out, name, tag])

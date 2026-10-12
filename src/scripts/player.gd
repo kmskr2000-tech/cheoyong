@@ -821,7 +821,7 @@ func _note() -> void:
 
 func _ripple(col: Color, delay: float) -> void:
 	var ring := Line2D.new()
-	ring.width = 2.0
+	ring.width = 1.6 / r   # 노드 배율이 선 굵기도 키우므로(r배) 나누어 둔다 — 고리가 속 채운 흰 원판이 되지 않고 도트 한 줄로 퍼진다 (아트팀)
 	ring.default_color = col
 	ring.material = slash.material
 	ring.z_index = 40
@@ -1049,7 +1049,7 @@ func _paper_fx() -> void:
 
 func _ring_fx(col: Color, r: float, time: float) -> void:
 	var ring := Line2D.new()
-	ring.width = 2.0
+	ring.width = 1.6 / r   # 노드 배율이 선 굵기도 키우므로(r배) 나누어 둔다 — 고리가 속 채운 흰 원판이 되지 않고 도트 한 줄로 퍼진다 (아트팀)
 	ring.default_color = col
 	ring.material = slash.material
 	ring.z_index = 40
