@@ -58,10 +58,12 @@ func _ready() -> void:
 	_knob.visible = false
 	_touch_root.add_child(_knob)
 	# buttons: [texture, action, centre, touch radius]
-	for b in [["attack", "attack", Vector2(430, 222), 30.0], ["roll", "roll", Vector2(384, 244), 22.0],
-			["talisman", "talisman", Vector2(394, 196), 22.0], ["song", "song", Vector2(438, 172), 22.0],
-			["dance", "dance", Vector2(396, 150), 22.0], ["swap", "swap", Vector2(360, 186), 13.0],
-			["menu", "pause", Vector2(462, 16), 16.0]]:
+	# touch radii are chosen so no two circles overlap (centre distance >= r1 + r2): the old 30/22 pairs
+	# overlapped by up to 7.6px, so a thumb on one button could fire its neighbour too
+	for b in [["attack", "attack", Vector2(430, 222), 24.0], ["roll", "roll", Vector2(384, 244), 22.0],
+			["talisman", "talisman", Vector2(394, 196), 20.0], ["song", "song", Vector2(438, 172), 22.0],
+			["dance", "dance", Vector2(396, 150), 22.0], ["swap", "swap", Vector2(360, 186), 14.0],
+			["menu", "pause", Vector2(462, 16), 18.0]]:
 		var ring := Sprite2D.new()  # glow behind the button, shown when it is the one to press
 		ring.texture = load("res://assets/ui/glow_ring.png")
 		ring.position = b[2]
@@ -115,6 +117,18 @@ func _ready() -> void:
 	_touch_root.visible = DisplayServer.is_touchscreen_available() or "--touch" in OS.get_cmdline_user_args()
 	if _touch_root.visible:
 		_show_stick(Vector2(70, 214))  # resting position hint
+	_release_dirs()   # a Hud rebuilt mid-drag (level change) must not inherit a held direction
+
+
+func _exit_tree() -> void:
+	_release_dirs()
+
+
+func _release_dirs() -> void:
+	if not _touch_root.visible:   # keyboard/gamepad players: don't drop a held key across a level change
+		return
+	for a in ["move_left", "move_right", "move_up", "move_down"]:
+		Input.action_release(a)
 
 
 var _buttons := {}
