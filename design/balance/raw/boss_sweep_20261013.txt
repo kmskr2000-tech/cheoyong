@@ -58,3 +58,23 @@ RES boss pol=window miss=0.0 charge=false win=0/5 deaths/clear=3.60 t_total=-1 t
 RES boss pol=reader miss=0.0 charge=false win=0/5 deaths/clear=5.00 t_total=-1 t_p1=-1 t_p2=-1
 RES boss pol=tap miss=1.0 charge=false win=2/5 deaths/clear=5.00 t_total=25 t_p1=13 t_p2=12
 SCN_RESULT boss PASS (0 steps, known-bugs 0)
+CFG cast=1.25 hp=1000 idle=0.5 open=2.0 n=5 lim=240
+RES boss pol=window miss=0.0 charge=false win=0/5 deaths/clear=4.60 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=reader miss=0.0 charge=false win=0/5 deaths/clear=5.20 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=tap miss=1.0 charge=false win=2/5 deaths/clear=5.40 t_total=37 t_p1=26 t_p2=11
+SCN_RESULT boss PASS (0 steps, known-bugs 0)
+CFG cast=1.25 hp=1000 idle=0.5 open=2.0 n=5 lim=240
+RES boss pol=window miss=0.0 charge=false win=0/5 deaths/clear=2.20 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=reader miss=0.0 charge=false win=0/5 deaths/clear=2.60 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=tap miss=1.0 charge=false win=4/5 deaths/clear=1.80 t_total=23 t_p1=13 t_p2=10
+SCN_RESULT boss PASS (0 steps, known-bugs 0)
+CFG cast=1.25 hp=1000 idle=0.15 open=3.0 n=5 lim=240
+RES boss pol=window miss=0.0 charge=false win=0/5 deaths/clear=2.40 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=reader miss=0.0 charge=false win=0/5 deaths/clear=2.40 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=tap miss=1.0 charge=false win=4/5 deaths/clear=7.40 t_total=206 t_p1=198 t_p2=8
+SCN_RESULT boss PASS (0 steps, known-bugs 0)
+CFG cast=1.25 hp=1000 idle=0.25 open=2.5 n=5 lim=240
+RES boss pol=window miss=0.0 charge=false win=0/5 deaths/clear=2.40 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=reader miss=0.0 charge=false win=0/5 deaths/clear=2.20 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=tap miss=1.0 charge=false win=1/5 deaths/clear=7.60 t_total=125 t_p1=113 t_p2=12
+SCN_RESULT boss PASS (0 steps, known-bugs 0)
