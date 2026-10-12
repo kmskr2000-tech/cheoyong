@@ -1,5 +1,4 @@
-RES boss pol=reader miss=0.0 charge=true win=0/3 deaths/clear=2.33 t_total=-1 t_p1=-1 t_p2=-1
-RES boss pol=reader miss=0.0 charge=false win=0/3 deaths/clear=3.00 t_total=-1 t_p1=-1 t_p2=-1
-RES boss pol=tap miss=1.0 charge=false win=3/3 deaths/clear=0.00 t_total=26 t_p1=14 t_p2=12
-RES boss pol=reader miss=0.5 charge=false win=0/3 deaths/clear=3.67 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=window miss=0.0 charge=false win=0/3 deaths/clear=1.67 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=reader miss=0.0 charge=false win=0/3 deaths/clear=2.67 t_total=-1 t_p1=-1 t_p2=-1
+RES boss pol=tap miss=1.0 charge=false win=0/3 deaths/clear=4.33 t_total=-1 t_p1=-1 t_p2=-1
 SCN_RESULT boss PASS (0 steps, known-bugs 0)

@@ -80,7 +80,7 @@ const BOSS_CAST_MULT := 1.25        # 시전 노출 배율
 const BOSS_INTERRUPT_OPEN := 1.2    # 시전 중단 후 열림
 const BOSS_PHASE_SHIFT := 1.2       # 2페이즈 전환 열림
 const BOSS_PHASE_KI := 30.0         # 10~50  2페이즈 소리 보상
-const BOSS_HP := 1500.0            # 700~1500  잠정(보고서 P2): 숙련 처치 60~90초 목표, 실측은 production/qa/boss-ttk.md
+const BOSS_HP := 1350.0            # 700~1500  잠정(보고서 P2): 숙련 처치 60~90초 목표, 실측은 production/qa/boss-ttk.md
 
 # ---- 터치 (§7)
 const HAPTIC_MS := 25

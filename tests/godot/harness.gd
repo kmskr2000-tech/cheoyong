@@ -9,7 +9,7 @@ extends SceneTree
 
 signal _halt   # 절대 emit 안 함 — 실패 후 코루틴을 멈춰 두는 용도
 
-const BOSS_MAX := 1500.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
+const BOSS_MAX := 1350.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
 const SPEED := 4.0          # Engine.time_scale (대사·페이드·카드가 실시간이라 가속)
 var scn := ""
 var G: Node                 # autoload Game
