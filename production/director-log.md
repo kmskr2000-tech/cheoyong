@@ -95,6 +95,10 @@
 - [점검 20:06] 프로그래밍팀-전투전략구현P0: CS-01~06, CS-08(HUD 충전 링) 커밋, CS-07·P1 남음, 설계 변경 제안 3건(열림 중 close_t 정지, 역신 사망 카운터 키 분리, jangseung melee=false 유지)은 편차 최소라 수용. QA팀-유저플레이테스트: B02 수정 확인, 신규 버그 없음, S3 인트로 키보드 건너뛰기 불가(터치 전용 안내). 아트팀-지형충돌재배치: 17분 무커밋 → 커밋·push 재촉, 마감 단축 고려해 완료 맵부터 push 지시.
 - [지시] 프로그래밍팀-버그수정 — chapter1_playthrough corrupt_save 시나리오 베이스라인부터 실패 건 수정(SB-28 이어하기 표시와 관련 가능), 6/6 통과 확인.
 
+- [승인] 아트팀-지형충돌재배치 — asset/terrain-collision(4ccaa17): 1장 맵 6개(beach, gyeongju, gwana, pyega1, pyega2, palace)의 충돌·높이·소품·NPC/트리거 좌표를 새 그림에 맞춰 재생성(art/collision_author.py, levels.gd lights/anchors/gates). tests/art_walk.sh 6/6, smoke 6/6, playthrough는 기존 corrupt_save 한 건만 실패. 인게임 전/후 스크린샷 확인(beach 4컷 육안 검수: 소품·조명 자연스러움). 한계: 도트 이음새·흐림 이미지 자체 개선 미착수, palace 걷기 영역은 스토리 구간만. 위험: story/levels/level.gd 병합 충돌.
+- [지시] 프로그래밍팀-통합배포 — asset/terrain-collision 병합. prog/bugfix2의 B01·B02·B03 의도를 새 좌표에서 보존하며 충돌 해결, art_walk·smoke·save_check·regress·dialog_queue·playthrough 통과 시 배포.
+- [지시] QA팀-유저플레이테스트 — 병합 빌드에서 B01~B03 재검증 및 6개 맵 전체 보행 점검.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
