@@ -390,6 +390,7 @@ func _chase_hook(to: Vector2, d: float) -> void:
 				state = "vanish"; st = 0.0; gim_t = 7.0
 				want_alpha = 0.06
 				aux_v = target.global_position + to.normalized().orthogonal() * (34.0 if randf() < 0.5 else -34.0)
+				Story.oneeye_vanish(get_tree().current_scene, aux_v)   # SC2-05: 용패가 감투 은신의 도착점을 비춘다 (잔영 3회 한정)
 		"jangsanbeom":
 			if d < 180.0:
 				state = "lure"; st = 0.0; gim_t = 9.0
@@ -508,6 +509,8 @@ func _after_strike(to: Vector2, d: float) -> void:
 			_stagger(CT.STAGGER_AFTER[kind])   # 후딜: ×1.5 피해 창 (읽고 피했으면 열린다)
 		"sangun", "pado":
 			_stagger(1.0)
+		"jangsanbeom":
+			_stagger(0.9)   # 덮친 뒤 후딜 0.9초: 읽고 피했으면 열린다 (설계서 T11)
 		"jangseung_taki":
 			_stagger(1.2)   # face-down after the slam: the moment to strike it
 		"jeoseung_guard":

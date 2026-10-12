@@ -199,6 +199,17 @@ func add_barrier(r: Rect2) -> Node2D:
 	return b
 
 
+## 이야기가 도중에 켜는 상호작용 지점 (예: 의뢰 B 의 짚인형). footprint 좌표. glint=true 면 반짝임 표시. 같은 id 가 이미 있으면 무시.
+func add_interact(id: String, at: Vector2, label: String, glint := false) -> void:
+	for it in interact_points:
+		if it["id"] == id:
+			return
+	var ip := {"pos": lift(at), "id": id, "label": label}
+	if glint:
+		ip["node"] = _glint(ip["pos"])
+	interact_points.append(ip)
+
+
 func remove_interact(id: String) -> void:
 	for it in interact_points.duplicate():
 		if it["id"] == id:
@@ -296,6 +307,7 @@ var _purified_n := 0
 
 
 func on_purified(r: Dictionary, where: Vector2) -> void:
+	Story.purified(self, str(r.get("kind", "")))   # 2장 이야기 훅 (장산범 정화 → 동문, 의뢰 B 무전투 판정)
 	_earned_j += r["jeonggi"]
 	_earned_d += r["deok"]
 	_purified_n += 1
