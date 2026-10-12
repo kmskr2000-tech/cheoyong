@@ -439,8 +439,8 @@ func _process(delta: float) -> void:
 
 
 func _die() -> void:
+	_end_attack()   # resets state to "move" — must run before "dead" is set
 	state = "dead"
-	_end_attack()
 	velocity = Vector2.ZERO
 	died.emit()
 	var tw := create_tween()

@@ -446,7 +446,7 @@ func _inner_room(level: Node) -> void:
 		return
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
-	level.add_barrier(Rect2(492, 156, 22, 72))
+	level.add_barrier.call_deferred(Rect2(492, 156, 22, 72))   # called from a physics callback
 	# the door seals the room for 처용 and 역신 alone: anything that followed him in is thrown back out
 	for e in level.get_tree().get_nodes_in_group("enemy") + level.get_tree().get_nodes_in_group("downed"):
 		if e == boss or e is Npc or not (e is Node2D) or e.global_position.x < 492:
@@ -487,7 +487,8 @@ func _inner_room(level: Node) -> void:
 func _boss_phase_two(level: Node, boss: PlagueGod) -> void:
 	boss.state = "wait"
 	await level.talk([{"name": "역신", "text": "이럴 수가…! 노래가… 탁기를 걷어내다니!"}])
-	boss._begin("idle")
+	if boss.state == "wait":   # one blow may cross phase two and the knee together: leave a kneeling god alone
+		boss._begin("idle")
 
 
 ## SC1-19: 무릎 꿇은 역신의 유언
