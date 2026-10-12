@@ -328,7 +328,7 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 		var to: Vector2 = boss.global_position - p.global_position
 		var d := to.length()
 		if _dbg and frame_n % 60 == 0:
-			print("RES DBG t=%.0f boss=%s hp=%.0f bpos=%s ppos=%s pstate=%s d=%.0f" % [tt, boss.state, boss.hp, str(boss.global_position), str(p.global_position), p.state, d])
+			print("RES DBG t=%.0f boss=%s hp=%.0f bpos=%s ppos=%s pstate=%s d=%.0f bphys=%s tgt=%s plock=%s pphys=%s" % [tt, boss.state, boss.hp, str(boss.global_position), str(p.global_position), p.state, d, str(boss.is_physics_processing()), str(boss.target), str(p.locked), str(p.is_physics_processing())])
 		# 패턴 인스턴스 키
 		var key := "%s_%d_%d" % [boss.state, boss.pat_i, boss.coughs]
 		if key != key_prev:
@@ -403,8 +403,23 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 		t_p1 = tt
 	# 정화 전 정리: 무릎 꿇은 보스를 되돌린다
 	if win:
+		# 무릎 꿇기(SC1-19) 대사가 플레이어를 잠그고 적 물리를 멈춘다 — 넘기고 풀어야 다음 판이 돈다 (실측 무효의 원인 4: 승리 뒤 두 번째 판부터 보스가 영영 idle)
+		pump = true
+		for _i in 1200:
+			await process_frame
+			if _i >= 150 and not p.locked and lvl()._talking <= 0:   # 무릎 꿇기 대사는 0.8초 뒤에 시작 — 시작 전에 끝난 줄 알면 안 된다
+				break
+		pump = false
+		if _dbg:
+			print("RES DBG postwin locked=%s talking=%d bstate=%s bphys=%s pstate=%s tscale=%.2f paused=%s" % [str(p.locked), lvl()._talking, boss.state, str(boss.is_physics_processing()), p.state, Engine.time_scale, str(paused_dbg())])
+		boss.remove_from_group("downed")   # _kneel() 이 "enemy" 에서 빼고 "downed" 에 넣는다 — 되돌리지 않으면 다음 판에서 플레이어 타격이 보스에 닿지 않는다(원인 5)
+		boss.add_to_group("enemy")
+		boss.sprite.position.y = 0.0
+		boss.sprite.play("idle")
 		boss.reset_fight()
 		boss.state = "idle"
+		boss.set_physics_process(true)
+		p.locked = false
 	await tick(3)
 	return {"win": win, "deaths": deaths, "t_total": t_total, "t_p1": t_p1, "t_p2": t_p2}
 
@@ -609,3 +624,6 @@ func sc_tapclear() -> void:
 	await must(mean > 0.0, "탭 연타 7종 평균 피해 > 0 (실제 %.2f)" % mean)
 	await must(hurt_kinds >= 2, "7종 중 2종 이상에서 탭 연타가 피해를 입는다 (실제 %d)" % hurt_kinds)
 	await done()
+
+func paused_dbg() -> bool:
+	return root.get_tree().paused
