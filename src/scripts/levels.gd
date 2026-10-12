@@ -15,23 +15,19 @@ const GHOSTFIRE := Color(0.75, 0.35, 1.0)
 const CANDLE := Color(0.7, 0.55, 1.0)
 
 const DATA := {
-	# 월성 편전 — SC1-22~23 왕의 부름과 퇴마어사 임명
+	# 월성 편전 — SC1-22~23 왕의 부름과 퇴마어사 임명. 그림 좌표: 남문으로 들어와 돌계단을 올라 편전 앞마당에서 왕을 뵌다.
 	"palace": {
 		"music": "title", "amb": "",
 		"name": "월성 편전",
 		"ground": "palace",
 		"ambient": Color(0.3, 0.29, 0.42),
-		"spawns": {"start": Vector2(256, 318)},
-		"props": [
-			["irworobong", 256, 58, null],
-			["chotdae", 196, 100, [-38, WARM, 1.1, 0.9]], ["chotdae", 316, 100, [-38, WARM, 1.1, 0.9]],
-			["pillar", 80, 150, null], ["pillar", 432, 150, null], ["pillar", 80, 290, null], ["pillar", 432, 290, null],
-			["chotdae", 120, 220, [-38, WARM, 0.9, 0.9]], ["chotdae", 392, 220, [-38, WARM, 0.9, 0.9]],
-		],
-		"npcs": [["king", "npc_king", 256, 92, "왕"]],
+		"spawns": {"start": Vector2(258, 376)},
+		"props": [["chotdae", 210, 227, [-38, WARM, 1.0, 0.9]], ["chotdae", 306, 227, [-38, WARM, 1.0, 0.9]]],
+		"lights": [[258, 140, CANDLE, 0.7, 0.8], [258, 330, CANDLE, 0.5, 0.6], [45, 167, CANDLE, 0.5, 0.5], [455, 167, CANDLE, 0.5, 0.5]],
+		"npcs": [["king", "npc_king", 256, 189, "왕"]],
 		"interact": [],
 		"enemies": [],
-		"triggers": [[Rect2(150, 176, 212, 40), "audience"]],
+		"triggers": [[Rect2(215, 221, 85, 14), "audience"]],
 		"exits": [],
 	},
 	# 경주 관아 — SC1-12 의뢰. 그림(관아 마당)에 맞춘 좌표: 남쪽 길로 들어와 마당에서 형방을 만난다.
@@ -72,27 +68,26 @@ const DATA := {
 		"exits": [[Rect2(0, 360, 6, 53), "gyeongju", "fromPyega"], [Rect2(130, 187, 30, 20), "pyega2", "start"]],
 		"wisps": Vector2(146, 200),
 	},
-	# 서쪽 폐가 — 다락과 최심부 (SC1-14~20)
+	# 서쪽 폐가 — 다락과 최심부 (SC1-14~20). 그림 좌표: 아래 복도로 들어와 어두운 대청(다락)을 지나, 기둥 틈 너머 오른쪽 방이 최심부.
 	"pyega2": {
 		"music": "dread", "amb": "",
 		"name": "폐가 다락",
 		"ground": "pyega2",
 		"ambient": Color(0.3, 0.29, 0.44),
-		"wisps": Vector2(610, 220),
-		"spawns": {"start": Vector2(70, 200)},
-		"props": [
-			["jars", 60, 70, null], ["beam", 140, 300, null], ["jars", 350, 318, null], ["beam", 300, 64, null],
-			["altar", 690, 86, [-20, CANDLE, 1.1, 1.3]],
-			["jars", 740, 330, null],
-		],
-		"npcs": [["soul", "npc_nanyeong", 690, 132, "난영의 넋"]],
+		"wisps": Vector2(680, 213),
+		"spawns": {"start": Vector2(282, 400)},
+		"props": [["altar", 690, 133, [-20, CANDLE, 1.1, 1.3]]],
+		"lights": [[400, 160, GHOSTFIRE, 0.6, 0.8], [282, 309, GHOSTFIRE, 0.5, 0.5], [600, 187, CANDLE, 0.5, 0.7]],
+		"npcs": [["soul", "npc_nanyeong", 690, 187, "난영의 넋"]],
 		"interact": [],
 		# SC1-14: 다락 — 어둠 속 달걀귀신, 울음 우는 처녀귀신, 최심부 문 앞을 지키는 정예 마마귀신
-		"enemies": [["ghoul", 150, 150], ["egg_ghost", 160, 300], ["dog", 330, 200], ["maiden_ghost", 300, 110],
-			["egg_ghost", 340, 300], ["mama", 452, 200]],
-		"vents": [Vector2(290, 110), Vector2(300, 290), Vector2(230, 210), Vector2(430, 120), Vector2(440, 300), Vector2(470, 210)],
-		"triggers": [[Rect2(400, 48, 40, 290), "close"], [Rect2(530, 48, 30, 330), "inner"]],
-		"exits": [[Rect2(0, 60, 6, 270), "pyega1", "fromUp"]],
+		"enemies": [["ghoul", 350, 173], ["egg_ghost", 300, 227], ["dog", 420, 213], ["maiden_ghost", 330, 136],
+			["egg_ghost", 470, 160], ["mama", 500, 221]],
+		"vents": [Vector2(300, 147), Vector2(360, 233), Vector2(430, 160), Vector2(470, 233), Vector2(520, 173), Vector2(400, 247)],
+		"triggers": [[Rect2(400, 120, 30, 141), "close"], [Rect2(552, 109, 24, 152), "inner"]],
+		"exits": [[Rect2(262, 408, 44, 11), "pyega1", "fromUp"]],
+		# story.gd: 역신(변장)이 앉은 자리, 최심부 문을 닫는 막, 그 문 바깥으로 쫓겨난 적이 놓이는 자리
+		"anchors": {"boss": Vector2(640, 220), "door": Rect2(536, 109, 12, 152), "door_x": 536.0, "kicked": Vector2(518, 213), "boss_goal": Vector2(600, 213)},
 	},
 	# 개운포 — 백사장과 해안 마을 (SC1-01~07). 처용이 바다에서 뭍으로 올라오는 곳.
 	# 좌표는 그림(art/collision_author.py)에 맞춘 값: 남쪽 넓은 백사장이 싸움터, 서쪽 모래띠로 올라가면 해안 마을 앞이다.

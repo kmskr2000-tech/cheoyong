@@ -434,7 +434,7 @@ func _pyega2_enter(level: Node) -> void:
 	soul.modulate = Color(0.6, 0.78, 1.4, 0.7)
 	var boss := PlagueGod.new()
 	boss.name = "Boss"
-	boss.position = level.lift(Vector2(650, 150))
+	boss.position = level.lift(level.def["anchors"]["boss"])
 	level.add_child(boss)
 	boss.disguise()
 
@@ -446,12 +446,12 @@ func _inner_room(level: Node) -> void:
 		return
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
-	level.add_barrier.call_deferred(Rect2(492, 156, 22, 72))   # called from a physics callback
+	level.add_barrier.call_deferred(level.def["anchors"]["door"])   # called from a physics callback
 	# the door seals the room for 처용 and 역신 alone: anything that followed him in is thrown back out
 	for e in level.get_tree().get_nodes_in_group("enemy") + level.get_tree().get_nodes_in_group("downed"):
-		if e == boss or e is Npc or not (e is Node2D) or e.global_position.x < 492:
+		if e == boss or e is Npc or not (e is Node2D) or e.global_position.x < level.def["anchors"]["door_x"]:
 			continue
-		var out: Vector2 = level.lift(Vector2(468, 192)) + Vector2(0, randf_range(-24, 24))
+		var out: Vector2 = level.lift(level.def["anchors"]["kicked"]) + Vector2(0, randf_range(-24, 24))
 		e.global_position = out
 	var cam: Camera2D = p.get_node("Camera")
 	var tw := cam.create_tween()
@@ -669,7 +669,7 @@ func objective(level: Node):
 			return Vector2(146, 197)
 		"pyega2":
 			var b = level.get_node_or_null("Boss")
-			if b and b.state == "wait": return Vector2(560, 200)
+			if b and b.state == "wait": return level.def["anchors"]["boss_goal"]
 		"palace":
-			return Vector2(256, 196)
+			return Vector2(256, 228)
 	return null

@@ -116,6 +116,26 @@ mp('pyega1', ground='pyega1',
    ])
 
 
+mp('pyega2', ground='pyega2',
+   walk=[
+       rect(256, 262, 310, 344),                                 # 들어오는 복도
+       rect(256, 226, 310, 262),                                 # 부러진 들보 사이 틈
+       rect(252, 120, 540, 226),                                 # 어두운 대청(다락)
+       rect(536, 112, 736, 226),                                 # 최심부(오른쪽 방, 기둥 틈으로 이어짐)
+   ],
+   block=[])
+
+
+mp('palace', ground='palace',
+   walk=[
+       rect(190, 186, 330, 238),                                 # 편전 앞마당
+       rect(240, 238, 274, 284),                                 # 돌계단
+       rect(232, 284, 286, 320),                                 # 남문 앞
+       rect(228, 170, 288, 186),                                 # 편전 섬돌(왕이 서는 곳)
+   ],
+   block=[])
+
+
 def raster(poly_lists, size):
     im = Image.new('L', size, 0)
     d = ImageDraw.Draw(im)
