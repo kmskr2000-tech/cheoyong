@@ -128,7 +128,7 @@ func _ready() -> void:
 	_release_dirs()   # a Hud rebuilt mid-drag (level change) must not inherit a held direction
 
 
-func _item_icon(parent: Control, at: Vector2, path: String) -> TextureRect:
+func _item_icon(parent: Node, at: Vector2, path: String) -> TextureRect:
 	var r := TextureRect.new()
 	r.texture = load(path)
 	r.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -175,7 +175,20 @@ func set_talk(on: bool) -> void:
 	_talk_on = on
 
 
+func _update_icons() -> void:
+	var has_flute := Game.flag("flute") == 1
+	if player and player.has_method("current_talisman"):
+		var tk: String = player.current_talisman()
+		if tk != _tal_shown:
+			_tal_shown = tk
+			_tal_icon.texture = load("res://assets/ui/icons/tal_%s.png" % tk)
+	_tal_icon.visible = has_flute and player != null
+	_mask_icon.visible = Game.tal != ""
+	_flute_icon.visible = has_flute
+
+
 func _process(_d: float) -> void:
+	_update_icons()
 	if not _touch_root.visible or _buttons.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
@@ -191,13 +204,6 @@ func _process(_d: float) -> void:
 	_tal_label.visible = _buttons["swap"].visible
 	if player:
 		_tal_label.text = player.TAL_NAME[player.current_talisman()]
-		var tk: String = player.current_talisman()
-		if tk != _tal_shown:
-			_tal_shown = tk
-			_tal_icon.texture = load("res://assets/ui/icons/tal_%s.png" % tk)
-	_tal_icon.visible = Game.flag("flute") == 1 and player != null
-	_mask_icon.visible = Game.tal != ""
-	_flute_icon.visible = Game.flag("flute") == 1
 	_talk.visible = _talk_on
 	_buttons["song"].visible = Game.flag("flute") == 1
 	_buttons["attack"].modulate.a = 0.0 if _talk_on else 1.0

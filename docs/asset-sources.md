@@ -1,0 +1,1 @@
+- NPC·아이템 도트(Drive '신처용가-게임에셋' NPC/아이템 폴더, 사용자 소유): art/drive-src/ 원본 -> art/import_drive_npc_items.py 로 축소·팔레트 양자화·외곽선·5프레임 시트화 (npc_king/nanyeong/sansin/dragonking/seolmundae/elder/dolsoe/child, ui/icons/tal_*·key_*·item_*).
