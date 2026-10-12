@@ -12,9 +12,11 @@ func _initialize() -> void:
 func _main() -> void:
 	var map := "gyeongju"
 	var flags := "summoned,briefed,arrived"
+	var allow_nocull := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--map="): map = a.get_slice("=", 1)
 		elif a.begins_with("--flags="): flags = a.get_slice("=", 1)
+		elif a == "--allow-nocull": allow_nocull = true
 	var G: Node = root.get_node("Game")
 	G.level_id = map
 	G.spawn_name = "start"
@@ -78,8 +80,13 @@ func _main() -> void:
 		paused = false
 		lv.set_process(true)
 		lv._ash.speed_scale = 1.0
-	print("  컬링으로 꺼진 라이트 합계 %d (맵 단독 0이면 이 맵은 컬링 증명 대상 아님 — 전 맵 합계로 판단)" % total_off)
+	print("  컬링으로 꺼진 라이트 합계 %d (0이면 증명이 무의미)" % total_off)
 	print("  허용 오차: 0 px (정지 후 동일 상태 재캡처 대조 노이즈도 함께 출력)")
+	if total_off == 0:
+		if allow_nocull:
+			print("  (--allow-nocull: 이 맵은 컬링 대상 라이트가 없어 컬링 증명 대상 아님 — 컬링 외 항목은 tests/lowend_vs_main.sh 로 증명)")
+		else:
+			fails += 1
 	Engine.time_scale = 1.0
 	print("LOWEND_PIXELS ", "PASS" if fails == 0 else "FAIL")
 	quit(0 if fails == 0 else 1)

@@ -98,20 +98,29 @@ func _level_check() -> void:
 	_ok(base.shadow == base.shadow0, "상: 그림자 원래대로 (%d)" % base.shadow)
 	_ok(is_equal_approx(base.bloom, 0.9), "상: 블룸 0.9")
 	_ok(base.normal > 0, "상: 노멀맵 스프라이트 %d" % base.normal)
-	# 플레이어를 맵 구석으로 옮기면 시야 컬링으로 화면 밖 라이트가 꺼진다 (카메라가 따라감)
+	# 라이트 하나가 시야 가장자리 밖으로 막 벗어나는 곳으로 옮기면 그 라이트는 꺼져야 하고, 시야 안 라이트는 켜져 있어야 한다
 	var player: Node2D = lv.get_node("Player")
 	var home := player.position
-	var far := false
-	for L in lv.flicker:
-		if L.global_position.distance_to(home) > 400:
-			far = true
-	_ok(far, "gyeongju 에 시작 위치에서 멀리 떨어진 라이트가 있음")
-	_ok(base.lights_on < base.lights, "시야 컬링: 화면 밖 라이트가 꺼져 있음 (%d/%d)" % [base.lights_on, base.lights])
+	var L0: PointLight2D = lv.flicker[0]
+	var r: float = L0.texture.get_width() * L0.texture_scale * 0.5
+	player.position = L0.global_position + Vector2(-(240.0 + r + 120.0), 0)
+	(player.get_node("Camera") as Camera2D).reset_smoothing()
+	for i in 4:
+		await process_frame
+	lv._cull_lights()
+	var moved := _snap(lv)
+	_ok(not L0.visible, "시야 컬링: 시야 밖으로 벗어난 라이트가 꺼짐 (%d/%d 활성)" % [moved.lights_on, moved.lights])
+	_ok(moved.lights_on < moved.lights, "시야 컬링: 활성 라이트 < 전체")
 	var near_off := 0
 	for L in lv.flicker:
-		if not L.visible and L.global_position.distance_to(home) < 160:
+		if not L.visible and L.global_position.distance_to(player.position) < 160:
 			near_off += 1
 	_ok(near_off == 0, "시야 안 가까운 라이트는 전부 켜져 있음")
+	player.position = home
+	(player.get_node("Camera") as Camera2D).reset_smoothing()
+	for i in 4:
+		await process_frame
+	lv._cull_lights()
 	Q.set_tier(1, true)
 	await process_frame
 	var t1 := _snap(lv)
