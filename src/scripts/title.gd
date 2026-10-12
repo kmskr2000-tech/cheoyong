@@ -53,6 +53,9 @@ func _ready() -> void:
 		items.append(["이어하기 (1장 완료)" if Game.peek_flag("chapter1_done") else "이어하기", "continue"])
 	if Game.setting("intro_seen"):
 		items.append(["회상", "replay"])
+	for i in items.size():   # 완료 세이브가 있으면 '이어하기'가 기본 선택 (연타가 새 게임으로 직행하지 않게)
+		if items[i][1] == "continue" and Game.peek_flag("chapter1_done"):
+			_sel = i
 	var font := DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf")
 	for i in items.size():
 		var l := Label.new()
@@ -80,7 +83,7 @@ func _ready() -> void:
 	note.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
 	note.add_theme_constant_override("outline_size", 4)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.position = Vector2(0, 250)
+	note.position = Vector2(0, 244)   # 아래 가장자리(홈 인디케이터·제스처 바)에서 12px 이상 띄운다
 	note.size = Vector2(480, 14)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(note)
