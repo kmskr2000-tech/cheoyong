@@ -1,0 +1,2 @@
+SCRIPT ERROR: Invalid access to property or key 'state' on a base object of type 'previously freed'.
+SCRIPT ERROR: Invalid access to property or key 'deaths' on a base object of type 'Dictionary'.
