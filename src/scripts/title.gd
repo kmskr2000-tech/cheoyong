@@ -80,7 +80,7 @@ func _ready() -> void:
 	note.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
 	note.add_theme_constant_override("outline_size", 4)
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.position = Vector2(0, 250)
+	note.position = Vector2(0, 244)   # 아래 가장자리(홈 인디케이터·제스처 바)에서 12px 이상 띄운다
 	note.size = Vector2(480, 14)
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(note)
