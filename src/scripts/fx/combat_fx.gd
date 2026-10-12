@@ -256,7 +256,7 @@ static func synergy(host: Node2D, mult_text: String) -> void:
 			if e.has_meta("syn_t") and float(e.get_meta("syn_t")) > 0.0:
 				n += 1
 		var par := host.get_parent()
-		play_once(par, host.global_position + Vector2(18, -34), "bindmark", 4, 14.0, 1.0, 2, 1).modulate.a = 0.7
+		play_once(par, host.global_position + Vector2(18, -34), "bindmark", 4, 14.0, 1.0, 2, 1).modulate = Color(1.0, 0.6, 0.25, 0.8)
 		pop_text(par, host.global_position + Vector2(0, -66), mult_text, COL_FIRE, 12)
 
 
