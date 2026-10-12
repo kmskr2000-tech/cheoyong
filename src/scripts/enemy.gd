@@ -13,6 +13,7 @@ extends CharacterBody2D
 ## (group "downed"). Only 처용가 purifies it (purify()); left alone it rises again.
 
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 
 const KINDS := {
 	"dog": {"sheet": "plague_dog", "cell": Vector2i(44, 30), "feet": 28, "hp": 30, "speed": 62.0,
@@ -137,6 +138,7 @@ var bind_t := 0.0             # 결박부: held to a crawl
 var _bar: Node2D
 var _bar_fill: ColorRect
 var _voice: Label
+var _name_lbl: Label   # 졸개 이름표 (화면 가장자리 클램프용)
 
 
 func _ready() -> void:
@@ -148,6 +150,7 @@ func _ready() -> void:
 	hp = cfg["hp"] if not is_clone else 1
 	gim_t = randf_range(3.0, 6.0)
 	surround = randf() * TAU
+	tell_lock.connect(func(): CFX.tell_lock(self, sprite))   # 예고 굳음 단서 (아트팀)
 	add_to_group("enemy")
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	var col := CollisionShape2D.new()
@@ -210,8 +213,14 @@ func _make_bar() -> void:
 	nm.size = Vector2(68, 14)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bar.add_child(nm)
+	_name_lbl = nm
 	_bar.visible = false
 	add_child(_bar)
+
+
+func _process(_d: float) -> void:
+	if _name_lbl and _bar and _bar.visible:
+		CFX.clamp_label(_name_lbl)   # 화면 끝에서 잘리지 않게 안쪽으로 (아트팀)
 
 
 func _physics_process(delta: float) -> void:
@@ -341,6 +350,7 @@ func _interrupt() -> void:
 func _stagger(sec: float) -> void:
 	state = "stagger"; st = 0.0
 	stagger_time = sec
+	CFX.open_mark(self, sec)   # 약점 노출 단서 (아트팀)
 
 
 ## movement while closing in
@@ -673,6 +683,7 @@ func _down() -> void:
 	sprite.rotation = 0.25 if kind == "dog" else 0.0
 	sprite.scale = Vector2(1.0, 0.8)
 	collapsed.emit()
+	CFX.downed_sigil(self)   # 쓰러진 요괴 발밑: 노래를 기다리는 보랏빛 문양 (아트팀)
 	miasma = CPUParticles2D.new()
 	miasma.amount = 18
 	miasma.lifetime = 1.6
@@ -690,6 +701,7 @@ func _down() -> void:
 
 
 func _rise() -> void:
+	CFX.clear_sigil(self)
 	remove_from_group("downed")
 	add_to_group("enemy")
 	miasma.queue_free()
@@ -715,6 +727,9 @@ func _purify() -> void:
 	remove_from_group("downed")
 	purified.emit()
 	Audio.sfx("purify", -4.0, 0.03)
+	CFX.clear_sigil(self)
+	if not is_clone:
+		CFX.purify(get_parent(), global_position)   # 연꽃이 피고 맑은 넋이 오른다 (아트팀)
 	if not is_clone:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
 		var lv: Node = get_tree().current_scene
 		var r := Game.reward_purify(kind, global_position, get_parent())
