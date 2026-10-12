@@ -77,7 +77,59 @@ def build_hwagae():
     return finish('hwagae', hwagae_source(), HWAGAE_TONE, 800)
 
 
-BUILDERS = {'hwagae': build_hwagae}
+# ---------------------------------------------------------------- jiri: 1120x326, 지리산 산길 (산신각 마당 → 길목 → 바위 지대)
+# 소스: Drive shrine(산신각·제상·거송·금줄·절벽·돌탑) 한 장을 S배로 가로 800px 만큼 쓰고, 동쪽 320px 는 forest 의 어두운 숲으로 잇는다.
+# 새벽 금빛 하늘/안개가 '흰 판'이 되지 않게: 하이라이트 압축 + 밤 톤(푸른 그림자) + 따뜻한 제상 촛불만 남긴다.
+JIRI_ROW0 = 308          # shrine 에서 자를 첫 행 (그림 y 180 ↔ 소스 행 740 = 금줄 아래 돌길)
+FOREST_ROW0 = 380
+
+
+def compress(a, knee, k):
+    lum = (a @ np.array([.3, .59, .11], np.float32))[..., None]
+    over = np.maximum(lum - knee, 0)
+    return a * ((lum - over * (1 - k)) / np.maximum(lum, 1e-3))
+
+
+def jiri_source():
+    w, h = round(1120 * S), round(H * S)         # 2688 x 782
+    cv = np.zeros((h, w, 3), np.float32)
+    sh = np.asarray(load('shrine').crop((0, JIRI_ROW0, 1920, JIRI_ROW0 + h)), np.float32)
+    paste(cv, sh, 0, 0)
+    ov = 288
+    fo = np.asarray(load('forest').crop((0, FOREST_ROW0, w - 1920 + ov, FOREST_ROW0 + h)), np.float32)
+    fo = compress(fo, 95, 0.35)                       # 빛줄기(흰 띠) 눌러 줌
+    lum = (fo @ np.array([.3, .59, .11], np.float32))[..., None]
+    fo = (lum + (fo - lum) * 0.62) * np.array([0.80, 0.86, 1.12], np.float32) * 0.84   # 이끼 초록을 푸른 밤으로
+    # 숲 안개(푸른 저채도 띠)는 평평한 판처럼 보여서 이끼색으로 눌러 둔다
+    r_, g_, b_ = fo[..., 0], fo[..., 1], fo[..., 2]
+    from scipy import ndimage as ndi
+    haze = ndi.gaussian_filter(((b_ > g_ + 4) & (b_ > r_ + 22)).astype(np.float32), 6)[..., None]
+    moss = fo * np.array([0.62, 0.80, 0.70], np.float32)
+    fo = fo * (1 - haze) + moss * haze
+    paste(cv, fo, 1920 - ov, 0, feather(fo.shape[1], fo.shape[0], 'l', ov))
+    # 서쪽 입구: 왼쪽 끝이 어두운 덤불이라, 돌길(그림 x125~185)을 소스 해상도로 복제해 x0까지 이어 붙인다
+    x0, x1, y0, y1 = round(125 * S), round(185 * S), round(160 * S), round(212 * S)
+    strip = cv[y0:y1, x0:x1].copy()
+    sw = x1 - x0
+    for k in range(1, 3):
+        xx = x0 - k * sw
+        if xx + sw <= 0:
+            break
+        m = feather(sw, y1 - y0, 'tb', 40)
+        if k == 1:
+            m = np.minimum(m, 1)
+        paste(cv, strip[:, ::1], xx, y0, m)
+    return Image.fromarray(np.clip(compress(cv, 150, 0.45), 0, 255).astype(np.uint8))
+
+
+JIRI_TONE = dict(bright=0.78, sat=1.0, tint=(26, 26, 72), mix=0.22)
+
+
+def build_jiri():
+    return finish('jiri', jiri_source(), JIRI_TONE, 1120)
+
+
+BUILDERS = {'hwagae': build_hwagae, 'jiri': build_jiri}
 
 if __name__ == '__main__':
     names = [a for a in sys.argv[1:] if not a.startswith('--')] or list(BUILDERS)
