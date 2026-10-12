@@ -100,6 +100,7 @@ const EXTRA := {
 }
 
 signal telegraph   # wind-up began (tutorial: teach the roll here)
+signal tell_lock   # 예고 진행도가 CT.TELL_CANCEL_FRAC 에 닿아 "굳음" — 이후 가벼운 타격은 끊지 못한다(아트팀 단서 훅: 점멸 가속·효과음)
 signal hit_taken
 signal collapsed   # fell into 탁기 (downed)
 signal purified
@@ -126,6 +127,7 @@ var gim_t := 4.0              # timer for periodic gimmicks
 var aux_t := 0.0              # secondary timer (eclipse, blackout, lure…)
 var aux_v := Vector2.ZERO
 var stagger_time := 0.0
+var _tell_locked := false    # 이번 예고에서 tell_lock 을 이미 내보냈는지
 var is_clone := false
 var life_t := 6.0
 var guard_dir := Vector2.DOWN
@@ -139,6 +141,7 @@ var _voice: Label
 
 func _ready() -> void:
 	cfg = KINDS[kind].duplicate()
+	cfg["hp"] = maxi(1, int(round(float(cfg["hp"]) * CT.ENEMY_HP_MULT)))
 	ex = EXTRA.get(kind, {})
 	if ex.has("strike"):
 		cfg["strike"] = ex["strike"]
@@ -261,13 +264,16 @@ func _physics_process(delta: float) -> void:
 			if state == "chase" and d <= _reach() and cd <= 0.0:
 				_begin_tell(to)
 		"tell":
+			if not _tell_locked and st >= float(cfg["tell"]) * CT.TELL_CANCEL_FRAC:
+				_tell_locked = true
+				tell_lock.emit()
 			if st >= cfg["tell"]:
 				state = "strike"; st = 0.0
 				sprite.play("strike")
 				_on_strike(to, d)
 		"strike":
 			v = _strike_vel(to, d)
-			if ex.get("melee", true) and d < ex.get("contact", cfg["range"] * 0.7) and target.has_method("hurt"):
+			if ex.get("melee", true) and d < ex.get("contact", cfg["range"] * CT.CONTACT_MULT) and target.has_method("hurt"):
 				target.hurt(_dmg(), to.normalized(), true)   # 근접 접촉: 받아넘기기 대상
 			if st >= cfg["strike"]:
 				_after_strike(to, d)
@@ -319,6 +325,7 @@ func _begin_tell(to: Vector2) -> void:
 	Audio.sfx("tell", -10.0)
 	state = "tell"; st = 0.0
 	lunge_dir = to.normalized()
+	_tell_locked = false
 	sprite.play("tell")
 	reveal_t = maxf(reveal_t, cfg["tell"] + cfg["strike"] + 0.3)
 	telegraph.emit()
@@ -622,6 +629,8 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged :=
 		_down()
 	elif state == "stagger" or quiet:
 		pass
+	elif state == "tell" and not heavy and not charged and st >= float(cfg["tell"]) * CT.TELL_CANCEL_FRAC:
+		pass   # 굳은 예고(앞 절반 이후): 가벼운 타격은 끊지 못한다 — 강 베기·3타째·받아넘기기 반격(heavy/charged)만 끊음
 	elif state != "strike" or heavy:
 		state = "hurt"; st = 0.0
 
