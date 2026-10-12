@@ -257,6 +257,10 @@ func _main() -> void:
 		"boss_retry": await sc_boss_retry()
 		# ---- 2장 마일스톤 1 smoke (tests/chapter1_playthrough.sh ch2_m1 로 단독 실행; 기본 1장 목록에는 넣지 않는다)
 		"ch2_m1": await sc_ch2_m1()
+		# ---- 2장 진입 검증(prog/ch2-enter): ch2_farewell·ch2_continue 는 --ch2 로, ch2_off_continue 는 인자 없이(꺼짐) 실행
+		"ch2_farewell": await sc_ch2_farewell()
+		"ch2_continue": await sc_ch2_continue()
+		"ch2_off_continue": await sc_ch2_off_continue()
 		# ---- 전투 전략(combat-strategy) 시나리오: tests/combat_strategy.sh 로 실행 (기본 chapter1 목록과 분리)
 		"cs_parry": await sc_cs_parry()
 		"cs_charge": await sc_cs_charge()
@@ -1486,6 +1490,7 @@ func sc_cs_cover() -> void:
 func sc_ch2_m1() -> void:
 	step("2장 스위치 기본 꺼짐 (1장 엔딩 보호)")
 	await must(not G.ch2_enabled(), "ch2_enabled() 기본 false")
+	G.flags["ch2_unlocked"] = 1   # 이 시나리오는 2장 켜짐 상태의 이어하기 지점을 본다 (꺼짐 동작은 ch2_off_continue)
 	for f in ["chapter1_done", "appointed", "rumor", "king_call", "flute"]:
 		G.flags[f] = 1   # 1장을 끝낸 세이브
 	G.level_id = "hwagae"
@@ -1532,4 +1537,68 @@ func sc_ch2_m1() -> void:
 	await tp(Vector2(14, 387))
 	await until(func(): return level_ready("hwagae", iid), "화개 저자 복귀", 3000)
 	await must(G.flag("ch2_old_man") == 1 and lvl().npc("elder").visible, "복귀해도 출구·노인 상태 유지")
+	await done()
+
+
+# ================================================================ 2장 진입 (prog/ch2-enter)
+## 스위치 켜짐(--ch2): SC1-24/25 작별 → 1절 → 2장 화개 저자로 이어진다 (타이틀로 가지 않는다)
+func sc_ch2_farewell() -> void:
+	step("--ch2 켜짐 확인")
+	await must(G.ch2_enabled(), "ch2_enabled() 켜짐(--ch2)")
+	for f in ["arrived", "met_nanyeong", "sang_child", "rescued", "nanyeong_woke", "rumor", "king_call", "flute", "appointed"]:
+		G.flags[f] = 1
+	G.checkpoint = "gyeongju"
+	G.level_id = "gyeongju"
+	G.spawn_name = "home"
+	step("SC1-24/25 작별 → 1절 → 2장")
+	pump = true
+	await boot_level()
+	await until(func(): return G.flag("chapter1_done") == 1, "1장 완료 플래그", 6000)
+	await until(func(): return level_ready("hwagae"), "작별 뒤 화개 저자 진입 (타이틀 아님)", 3000)
+	await must(G.checkpoint == "hwagae", "체크포인트 = hwagae")
+	await until(func(): return G.flag("ch2_start") == 1, "SC2-01 시작 (ch2_start)", 1500)
+	await must(save_flags().get("chapter1_done", 0) == 1, "디스크 세이브에 chapter1_done 유지")
+	await done()
+
+
+## 스위치 켜짐: 끝난 1장 세이브를 이어하기 → 화개 저자 (이어하기는 change_level 도중 _busy 에서 레벨 훅이 돈다)
+func sc_ch2_continue() -> void:
+	step("완료 세이브 작성 (chapter1_done, 2장 시작 전)")
+	await must(G.ch2_enabled(), "ch2_enabled() 켜짐(--ch2)")
+	G.new_game()
+	for f in ["beach_done", "arrived", "met_nanyeong", "sang_child", "rescued", "nanyeong_woke", "rumor", "king_call", "flute", "appointed", "chapter1_done"]:
+		G.set_flag(f)
+	G.checkpoint = "gyeongju"
+	G.save()
+	await must(G.has_save(), "세이브 파일 생성")
+	step("타이틀 → 이어하기 → 화개 저자")
+	await boot("res://scenes/title.tscn")
+	await until(func(): return scene_name() == "title.tscn" and current_scene.get("_ready_t") > 0.9, "타이틀 준비", 600)
+	await must("continue" in title_actions(), "'이어하기' 노출")
+	await must(current_scene._sel == title_actions().find("continue"), "완료 세이브: 이어하기가 기본 선택")
+	_tap("confirm")
+	await until(func(): return level_ready("hwagae"), "완료 세이브 이어하기 → 화개 저자", 2500)
+	await must(G.checkpoint == "hwagae", "체크포인트 = hwagae")
+	await done()
+
+
+## 스위치 꺼짐(기본): 2장 세이브(checkpoint=hwagae)를 이어해도 2장 지점으로 들어가지 않는다 → 경주 복귀 + '2장은 준비 중'
+func sc_ch2_off_continue() -> void:
+	step("2장 세이브 작성 (스위치 꺼짐 빌드에서 이어하기)")
+	await must(not G.ch2_enabled(), "ch2_enabled() 꺼짐(기본)")
+	G.new_game()
+	for f in ["beach_done", "arrived", "met_nanyeong", "sang_child", "rescued", "nanyeong_woke", "rumor", "king_call", "flute", "appointed", "chapter1_done", "ch2_start"]:
+		G.set_flag(f)
+	G.checkpoint = "hwagae"
+	G.save()
+	await boot("res://scenes/title.tscn")
+	await until(func(): return scene_name() == "title.tscn" and current_scene.get("_ready_t") > 0.9, "타이틀 준비", 600)
+	await must("continue" in title_actions(), "'이어하기' 노출")
+	await must(current_scene._sel == title_actions().find("continue"), "완료 세이브: 이어하기가 기본 선택")
+	_tap("confirm")
+	await until(func(): return level_ready("gyeongju"), "꺼짐 빌드: 2장 세이브가 경주로 복귀", 2500)
+	await tick(120)
+	await must(G.level_id == "gyeongju", "여전히 경주 (hwagae 로 가지 않음)")
+	await must(G.checkpoint_spawn()[0] == "gyeongju", "꺼짐 상태의 재시작·사망 지점도 경주 (checkpoint 값 자체는 보존)")
+	await must(G.flag("ch2_start") == 1, "2장 진행 플래그는 보존 (스위치를 다시 켜면 이어진다)")
 	await done()

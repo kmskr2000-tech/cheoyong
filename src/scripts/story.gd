@@ -750,6 +750,10 @@ func objective(level: Node):
 # ================================================================ 2장 「도깨비골」 마일스톤 1 (design/levels/ch2-dokkaebigol.md §10)
 ## 1장 → 2장 연결. chapter1_done 는 그대로 서 있고, 2장 진행은 ch2_* 플래그로 따로 센다.
 func _enter_ch2() -> void:
+	# 이어하기(title.gd)는 Game.change_level 도중 _busy=true 인 채로 레벨 훅을 돌린다 → 그대로 부르면 change_level 이 조용히 무시된다.
+	# 진행 중인 전환이 끝날 때까지 기다린 뒤 들어간다. (작별 경로는 이미 _busy=false 라 지연 없음)
+	while Game._busy:
+		await Game.get_tree().process_frame
 	Game.checkpoint = "hwagae"
 	Game.change_level("hwagae", "start", "2장 「도깨비골」", "지리산")
 

@@ -30,6 +30,7 @@ run() { # name datadir
   case "$name" in
     death) args+=(--level=pyega1) ;;
     boss_retry) args+=(--level=pyega2) ;;
+    ch2_farewell|ch2_continue) args+=(--ch2) ;;   # 2장 진입 스위치 켜짐 (기본 목록 밖: 'tests/chapter1_playthrough.sh ch2_farewell ch2_continue ch2_off_continue')
   esac
   local t0=$SECONDS
   XDG_DATA_HOME="$data" timeout "$TIMEOUT" "${cmd[@]}" --fixed-fps 60 --path "$HERE/src" -s "$HARNESS" -- --scn="$name" "${args[@]}" >"$log" 2>&1
