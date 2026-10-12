@@ -23,8 +23,11 @@ void fragment() {
 	float lod = smoothstep(0.26, 0.6, d) * 2.0 * tilt;
 	vec3 c = textureLod(screen_tex, uv, lod).rgb;
 	// bloom: wide soft halo from two blurred mip levels
-	vec3 b = bright(textureLod(screen_tex, uv, 2.5).rgb) * 0.6 + bright(textureLod(screen_tex, uv, 4.0).rgb) * 0.9;
-	c += b * bloom;
+	// (bloom == 0 이면 표본 두 개를 건너뜀 — 화질 폴백용. 기본값 0.9 에서는 결과가 이전과 같다)
+	if (bloom > 0.0) {
+		vec3 b = bright(textureLod(screen_tex, uv, 2.5).rgb) * 0.6 + bright(textureLod(screen_tex, uv, 4.0).rgb) * 0.9;
+		c += b * bloom;
+	}
 	// split-tone grade: shadows sink into deep navy, highlights go pale moon-silver
 	float l = dot(c, vec3(0.3, 0.59, 0.11));
 	vec3 toned = mix(shadow_tint, high_tint, smoothstep(0.0, 0.9, l)) * (0.35 + l * 1.4);

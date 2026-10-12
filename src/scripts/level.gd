@@ -118,6 +118,10 @@ func _ready() -> void:
 	Audio.ambience(def.get("amb", ""))
 	Story.on_enter(self)
 	_make_guide()
+	Quality.tier_changed.connect(_on_quality)
+	_cull_lights()
+	if Quality.tier < Quality.TIER_MAX:
+		_on_quality(Quality.tier, Quality.TIER_MAX)
 
 
 # ---------------------------------------------------------------- interaction ("다가가면 버튼이 빛난다")
@@ -611,6 +615,11 @@ func _glow_light(at: Vector2, col: Color, energy: float, scl: float) -> void:
 
 
 var flicker: Array[PointLight2D] = []
+var _ash: CPUParticles2D
+var _shafts_layer: CanvasLayer
+var _post_mat: ShaderMaterial
+var _cull_t := 0.0
+var _cull_n := 0
 var fade_props: Array = []   # [body, sprite, local rect] — tall props turn see-through when the hero is behind
 
 
@@ -700,8 +709,14 @@ func _process(d: float) -> void:
 		var ph: float = w.get_meta("ph")
 		w.position = w.get_meta("home") + Vector2(sin(t * 0.7 + ph) * 18, sin(t * 1.1 + ph * 2) * 8 + sin(t * 3 + ph) * 2)
 		w.modulate.a = 0.75 + sin(t * 5 + ph) * 0.25
+	_cull_t -= d
+	if _cull_t <= 0.0:
+		_cull_t = 0.1
+		_cull_lights()
 	for i in flicker.size():
 		var l := flicker[i]
+		if not l.visible:
+			continue   # 시야 밖·폴백으로 꺼진 라이트는 깜빡임 계산도 건너뜀
 		l.energy = l.get_meta("base") * (1.0 + sin(t * 9.0 + i * 3.1) * 0.05 + sin(t * 23.0 + i) * 0.035)
 
 
@@ -769,6 +784,7 @@ func _atmosphere() -> void:
 	am.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	ash.material = am
 	ash.local_coords = false
+	_ash = ash
 	$Player/Camera.add_child(ash)
 	# light shafts through the haze, then the HD-2D finishing pass (DoF, bloom, grade, haze, vignette)
 	var shafts_layer := CanvasLayer.new()
@@ -780,6 +796,7 @@ func _atmosphere() -> void:
 	sm.shader = load("res://shaders/shafts.gdshader")
 	shafts.material = sm
 	shafts_layer.add_child(shafts)
+	_shafts_layer = shafts_layer
 	add_child(shafts_layer)
 	var post_layer := CanvasLayer.new()
 	post_layer.layer = 10
@@ -789,6 +806,7 @@ func _atmosphere() -> void:
 	var pm := ShaderMaterial.new()
 	pm.shader = load("res://shaders/post.gdshader")
 	post.material = pm
+	_post_mat = pm
 	post_layer.add_child(post)
 	add_child(post_layer)
 
@@ -805,3 +823,70 @@ static func _radial(size: int) -> Texture2D:
 	t.width = size
 	t.height = size
 	return t
+
+
+# ---------------------------------------------------------------- 화질 폴백 (Quality) · 라이트 시야 컬링
+## 등급별 동시 활성 라이트 상한(시야 안). 상(2)은 상한 없음 — 화면이 절대 바뀌지 않는다.
+const LIGHT_CAP := {2: 9999, 1: 6, 0: 3}
+const ASH_KEEP := {2: 1.0, 1: 0.5, 0: 0.25}
+var _ash_full := 0
+
+
+func _on_quality(t: int, _old: int) -> void:
+	# 순서: 라이트 상한 → 후처리 블룸 → 노멀맵 라이트 → 파티클 밀도 → 그림자 (+ 하 등급에선 빛줄기 끔)
+	_cull_lights()
+	if _post_mat != null:
+		_post_mat.set_shader_parameter("bloom", 0.9 if t >= 2 else 0.0)
+	_set_normal_maps(t >= 1)
+	if _ash != null:
+		if _ash_full == 0:
+			_ash_full = _ash.amount
+		_ash.amount = maxi(4, int(_ash_full * ASH_KEEP[t]))
+	for l in flicker:
+		if not l.has_meta("sh0"):
+			l.set_meta("sh0", l.shadow_enabled)
+		l.shadow_enabled = l.get_meta("sh0") and t >= 2
+	if _shafts_layer != null:
+		_shafts_layer.visible = t >= 1
+
+
+## 노멀맵이 있는 스프라이트(CanvasTexture)를 라이트마다 노멀을 읽지 않는 평면 텍스처로 바꾸거나 되돌린다.
+func _set_normal_maps(on: bool) -> void:
+	for n in find_children("*", "Sprite2D", true, false):
+		var s := n as Sprite2D
+		if on:
+			if s.has_meta("lit_tex"):
+				s.texture = s.get_meta("lit_tex")
+				s.remove_meta("lit_tex")
+		elif s.texture is CanvasTexture and not s.has_meta("lit_tex"):
+			var ct := s.texture as CanvasTexture
+			if ct.normal_texture != null:
+				s.set_meta("lit_tex", ct)
+				s.texture = ct.diffuse_texture
+
+
+## 시야(+라이트 반경+여유) 밖 라이트는 끈다 — 화면에 닿지 않으므로 기본 화면은 변하지 않는다.
+## 등급이 낮으면 시야 안에서도 화면 중심에서 가까운 순으로 상한까지만 켠다.
+func _cull_lights() -> void:
+	var cam := $Player/Camera as Camera2D
+	var vs := get_viewport_rect().size / cam.zoom
+	var view := Rect2(cam.get_screen_center_position() - vs * 0.5, vs)   # 카메라 변환이 한 프레임 늦어도 정확하도록 직접 계산
+	var center := view.get_center()
+	var cap: int = LIGHT_CAP[Quality.tier]
+	var inside: Array = []
+	for l in flicker:
+		var rng: float = l.texture.get_width() * l.texture_scale * 0.5
+		var reach := view.grow(rng + 48.0)   # 48px: 0.1초 간격 갱신 + 카메라 스무딩 여유
+		if reach.has_point(l.global_position + l.texture_offset):
+			inside.append(l)
+		elif l.visible:
+			l.visible = false
+	if inside.size() > cap:
+		inside.sort_custom(func(a, b): return a.global_position.distance_squared_to(center) < b.global_position.distance_squared_to(center))
+	for i in inside.size():
+		var on: bool = i < cap
+		if (inside[i] as Light2D).visible != on:
+			(inside[i] as Light2D).visible = on
+	_cull_n += 1
+	if Quality.tier == 0 and _cull_n % 10 == 0:
+		_set_normal_maps(false)   # 하 등급 중 새로 생긴 스프라이트(적 등)도 평면화
