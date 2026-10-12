@@ -95,6 +95,7 @@ func _main() -> void:
 	if want("boss_open"): await sc_boss_open()
 	if want("bindfire"): await sc_bindfire()
 	if want("purify"): await sc_purify()
+	if want("tell"): await sc_tell()
 	print("FXSHOTS DONE ", tag)
 	quit(0)
 
@@ -238,3 +239,17 @@ func sc_purify() -> void:
 		await tick(2 if i == 2 else 3 if i == 5 else 4 if i == 9 else 5 if i == 14 else 6)
 		await shot("purify_b_%02d" % i)
 	await tick(60)
+
+
+func sc_tell() -> void:
+	await boot()
+	var p := player()
+	var e = dummy("ghoul", p.position + Vector2(34, 0))
+	await tick(4)
+	await shot("tell_a_before_lock")
+	if e.has_signal("tell_lock"):
+		e.tell_lock.emit()
+	for i in [1, 2, 4, 7]:
+		await tick(1 if i == 1 else 1 if i == 2 else 2 if i == 4 else 3)
+		await shot("tell_b_lock_%02d" % i)
+	await tick(30)
