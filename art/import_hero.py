@@ -41,7 +41,7 @@ def load(name):
         _cache[name] = (a, fg)
     return _cache[name]
 
-DRAGON = ["..111..", ".12211.", ".1222..", "..11...", "...11..", "..122..", ".122...", ".12211.", "..111.."]
+DRAGON = [".11.", "1221", ".12.", "..11", ".122", "1221", ".11."]
 DR_COL = {'1': (64, 112, 232), '2': (150, 205, 255)}
 def stamp_dragon(res, bm):
     """푸른 용 문양: 가슴 위 작은 덩어리(검기 이펙트 아님)는 도트가 뭉개지므로 손으로 그린 9x7 용 글리프로 다시 찍는다."""
@@ -55,7 +55,7 @@ def stamp_dragon(res, bm):
         for r, line in enumerate(DRAGON):
             for c, ch in enumerate(line):
                 if ch in DR_COL:
-                    y, x = cy - 4 + r, cx - 3 + c
+                    y, x = cy - 3 + r, cx - 2 + c
                     if 0 <= y < res.shape[0] and 0 <= x < res.shape[1] and res[y, x, 3]:
                         res[y, x, :3] = DR_COL[ch]
     return res
