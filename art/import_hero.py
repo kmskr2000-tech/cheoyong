@@ -23,6 +23,9 @@ FEET = 58
 BG_TOL = 6   # 검은 도포(≈배경색)가 배경으로 번지지 않도록 좁게
 INK = (7, 6, 11, 255)
 PAL_N = 32
+MUL = 1.22      # 전 시트 공통 배율 보정: 머리~발 38px -> 46px (얼굴 눈코가 읽히는 최소 크기)
+GAMMA = 0.12    # 검은 도포 암부 들어올림
+BLUE_THR = 0.18 # 푸른 문양 픽셀 보존 임계
 
 _cache = {}
 def load(name):
@@ -38,7 +41,27 @@ def load(name):
         _cache[name] = (a, fg)
     return _cache[name]
 
+DRAGON = ["..111..", ".12211.", ".1222..", "..11...", "...11..", "..122..", ".122...", ".12211.", "..111.."]
+DR_COL = {'1': (64, 112, 232), '2': (150, 205, 255)}
+def stamp_dragon(res, bm):
+    """푸른 용 문양: 가슴 위 작은 덩어리(검기 이펙트 아님)는 도트가 뭉개지므로 손으로 그린 9x7 용 글리프로 다시 찍는다."""
+    lab, n = ndimage.label(ndimage.binary_dilation(bm, iterations=1))
+    for k in range(1, n + 1):
+        m = lab == k
+        ys, xs = np.where(m & bm)
+        if len(ys) < 5 or len(ys) > 60 or ys.max() - ys.min() > 12 or xs.max() - xs.min() > 10:
+            continue
+        cy, cx = int(round(ys.mean())), int(round(xs.mean()))
+        for r, line in enumerate(DRAGON):
+            for c, ch in enumerate(line):
+                if ch in DR_COL:
+                    y, x = cy - 4 + r, cx - 3 + c
+                    if 0 <= y < res.shape[0] and 0 <= x < res.shape[1] and res[y, x, 3]:
+                        res[y, x, :3] = DR_COL[ch]
+    return res
+
 def grab(name, box, scale, flip=False):
+    scale = scale * MUL
     """crop box from sheet -> RGBA image downscaled by `scale`, feet-aligned into a CELL x CELL tile."""
     a, fg = load(name)
     x0, y0, x1, y1 = box
@@ -60,17 +83,23 @@ def grab(name, box, scale, flip=False):
     low = body & (np.arange(body.shape[0])[:, None] > bottom - 0.12 * body.shape[0])
     lx = np.where(low.any(0))[0]
     fx = (lx.min() + lx.max()) / 2.0   # foot centre
-    img = np.dstack([rgb, f.astype(np.uint8) * 255])
-    im = Image.fromarray(img, 'RGBA')
-    # premultiplied BOX downscale
-    arr = np.array(im).astype(float)
-    arr[..., :3] *= arr[..., 3:4] / 255.0
-    w, h = max(1, round(im.width * scale)), max(1, round(im.height * scale))
-    chans = [np.array(Image.fromarray(arr[..., c]).resize((w, h), Image.BOX)) for c in range(4)]
-    out = np.dstack(chans)
-    al = out[..., 3] / 255.0
-    rgbs = np.where(al[..., None] > 0, out[..., :3] / np.maximum(al[..., None], 1e-6) * 1.0, 0)
-    res = np.dstack([np.clip(rgbs, 0, 255), (al >= 0.5) * 255]).astype(np.uint8)
+    # v2 (2026-10-12 hero-detail): bg 제거 영역을 가장 가까운 전경색으로 채운 뒤 LANCZOS 축소(경계 헤일로 방지),
+    # 알파는 BOX>=0.5, 푸른 문양은 별도 마스크를 max-pool 식으로 살려 밝게 유지, 어두운 도포는 감마로 살짝 들어올려 주름·윤곽이 읽히게
+    idx = ndimage.distance_transform_edt(~f, return_distances=False, return_indices=True)
+    filled = rgb[idx[0], idx[1]]
+    if GAMMA:
+        filled = (255 * (filled / 255.0) ** (1 - GAMMA)).astype(np.uint8)
+    w, h = max(1, round(f.shape[1] * scale)), max(1, round(f.shape[0] * scale))
+    small = np.array(Image.fromarray(filled).resize((w, h), Image.LANCZOS)).astype(float)
+    al = np.array(Image.fromarray((f * 255).astype(np.uint8)).resize((w, h), Image.BOX)).astype(float) / 255
+    bl = (blue & f)
+    bcnt = np.array(Image.fromarray((bl * 255).astype(np.uint8)).resize((w, h), Image.BOX)).astype(float) / 255
+    bcol = np.array(Image.fromarray(np.where(bl[..., None], rgb, 0).astype(np.uint8)).resize((w, h), Image.BOX)).astype(float)
+    bcol = bcol / np.maximum(bcnt[..., None], 0.05)
+    bm = bcnt > BLUE_THR
+    small = np.where(bm[..., None], np.clip(bcol * 1.12 + 8, 0, 255), small)
+    res = np.dstack([np.clip(small, 0, 255), (al >= 0.5) * 255]).astype(np.uint8)
+    stamp_dragon(res, bm)
     sm = Image.fromarray(res, 'RGBA')
     fxs, bys = int(round(fx * scale)), int(round((bottom + 1) * scale))
     tile = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
@@ -178,7 +207,7 @@ def finish(cells):
     # palette unify (32 colours, no dither)
     # 푸른 이펙트(검기·용 문양)는 따로 8색, 나머지 28색 — 한 팔레트로 합치면 푸른빛이 회색으로 죽는다
     blue = op & (a[..., 2].astype(int) - a[..., 0] > 40) & (a[..., 2] > 110)
-    for mask, n in ((~blue & op, 28), (blue, 8)):
+    for mask, n in ((~blue & op, 40), (blue, 12)):
         px = a[mask][:, :3]
         if len(px) == 0:
             continue
