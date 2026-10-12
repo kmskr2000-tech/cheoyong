@@ -15,7 +15,7 @@ signal phase_two
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
 const CELL := Vector2i(120, 98)   # art/yokai_import.py (Drive boss-plagueking, 96px art = twice a man's height)
 const FEET_ROW := 97.0
-const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
+const MAX_HP := CT.BOSS_HP  # 정본은 combat_tuning.gd
 const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7], "pulse": [8]}
 
 var hp := MAX_HP

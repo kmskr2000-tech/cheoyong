@@ -13,7 +13,14 @@ const PARRY_SHOVE_RANGE := 80.0     # 되받아치기: 정면 밀쳐내기 사�
 const SIN_PER_PARRY := 15.0         # 받아넘기기 신명 (현재 값 유지)
 const KI_PER_PARRY := 8.0           # 0~12  받아넘기기 소리 (신규)
 const ROLL_LOCK := 0.25             # 0.15~0.35  구르기 종료 후 재구르기 잠금
-const ROLL_BUFFER := 0.10           # 0.06~0.15  구르기 선입력 유효 시간
+const ROLL_BUFFER := 0.12           # 0.06~0.15  구르기 선입력 유효 시간 (터치 지연 보정: 0.10→0.12)
+
+# ---- 밸런스 적용 (design/gdd/combat-balance-report.md, 디렉터 확정 2026-10-12)
+const TELL_CANCEL_FRAC := 0.5       # 가벼운 타격이 적의 예고를 끊을 수 있는 진행도 상한 (0=끊지 못함, 1=항상 끊음=구 동작). 강 베기·3타째·반격은 항상 끊음
+const CONTACT_MULT := 1.1           # 제자리 내려치기형(역귀·갯귀·달걀귀신)의 타격 판정 반경 = range × 이 값 (구 0.7)
+const ENEMY_HP_MULT := 1.0          # 요괴 HP 배율 (미적용 상수만 신설; 보고서 P1 제안 1.3)
+const HITSTOP_LIGHT := 2            # 적중 정지(프레임@60fps): 가벼운 타격
+const HITSTOP_HEAVY := 4            # 적중 정지: 3타째·강 베기
 
 # ---- 강 베기 (§1, Formulas)
 const CHARGE_ENTER := 0.45          # 0.35~0.55  눌림 시점부터 충전 상태 진입까지
@@ -72,7 +79,7 @@ const BOSS_CAST_MULT := 1.25        # 시전 노출 배율
 const BOSS_INTERRUPT_OPEN := 1.2    # 시전 중단 후 열림
 const BOSS_PHASE_SHIFT := 1.2       # 2페이즈 전환 열림
 const BOSS_PHASE_KI := 30.0         # 10~50  2페이즈 소리 보상
-const BOSS_HP := 480.0              # 420~560
+const BOSS_HP := 1200.0            # 700~1500  잠정(보고서 P2): 숙련 처치 60~90초 목표, 실측은 production/qa/boss-ttk.md
 
 # ---- 터치 (§7)
 const HAPTIC_MS := 25
