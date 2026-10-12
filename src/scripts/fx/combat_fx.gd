@@ -3,7 +3,7 @@ extends RefCounted
 ## 호출: `const CFX := preload("res://scripts/fx/combat_fx.gd")` → `CFX.parry(player)` 등. 전투 수치는 다루지 않는다 — 보이는 것만.
 ##   parry · charge_aura · full_flash · pierce · guard · pop_text · open_mark · bind_mark · synergy · purify · downed_sigil
 ## 시트 규격: parry 6×48 / aura 4×3 행×40 / fullflash 5×48 / pierce 6×2 행×56 / guard 6×40 / weak 4×16 / open 3×2 행×48×24 /
-##            bindmark 4×2 행×20 / purify 8×48×64 / downed 4×40×20
+##            bindmark 4×2 행×20 / purify 8×48×64 / downed 4×40×20 / tellock 5×32
 
 const MARK := preload("res://scripts/fx/weak_mark.gd")
 const BMARK := preload("res://scripts/fx/bind_mark.gd")
@@ -198,6 +198,17 @@ static func synergy(host: Node2D, mult_text: String) -> void:
 		var par := host.get_parent()
 		play_once(par, host.global_position + Vector2(0, -22), "bindmark", 4, 14.0, 2.2, 2, 1)
 		pop_text(par, host.global_position + Vector2(0, -46), mult_text, COL_FIRE, 12)
+
+
+# ---------------------------------------------------------------- 예고 굳음 (tell_lock, 진행 50%)
+## 예고가 굳는 순간의 단서: 몸이 한 번 하얗게 점멸하고 작은 빛 틱이 몸으로 모여 잠긴다. 신호 연결은 prog/balance-apply 병합 후:
+##   enemy.tell_lock.connect(func(): CFX.tell_lock(self, sprite))
+static func tell_lock(host: Node2D, body: CanvasItem, head_y := -18.0) -> void:
+	play_once(host.get_parent(), host.global_position + Vector2(0, head_y), "tellock", 5, 30.0, 1.0)
+	if body:
+		var tw := body.create_tween()
+		tw.tween_property(body, "self_modulate", Color(2.4, 2.4, 2.4), 0.04)
+		tw.tween_property(body, "self_modulate", Color.WHITE, 0.1)
 
 
 # ---------------------------------------------------------------- 정화

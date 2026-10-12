@@ -388,9 +388,28 @@ def downed():
     sh.save('downed.png')
 
 
+def tellock():
+    """5 frames of 32x32: 예고가 굳는 순간(진행 50%) — 몸 위로 작은 빛 틱(네 점 + 십자 눈금)이 모여 '딸깍' 잠긴다."""
+    sh = Sheet(32, 32, 5)
+    c = 16
+    for f in range(5):
+        r = (13, 10, 7, 6, 8)[f]
+        col = (IC, W, W, G1, G2)[f]
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):   # four ticks converge on the body
+            for k in range(2 if f < 4 else 1):
+                sh.put(f, c + dx * (r + k), c + dy * (r + k), col)
+        if f >= 2:
+            for dx, dy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+                sh.put(f, c + dx * (r - 2), c + dy * (r - 2), G2 if f == 2 else G1)
+        if f in (2, 3):
+            sh.ring(f, c, c, 5, 5, W if f == 2 else G1, dotted=1)
+            sh.put(f, c, c, W)
+    sh.save('tellock.png')
+
+
 if __name__ == '__main__':
     OUT.mkdir(parents=True, exist_ok=True)
     slash(); spark()
-    for fn in (parry, aura, fullflash, pierce, guard, weak, open_ring, bindmark, purify, downed):
+    for fn in (parry, aura, fullflash, pierce, guard, weak, open_ring, bindmark, purify, downed, tellock):
         fn()
-    print('fx: slash, spark, parry, aura, fullflash, pierce, guard, weak, open, bindmark, purify, downed')
+    print('fx: slash, spark, parry, aura, fullflash, pierce, guard, weak, open, bindmark, purify, downed, tellock')
