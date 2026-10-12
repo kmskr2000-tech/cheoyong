@@ -306,3 +306,4 @@
 - [지시] 02:47 — 에이전트 배정: Agent "프로그래밍팀-저사양폴백" finished · 1h 49m 46s
 - [지시] 02:47 — 에이전트 배정: Agent "감사팀-진전검증" finished · 3m 11s
 - [지시] 02:47 — 에이전트 배정: 감사 순회 7을 통과해서 브랜치 3개를 승인했습니다. 통합배포 에이전트가 이 순서로 머지하고 재검증·배포합니다(기한 04:30).
+- [지시] 02:57 — 에이전트 배정: Background agent "프로그래밍팀-통합배포" didn't finish before the previous session ended
