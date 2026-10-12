@@ -1,0 +1,1 @@
+RES ttk2 pack=dog pol=tap win=6/6 ttk=1.6 dmg=8.0 dmgmax=8 hits=1.0 parries=0.0
