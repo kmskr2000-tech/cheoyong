@@ -558,8 +558,10 @@ func death_report() -> String:
 
 ## where a fresh start / continue / death puts you
 func checkpoint_spawn() -> Array:
-	if flag("ch2_start") and checkpoint in ["hwagae", "jiri_path"]:   # 2장(챕터2 M1): 1장 분기보다 먼저 본다
-		return [checkpoint, "start"]
+	if checkpoint in ["hwagae", "jiri_path"]:   # 2장(챕터2 M1): 1장 분기보다 먼저 본다
+		if flag("ch2_start") and ch2_enabled():
+			return [checkpoint, "start"]
+		return ["gyeongju", "start"]   # 스위치가 꺼진 빌드에서 2장 세이브/체크포인트: 2장 지점으로 들이지 않고 경주로 (경주에서 '2장은 준비 중')
 	if checkpoint == "gyeongju" or flag("arrived"):
 		return ["gyeongju", "home" if flag("night") else "start"]
 	return ["beach", "start"]
