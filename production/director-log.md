@@ -194,6 +194,10 @@
 
 - [검토] 22:43 프로그래밍팀-저사양폴백 — 저장 완료(prog/lowend-fallback 8b1db7d). 미완: quality.gd(자동 화질 폴백)·level.gd 하단(시야 밖 라이트 컬링·등급별 적용)·post.gdshader(bloom 분기) 구현만 있음. tests/quality_fallback.sh 는 작성만 하고 미실행, smoke·combat_strategy·save_check·art_walk·hud_layout 이번 변경으로 미실행, production/qa/lowend-fallback.md 없음. 기본 등급 픽셀 동일성 미확인(같은 코드를 두 번 찍어도 6만~11만 픽셀 차이: 플리커·파티클이 시간 의존). 판정: 검증 전이라 승인·머지 불가. 재개 시 할 일: 플리커·파티클 정지한 결정적 비교 또는 라이트 상태 수치 비교로 '기본 등급 화면 불변' 증명, quality_fallback.sh 실행, 기존 회귀 5종 통과, lowend-fallback.md 작성.
 
+- [검토] 22:44 프로그래밍팀-전투밸런스적용 — 저장 완료(prog/balance-apply 79799d8, boss-ttk.md 초안 포함). 적용: TELL_CANCEL_FRAC 0.5, CONTACT_MULT 1.1, ENEMY_HP_MULT 신설(1.0), hit-stop 2/4프레임, tell_lock 시그널, 구르기 선입력 0.12. 검증 통과: combat_strategy 11/11(수치 변경 전 기준), save_check 42, art_walk 6/6, tap_dominance.sh(탭 연타 7종 평균 피해 1.14→2.86 PASS). 프로브 무효 원인 6건 수정. 보스 실측: HP1200 기본값에서 탭 25초 사망 0(지배 전략), BOSS_IDLE_MULT 0.5·BOSS_OPEN_MULT 2.0 적용 시 탭 45초·사망 0.67, reader 봇은 독/기침 회피 한계로 사망 더 많음(봇 한계). 미완: BOSS_HP 1500 실측 안 함(1800은 봇이 못 깸), cs_boss 기대값 갱신분 통과 미확인, smoke(부하 타임아웃)·chapter1_playthrough 미실행.
+- [승인] 22:44 프로그래밍팀-전투밸런스적용 — 디렉터 결정: BOSS_IDLE_MULT 0.5·BOSS_OPEN_MULT 2.0 승인(닫힘 상태 피해 절반·열림 창 2배로 '읽어서 열림 창을 쓰는' 구조 성립, 탭 단독 최적 해소 방향), BOSS_HP 1500 잠정 확정(탭 약 56초로 목표 60~90초에 근접, 읽기는 열림 창 배율로 더 빠름). 조건: 머지 전 cs_boss·smoke·chapter1_playthrough 통과와 BOSS_HP 1500 실측 1회(flock 직렬화). 통과 시 감사팀 검증 후 머지(asset/combat-fx 가 이 브랜치를 포함하므로 둘이 함께 머지).
+- [결정대기] 22:44 후속 — 사용량 제한 해소 후 재개 순서: ①balance-apply 마무리(BOSS_HP 1500 실측·회귀 통과) ②감사팀 검증 ③combat-fx 보완 3건 완료 확인 ④통합배포가 balance-apply·combat-fx 순 머지·배포 ⑤저사양폴백 검증 ⑥QA 엔딩·이어하기·폐가1·관아 보행 및 S3/S4 후속 배정(아트팀-가독성개선, 프로그래밍팀-이름표클램프).
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
