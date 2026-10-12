@@ -152,12 +152,48 @@ def check(names):
             conn = l2[ay, ax] != 0 and l2[ay, ax] == l2[by, bx]
             lines.append(f'- 우회로 [{label}] {a}→{b} 막은 채로 {"이어짐 (OK)" if conn else "끊김 (FAIL)"}')
             ok_all &= conn
-        for (label, rects, a, b) in MK.CHOKES.get(n, []):
-            pass
+        if n in MK.BOXES:
+            bw, bh = MK.BOXES[n]
+            for with_props in (False, True):
+                fr, _, _ = free_grid(n, with_props)
+                lab_ = components(fr)
+                fr = fr & (lab_ == lab_[sy, sx])
+                cw, ch = int(bw / 4), int(bh * K / 4)          # footprint 폭 → 칸, 깊이 → 화면 칸(K 보정)
+                ii = np.pad((~fr).cumsum(0).cumsum(1), ((1, 0), (1, 0)))
+                best = None
+                for y in range(fr.shape[0] - ch):
+                    for x in range(fr.shape[1] - cw):
+                        if ii[y + ch, x + cw] - ii[y, x + cw] - ii[y + ch, x] + ii[y, x] == 0:
+                            best = (x * 4, round((y * 4 - OFFSET + TIER * 2) / K)); break
+                    if best: break
+                lines.append(f'- {bw}x{bh} footprint 빈 사각({"소품 포함" if with_props else "지형만"}): ' + (f'있음, 왼쪽위 footprint≈{best} → OK' if best else ('없음 → FAIL' if not with_props else '없음 (기둥·제단 엄폐물이 일부러 쪼갠다 — 정상)')))
+                if not best and not with_props:
+                    ok_all = False
+                # 가장 큰 정사각(footprint) 도 함께 보고
+                lines.append(f'  · 최대 정사각 한 변 ≈ {largest_square(fr)} footprint')
     out = '\n'.join(lines)
     (QA / 'reach_check.txt').write_text(out + '\n')
     print(out)
     return ok_all
+
+
+def largest_square(fr):
+    """자유 칸 마스크에서 footprint 단위(가로 4px·세로 4px/K) 기준 최대 정사각 변 길이 근사"""
+    best = 0
+    h, w = fr.shape
+    dp = np.zeros((h + 1, w + 1), int)
+    # 가로 cw 칸 × 세로 ch 칸이 같은 footprint 길이가 되도록 비율 보정: 한 변 s(footprint) → 가로 s/4 칸, 세로 s*K/4 칸
+    ii = np.pad((~fr).cumsum(0).cumsum(1), ((1, 0), (1, 0)))
+    for s in range(40, 400, 8):
+        cw, ch = int(s / 4), max(1, int(s * K / 4))
+        ok = False
+        for y in range(0, h - ch, 2):
+            for x in range(0, w - cw, 2):
+                if ii[y + ch, x + cw] - ii[y, x + cw] - ii[y + ch, x] + ii[y, x] == 0:
+                    ok = True; break
+            if ok: break
+        if ok: best = s
+    return best
 
 
 def width_report(name, y_png):
