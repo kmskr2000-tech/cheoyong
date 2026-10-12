@@ -13,9 +13,10 @@ signal knelt
 signal phase_two
 
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 const CELL := Vector2i(120, 98)   # art/yokai_import.py (Drive boss-plagueking, 96px art = twice a man's height)
 const FEET_ROW := 97.0
-const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
+const MAX_HP := CT.BOSS_HP  # 정본은 combat_tuning.gd
 const ANIMS := {"idle": [0, 1, 2, 3], "cast": [4], "swipe": [5], "hurt": [6], "human": [7], "pulse": [8]}
 
 var hp := MAX_HP
@@ -138,10 +139,12 @@ func _physics_process(delta: float) -> void:
 			sprite.play("swipe")
 			if st > 1.0 / fast:
 				_clear_tells()
-				_breath()
+				var got_hit := _breath()
 				coughs += 1
 				if phase == 2 and coughs < 2:
 					_begin("cough_again")
+				elif got_hit:
+					_open(CT.BOSS_OPEN_IF_HIT)   # 못 읽고 맞았다 = 열림 없음(연타만 한 쪽은 보상받지 못한다)
 				else:
 					_open(CT.BOSS_OPEN_COUGH_P2 if phase == 2 else CT.BOSS_OPEN_COUGH)   # 읽고 피했으면 열린다
 		"cough_again":
@@ -162,10 +165,13 @@ func _physics_process(delta: float) -> void:
 			if st > 0.6:
 				_clear_tells()
 				_ring(position, 80.0, Color(0.6, 1.0, 0.5))
+				var pulse_hit := false
 				if d < 80.0 and target.has_method("hurt"):
+					var php = target.get("hp")
 					target.hurt(12, to.normalized(), true)
+					pulse_hit = php != null and target.get("hp") < php
 				close_t = 0.0
-				_open(CT.BOSS_OPEN_PULSE)   # 펄스 후 탈진
+				_open(CT.BOSS_OPEN_IF_HIT if pulse_hit else CT.BOSS_OPEN_PULSE)   # 펄스 후 탈진 — 붙어서 맞았으면 열림 없음
 		"open":
 			sprite.play("hurt")
 			if st >= open_t:
@@ -235,6 +241,7 @@ func _begin(s: String) -> void:
 func _open(sec: float) -> void:
 	_begin("open")
 	open_t = sec
+	CFX.open_mark(self, sec, true)   # 열림 단서: 발밑 금붉은 고리 + 머리 위 약점 표식 (아트팀)
 
 
 ## 받는 피해 배율: 열림 ×1.5, 안개·졸개 시전 중 ×1.25 ("시전 노출"), 평시 ×1.0
@@ -244,7 +251,7 @@ func exposure() -> float:
 			return CT.BOSS_OPEN_MULT
 		"fog", "clones":
 			return CT.BOSS_CAST_MULT
-	return 1.0
+	return CT.BOSS_IDLE_MULT
 
 
 func _clear_fog() -> void:
@@ -322,7 +329,8 @@ func _aim_cough() -> void:
 	tells.append(cone)
 
 
-func _breath() -> void:
+## 숨결을 뿜고, 플레이어가 실제로 맞았으면 true (구르기·받아넘기기로 피했으면 false)
+func _breath() -> bool:
 	for i in 26:
 		var p := Sprite2D.new()
 		p.texture = load("res://assets/fx/spark.png")
@@ -338,7 +346,10 @@ func _breath() -> void:
 		tw.chain().tween_callback(p.queue_free)
 	var to := target.global_position - global_position
 	if to.length() < 125.0 and absf(wrapf(to.angle() - aim, -PI, PI)) < 0.55 and target.has_method("hurt"):
+		var hp0 = target.get("hp")
 		target.hurt(14, to.normalized(), true)
+		return hp0 != null and target.get("hp") < hp0
+	return false
 
 
 func _mark(at: Vector2, r: float) -> Node2D:
@@ -466,6 +477,7 @@ func _defeat() -> void:
 	_clear_tells()
 	remove_from_group("enemy")
 	Game.reward_purify("plague_god", global_position, get_parent())
+	CFX.purify(get_parent(), global_position, 2.0)
 	if not Game.has_tear():
 		Game.accessories.append(Game.TEAR_NAME)
 		Game.say_toast("장신구 「%s」을 얻었다 — %s" % [Game.TEAR_NAME, Game.tear_desc()], Color(0.75, 0.95, 0.7))

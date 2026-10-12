@@ -13,6 +13,7 @@ extends CharacterBody2D
 ## (group "downed"). Only 처용가 purifies it (purify()); left alone it rises again.
 
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 
 const KINDS := {
 	"dog": {"sheet": "plague_dog", "cell": Vector2i(44, 30), "feet": 28, "hp": 30, "speed": 62.0,
@@ -100,6 +101,7 @@ const EXTRA := {
 }
 
 signal telegraph   # wind-up began (tutorial: teach the roll here)
+signal tell_lock   # 예고 진행도가 CT.TELL_CANCEL_FRAC 에 닿아 "굳음" — 이후 가벼운 타격은 끊지 못한다(아트팀 단서 훅: 점멸 가속·효과음)
 signal hit_taken
 signal collapsed   # fell into 탁기 (downed)
 signal purified
@@ -126,6 +128,7 @@ var gim_t := 4.0              # timer for periodic gimmicks
 var aux_t := 0.0              # secondary timer (eclipse, blackout, lure…)
 var aux_v := Vector2.ZERO
 var stagger_time := 0.0
+var _tell_locked := false    # 이번 예고에서 tell_lock 을 이미 내보냈는지
 var is_clone := false
 var life_t := 6.0
 var guard_dir := Vector2.DOWN
@@ -135,16 +138,19 @@ var bind_t := 0.0             # 결박부: held to a crawl
 var _bar: Node2D
 var _bar_fill: ColorRect
 var _voice: Label
+var _name_lbl: Label   # 졸개 이름표 (화면 가장자리 클램프용)
 
 
 func _ready() -> void:
 	cfg = KINDS[kind].duplicate()
+	cfg["hp"] = maxi(1, int(round(float(cfg["hp"]) * CT.ENEMY_HP_MULT)))
 	ex = EXTRA.get(kind, {})
 	if ex.has("strike"):
 		cfg["strike"] = ex["strike"]
 	hp = cfg["hp"] if not is_clone else 1
 	gim_t = randf_range(3.0, 6.0)
 	surround = randf() * TAU
+	tell_lock.connect(func(): CFX.tell_lock(self, sprite))   # 예고 굳음 단서 (아트팀)
 	add_to_group("enemy")
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
 	var col := CollisionShape2D.new()
@@ -207,8 +213,14 @@ func _make_bar() -> void:
 	nm.size = Vector2(68, 14)
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_bar.add_child(nm)
+	_name_lbl = nm
 	_bar.visible = false
 	add_child(_bar)
+
+
+func _process(_d: float) -> void:
+	if _name_lbl and _bar and _bar.visible:
+		CFX.clamp_label(_name_lbl)   # 화면 끝에서 잘리지 않게 안쪽으로 (아트팀)
 
 
 func _physics_process(delta: float) -> void:
@@ -261,13 +273,16 @@ func _physics_process(delta: float) -> void:
 			if state == "chase" and d <= _reach() and cd <= 0.0:
 				_begin_tell(to)
 		"tell":
+			if not _tell_locked and st >= float(cfg["tell"]) * CT.TELL_CANCEL_FRAC:
+				_tell_locked = true
+				tell_lock.emit()
 			if st >= cfg["tell"]:
 				state = "strike"; st = 0.0
 				sprite.play("strike")
 				_on_strike(to, d)
 		"strike":
 			v = _strike_vel(to, d)
-			if ex.get("melee", true) and d < ex.get("contact", cfg["range"] * 0.7) and target.has_method("hurt"):
+			if ex.get("melee", true) and d < ex.get("contact", cfg["range"] * CT.CONTACT_MULT) and target.has_method("hurt"):
 				target.hurt(_dmg(), to.normalized(), true)   # 근접 접촉: 받아넘기기 대상
 			if st >= cfg["strike"]:
 				_after_strike(to, d)
@@ -319,6 +334,7 @@ func _begin_tell(to: Vector2) -> void:
 	Audio.sfx("tell", -10.0)
 	state = "tell"; st = 0.0
 	lunge_dir = to.normalized()
+	_tell_locked = false
 	sprite.play("tell")
 	reveal_t = maxf(reveal_t, cfg["tell"] + cfg["strike"] + 0.3)
 	telegraph.emit()
@@ -334,6 +350,7 @@ func _interrupt() -> void:
 func _stagger(sec: float) -> void:
 	state = "stagger"; st = 0.0
 	stagger_time = sec
+	CFX.open_mark(self, sec)   # 약점 노출 단서 (아트팀)
 
 
 ## movement while closing in
@@ -622,6 +639,8 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged :=
 		_down()
 	elif state == "stagger" or quiet:
 		pass
+	elif state == "tell" and not heavy and not charged and st >= float(cfg["tell"]) * CT.TELL_CANCEL_FRAC:
+		pass   # 굳은 예고(앞 절반 이후): 가벼운 타격은 끊지 못한다 — 강 베기·3타째·받아넘기기 반격(heavy/charged)만 끊음
 	elif state != "strike" or heavy:
 		state = "hurt"; st = 0.0
 
@@ -664,6 +683,7 @@ func _down() -> void:
 	sprite.rotation = 0.25 if kind == "dog" else 0.0
 	sprite.scale = Vector2(1.0, 0.8)
 	collapsed.emit()
+	CFX.downed_sigil(self)   # 쓰러진 요괴 발밑: 노래를 기다리는 보랏빛 문양 (아트팀)
 	miasma = CPUParticles2D.new()
 	miasma.amount = 18
 	miasma.lifetime = 1.6
@@ -681,6 +701,7 @@ func _down() -> void:
 
 
 func _rise() -> void:
+	CFX.clear_sigil(self)
 	remove_from_group("downed")
 	add_to_group("enemy")
 	miasma.queue_free()
@@ -706,6 +727,9 @@ func _purify() -> void:
 	remove_from_group("downed")
 	purified.emit()
 	Audio.sfx("purify", -4.0, 0.03)
+	CFX.clear_sigil(self)
+	if not is_clone:
+		CFX.purify(get_parent(), global_position)   # 연꽃이 피고 맑은 넋이 오른다 (아트팀)
 	if not is_clone:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
 		var lv: Node = get_tree().current_scene
 		var r := Game.reward_purify(kind, global_position, get_parent())

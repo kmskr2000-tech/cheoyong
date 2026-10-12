@@ -741,10 +741,22 @@ func _atmosphere() -> void:
 	pl.texture = light_tex
 	pl.color = Color(0.6, 0.7, 0.95)
 	pl.energy = 0.55
-	pl.texture_scale = 0.55
+	var amb: Color = cm.color
+	var dark_k := clampf((0.42 - (amb.r * 0.3 + amb.g * 0.59 + amb.b * 0.11)) / 0.16, 0.0, 1.0)   # 어두운 맵(폐가·보스전 등)일수록 1
+	pl.energy += 1.5 * dark_k   # 처용 가독성: 어두운 맵에서만 외곽 빛을 약하게 키운다 (아트팀)
+	pl.texture_scale = 0.55 + 0.3 * dark_k
 	pl.position = Vector2(0, -16)
 	pl.height = 30.0
 	$Player.add_child(pl)
+	if dark_k > 0.0:   # 어두운 맵: 발밑 따뜻한 바닥 림라이트로 처용 실루엣을 바닥에서 분리 (아트팀)
+		var rim := PointLight2D.new()
+		rim.texture = light_tex
+		rim.color = Color(1.0, 0.8, 0.55)
+		rim.energy = 1.4 * dark_k
+		rim.texture_scale = 0.4
+		rim.position = Vector2(0, -4)
+		rim.height = 12.0
+		$Player.add_child(rim)
 	# fog over the ground, lit by the lanterns it drifts through
 	var fog := ColorRect.new()
 	var w: float = meta["size"][0]
