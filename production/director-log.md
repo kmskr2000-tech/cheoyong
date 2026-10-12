@@ -104,6 +104,12 @@
 - [지시] 기획팀-전투밸런스점검 — 하네스 실측으로 사망 목표(중앙 3회·p90 ≤7·보스 1.8회) 검증, 지배 전략 감사, combat_tuning.gd 튜닝안과 재미 요소 제안을 design/gdd/combat-balance-report.md로.
 - [지시] QA팀-유저플레이테스트 — 개운포~경주 외에 폐가·보스·엔딩·이어하기 소감과 B01~B03 재검증을 병합 빌드에서 계속(대기 말고 진행).
 
+### 2026-10-12 21:10 배포 라운드
+- [승인·배포] 프로그래밍팀-통합배포 — 합친 브랜치 prog/bugfix2(+후속 2f8d53b, 로컬), asset/hero-detail, asset/terrain-collision, prog/combat-strategy. 라이브 20261012210009. 검증: art_walk 6/6, combat_strategy 11/11, smoke 7/7(boss 560초), save_check 44, regress_bugfix2·dialog_queue, chapter1_playthrough 6/6(corrupt_save 해소). 충돌 해결: beach는 새 지형 좌표 채택+B02 walls 제거(새 충돌맵에서 틈 소멸), harness는 CS-12 채택. 통합 중 발견·수정: CS-12 부활 지점이 새 봉쇄문 바깥(535,192)에 있던 것을 anchors.boss_respawn(556,192)로 이동, 하네스 각성 위치 562로 조정. 위험: 배포 중 HTTP 408로 gh-pages 일시 소실 후 재배포 복구, /tmp 부족 → TMPDIR 홈으로 변경. prog/bugfix2 후속 2f8d53b는 origin 미push.
+- [승인] 프로그래밍팀-버그수정 — corrupt_save 해소(playthrough 6/6)가 라이브에 반영됨.
+- [지시] QA팀-유저플레이테스트 — 라이브 빌드로 새 전투 포함 구역별 플레이, 전투 소감(전략성·정답 단일 여부·난이도·터치 부담) 상세 기록.
+- [후속 예정] 기획팀-전투밸런스점검 보고서(탭 연타 경직 락 지배 전략 의심) 수령 후 프로그래밍팀에 combat_tuning.gd 수치 적용 지시.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
