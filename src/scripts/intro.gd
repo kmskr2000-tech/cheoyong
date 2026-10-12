@@ -104,7 +104,7 @@ func _sprite(path: String, at: Vector2, region := Rect2()) -> Sprite2D:
 	else:
 		s.texture = load(path)
 		if s.texture.get_width() >= 96:   # NPC sheets: front, then 3/4 stances — stand turned
-			s.hframes = s.texture.get_width() / 32
+			s.hframes = s.texture.get_width() / (s.texture.get_height() * 2 / 3)
 			s.frame = 1
 	s.position = at
 	s.offset = Vector2(0, -20)
@@ -210,12 +210,8 @@ func _shot_hall() -> void:
 	if _done: return
 	# 용패: a single glowing scale passes from the king's hand into his
 	var scale_ := Sprite2D.new()
-	var img := Image.create(5, 7, false, Image.FORMAT_RGBA8)
-	for y in 7:
-		for x in 5:
-			if Vector2((x - 2) / 2.5, (y - 3) / 3.5).length() < 1.0:
-				img.set_pixel(x, y, Color(0.75, 0.95, 1.0) if y < 3 else Color(0.35, 0.7, 0.85))
-	scale_.texture = ImageTexture.create_from_image(img)
+	scale_.texture = load("res://assets/ui/icons/item_dragonseal.png")   # 용인: the dragon's teardrop seal
+	scale_.scale = Vector2(0.7, 0.7)
 	scale_.position = king.position + Vector2(-8, -10)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
