@@ -112,7 +112,7 @@ func _pick_flute(level: Node) -> void:
 	Game.say_toast("대나무 피리를 주웠다.")
 	await level.get_tree().create_timer(1.6).timeout
 	# the creature comes up into the village; the fishers scatter
-	var yokai: Enemy = level.spawn_enemy("sea", Vector2(334, 90))
+	var yokai: Enemy = level.spawn_enemy("sea", level.def["anchors"]["yokai"])
 	yokai.name = "Gaetgwi"
 	for id in ["fisherA", "fisherB", "fisherC"]:
 		var n: Npc = level.npc(id)
@@ -130,17 +130,17 @@ func _pick_flute(level: Node) -> void:
 	tw.tween_property(cam, "offset", Vector2.ZERO, 0.7).set_trans(Tween.TRANS_SINE)
 	await tw.finished
 	p.locked = false
-	level.add_trigger(Rect2(180, 60, 300, 90), "fight")
+	level.add_trigger(level.def["anchors"]["fight"], "fight")
 
 
 func _test_fight(level: Node) -> void:
 	Game.set_flag("flute")
 	level.remove_interact("flute")
-	level.spawn_enemy("sea", Vector2(334, 90)).name = "Gaetgwi"
+	level.spawn_enemy("sea", level.def["anchors"]["yokai"]).name = "Gaetgwi"
 	for id in ["fisherA", "fisherB", "fisherC"]:
 		level.npc(id).set_present(true)
 		level.npc(id).talkable = false
-	level.get_node("Player").position = level.lift(Vector2(334, 150))
+	level.get_node("Player").position = level.lift(level.def["anchors"]["fight_player"])
 	await level.get_tree().process_frame
 	_fight(level)
 
@@ -229,7 +229,7 @@ func _gyeongju_enter(level: Node) -> void:
 		if not Game.flag("nanyeong_fallen") or Game.flag("rescued"):
 			var nan: Npc = level.npc("nanyeong")   # 이제 처용의 아내: 집 앞에 있다
 			nan.set_present(true)
-			nan.position = level.lift(Vector2(196, 166))
+			nan.position = level.lift(level.def["anchors"]["home_nanyeong"])
 		if Game.flag("rescued") and not Game.flag("nanyeong_woke"):
 			_nanyeong_wakes(level)
 		elif not Game.flag("summoned"):
@@ -237,7 +237,7 @@ func _gyeongju_enter(level: Node) -> void:
 		else:
 			_open_road_to_gwana(level)
 		if Game.flag("briefed") and not Game.flag("rescued"):
-			level._exit([Rect2(0, 150, 6, 70), "pyega1", "start"])
+			level._exit(level.def["gates"]["pyega"])
 
 
 ## SC1-08: 약방 앞. 난영 첫 등장.
@@ -369,7 +369,7 @@ func _night_summons(level: Node) -> void:
 	])
 	p.locked = true
 	Game.set_flag("summoned")
-	await off.walk_to(level.lift(Vector2(630, 186)), 70.0)
+	await off.walk_to(level.lift(level.def["anchors"]["gwana_gate"]), 70.0)
 	off.set_present(false)
 	p.locked = false
 	_open_road_to_gwana(level)
@@ -377,7 +377,7 @@ func _night_summons(level: Node) -> void:
 
 func _open_road_to_gwana(level: Node) -> void:
 	if Levels.DATA.has("gwana"):
-		level._exit([Rect2(632, 150, 8, 70), "gwana", "start"])
+		level._exit(level.def["gates"]["gwana"])
 
 
 # ================================================================ 1장 1-4 역병 조사와 폐가 (SC1-12~15)
@@ -547,7 +547,7 @@ func _nanyeong_wakes(level: Node) -> void:
 # ================================================================ 1장 1-6 임명과 작별 (SC1-21~25)
 func _gyeongju_after(level: Node) -> void:
 	var nan: Npc = level.npc("nanyeong")
-	nan.position = level.lift(Vector2(196, 166))   # 이제 처용의 집에 산다
+	nan.position = level.lift(level.def["anchors"]["home_nanyeong"])   # 이제 처용의 집에 산다
 	level.npc("child").set_present(true)
 	if Game.flag("appointed"):
 		for id in DAY_PEOPLE + ["child", "villagerC"]:
@@ -653,16 +653,16 @@ func objective(level: Node):
 	var f := func(k): return Game.flag(k)
 	match Game.level_id:
 		"beach":
-			if not f.call("flute"): return Vector2(184, 270)
-			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return Vector2(334, 110)
+			if not f.call("flute"): return Vector2(205, 427)
+			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return level.def["anchors"]["yokai"]
 		"gyeongju":
 			if f.call("appointed"): return null
 			if f.call("rumor"): return null if f.call("king_call") else Vector2(96, 130)
-			if not f.call("met_nanyeong"): return Vector2(456, 214)
-			if not f.call("sang_child"): return Vector2(330, 350)
-			if not f.call("night"): return Vector2(96, 130)
-			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 185)
-			if f.call("summoned") and not f.call("briefed"): return Vector2(636, 185)
+			if not f.call("met_nanyeong"): return Vector2(236, 309)
+			if not f.call("sang_child"): return Vector2(240, 376)
+			if not f.call("night"): return Vector2(130, 237)
+			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 379)
+			if f.call("summoned") and not f.call("briefed"): return Vector2(562, 27)
 		"gwana":
 			return Vector2(320, 196) if not f.call("briefed") else Vector2(4, 235)
 		"pyega1":
