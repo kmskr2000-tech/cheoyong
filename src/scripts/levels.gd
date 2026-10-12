@@ -184,7 +184,7 @@ const DATA := {
 		"exits": [],
 		"gates": {"path": [Rect2(690, 2, 32, 14), "jiri_path", "fromHwagae"]},
 		# raid: SC2-02 습격 무대(트리거) · raiders: 난입한 외눈박이 자리 · exit: 열린 출구 안쪽(용패 길잡이)
-		"anchors": {"raid": Rect2(280, 290, 170, 70), "raiders": [Vector2(330, 320), Vector2(390, 300)], "exit": Vector2(706, 9)},
+		"anchors": {"raid": Rect2(380, 285, 70, 30), "raiders": [Vector2(330, 320), Vector2(390, 300)], "exit": Vector2(706, 9)},
 	},
 	# 지리산 산길 — 산군·불도깨비·장승(SC2-15)·산신각(SC2-16). 이번 마일스톤은 서쪽 출구(화개)만 있고, 북(버려진 마을)·동(소굴)은 다음 마일스톤.
 	# 그림에 거송·숲·산신각·제상이 이미 있어 pine·seonang·산신각 소품은 얹지 않는다. 길목(x538~625) 폭 약 64.
