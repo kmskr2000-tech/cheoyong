@@ -244,6 +244,8 @@ func _main() -> void:
 		"corrupt_save": await sc_corrupt_save()
 		"death": await sc_death()
 		"boss_retry": await sc_boss_retry()
+		# ---- 전투 전략(combat-strategy) 시나리오: tests/combat_strategy.sh 로 실행 (기본 chapter1 목록과 분리)
+		"cs_parry": await sc_cs_parry()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -556,4 +558,166 @@ func sc_boss_retry() -> void:
 	await tick(2)
 	await sing_now()
 	await until(func(): return G.flag("boss_done") == 1, "격파 플래그", 600)
+	await done()
+
+
+# ================================================================ 전투 전략 (design/gdd/combat-strategy.md)
+## 타이밍 시나리오는 실시간(1배속)으로 돈다: 받아넘기기 창 0.15초 ≈ 9프레임이라 4배속이면 2프레임으로 뭉개진다.
+func cs_setup(lv_note := "") -> void:
+	Engine.time_scale = 1.0
+	await boot_level()
+	await free_player()
+	cs_purge()
+	G.skills = []
+	var p := player()
+	p.hp = p.max_hp
+	p.ki = p.max_ki
+	p.shinmyeong = 0.0
+	p.hurt_t = 0.0
+	p.gentle_hits = 0
+
+
+## 방의 요괴·쓰러진 것을 전부 치운다 (시나리오가 직접 소환한 것만 남기려고)
+func cs_purge() -> void:
+	for g in ["enemy", "downed"]:
+		for e in get_nodes_in_group(g):
+			if e.get("kind") != null or e.get("phase") != null:   # Enemy / PlagueGod (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
+				e.remove_from_group("enemy")
+				e.remove_from_group("downed")
+				e.queue_free()
+
+
+func cs_spawn(kind: String, at: Vector2, state := ""):
+	var e = load("res://scripts/enemy.gd").new()
+	e.kind = kind
+	e.position = at
+	lvl().add_child(e)
+	if state != "":
+		e.state = state
+	return e
+
+
+func press(action: String, frames := 1) -> void:
+	Input.action_press(action)
+	await tick(frames)
+	Input.action_release(action)
+
+
+## 한 프레임씩 진행하며 조건이 될 때까지 (최대 max_frames)
+func wait_cond(cond: Callable, label: String, max_frames := 600) -> void:
+	await until(cond, label, max_frames)
+
+
+func cs_idle() -> void:
+	var p := player()
+	await until(func(): return p.state == "move" and p._roll_lock_t <= 0.0 and p._parry_cd <= 0.0 and p.hurt_t <= 0.0 and Engine.time_scale >= 0.99, "구르기 끝·잠금·쿨다운 해제", 600)
+
+
+func sc_cs_parry() -> void:
+	step("CS-01 준비 — 요괴 없는 폐가 마당")
+	await cs_setup()
+	var p := player()
+	await tp(p.spawn / 1.0 if false else lvl().def["spawns"]["start"])
+
+	step("스킬 없이: 구르기 시작 0.15초 안 근접 접촉 → 받아넘기기 (신명 +15·소리 +8·다음 타 ×2)")
+	p.ki = 50.0
+	var sin0: float = p.shinmyeong
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기 시작", 30)
+	await until(func(): return p.t >= 0.05, "구르기 0.05초", 60)
+	var hp0: float = p.hp
+	p.hurt(10, Vector2.LEFT, true)
+	await must(p.parry_bonus, "받아넘기기 발동(스킬 batanum 없이)")
+	await must(absf(p.shinmyeong - (sin0 + 15.0)) < 0.01, "신명 +15")
+	await must(absf(p.ki - 58.0) < 1.5, "소리 +8 (재생 오차 허용)")
+	await must(p.hp == hp0, "피해 없음")
+	await cs_idle()
+	p.parry_bonus = false
+
+	step("0.15초 이후(0.17초) 접촉 → 피해만 무시, 보상 없음")
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.17, "구르기 0.17초", 90)
+	hp0 = p.hp
+	p.hurt(10, Vector2.LEFT, true)
+	await must(not p.parry_bonus and p.shinmyeong == 0.0, "보상 없음(창 0.15 밖)")
+	await must(p.hp == hp0, "무적 중이라 피해도 없음")
+	await cs_idle()
+
+	step("원거리·장판·독기(melee=false)는 구르기 무적 중에도 받아넘기기가 뜨지 않는다")
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.04, "구르기 0.04초", 60)
+	p.hurt(5, Vector2.ZERO, false, "miasma")
+	p.hurt(8, Vector2.LEFT)
+	await must(not p.parry_bonus and p.shinmyeong == 0.0, "melee=false → 받아넘기기 없음")
+	await cs_idle()
+
+	step("스킬 batanum: 창이 0.22초, 성공 시 정면 80px 요괴가 밀쳐지고 예고가 끊긴다")
+	G.skills = ["batanum"]
+	p.shinmyeong = 0.0
+	p.facing = "right"
+	p.position = lvl().lift(lvl().def["spawns"]["start"])
+	var foe = cs_spawn("ghoul", p.position + Vector2(40, 0), "tell")
+	foe.st = 0.0
+	await tick(1)
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.20, "구르기 0.20초 (기본 창 밖·스킬 창 안)", 90)
+	p.hurt(10, Vector2.LEFT, true)
+	await must(p.parry_bonus, "되받아치기 창 0.22초 안에서 발동")
+	await tick(2)
+	await must(foe.state == "hurt", "정면 요괴의 예고가 끊겼다(state=hurt)")
+	await must(foe.hp == foe.cfg["hp"], "밀쳐내기는 피해 0")
+	G.skills = []
+	await cs_idle()
+	foe.queue_free()
+	p.parry_bonus = false
+
+	step("실제 들개 접촉 타격(enemy.gd strike 분기)이 melee=true 로 받아넘기기를 일으킨다")
+	p.position = lvl().lift(lvl().def["spawns"]["start"])
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기 시작", 30)
+	var dog = cs_spawn("dog", p.position + Vector2(14, 0))
+	await tick(1)
+	dog.state = "strike"
+	dog.st = 0.0
+	dog.lunge_dir = Vector2.LEFT
+	await until(func(): return p.parry_bonus or dog.state != "strike", "들개 타격 판정", 30)
+	await must(p.parry_bonus and absf(p.shinmyeong - 15.0) < 0.01, "들개 돌진 접촉 → 받아넘기기 (신명 +15)")
+	p.parry_bonus = false
+	await cs_idle()
+	dog.queue_free()
+
+	step("구르기 잠금: 연속 구르기의 두 번째는 잠금 0.25초 뒤에 시작된다")
+	var starts: Array[int] = []
+	var f0 := frame
+	await press("roll")
+	await until(func(): return p.state == "roll", "1번째 구르기", 30)
+	await until(func(): return p.state == "move", "1번째 구르기 끝", 60)
+	var end_f := frame
+	await press("roll")   # 잠금 시작 직후 입력(남은 0.25초 > 선입력 0.10초) → 버려진다
+	await tick(30)
+	await must(p.state == "move", "잠금 중 이른 입력은 버려진다(구르기 안 함)")
+	await cs_idle()
+
+	step("잠금 끝 0.10초 안의 입력은 선입력으로 저장돼 잠금 해제 즉시 실행")
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기", 30)
+	await until(func(): return p.state == "move", "구르기 끝", 60)
+	await until(func(): return p._roll_lock_t > 0.0 and p._roll_lock_t <= 0.08, "잠금 끝 0.08초 전", 60)
+	await press("roll")
+	await must(p._roll_queued, "선입력 저장")
+	await until(func(): return p.state == "roll", "잠금 해제 즉시 2번째 구르기 시작", 30)
+	await must(p._roll_lock_t == 0.0, "잠금이 풀린 시점")
+	await cs_idle()
+
+	step("학의 질주(hak): 구르기 중 두 번째 입력은 잠금과 무관하게 질주")
+	G.skills = ["hak"]
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t > 0.12, "구르기 0.12초", 60)
+	await press("roll")
+	await until(func(): return p._dash, "질주(_dash) 시작", 20)
+	G.skills = []
+	await cs_idle()
 	await done()

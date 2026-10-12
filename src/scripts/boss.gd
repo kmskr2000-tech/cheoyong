@@ -154,7 +154,7 @@ func _physics_process(delta: float) -> void:
 				_clear_tells()
 				_ring(position, 80.0, Color(0.6, 1.0, 0.5))
 				if d < 80.0 and target.has_method("hurt"):
-					target.hurt(12, to.normalized())
+					target.hurt(12, to.normalized(), true)
 				close_t = 0.0
 				_begin("idle")
 		"hurt":
@@ -236,7 +236,7 @@ func _breath() -> void:
 		tw.chain().tween_callback(p.queue_free)
 	var to := target.global_position - global_position
 	if to.length() < 125.0 and absf(wrapf(to.angle() - aim, -PI, PI)) < 0.55 and target.has_method("hurt"):
-		target.hurt(14, to.normalized())
+		target.hurt(14, to.normalized(), true)
 
 
 func _mark(at: Vector2, r: float) -> Node2D:
@@ -273,7 +273,7 @@ func _poison(at: Vector2) -> void:
 	t.autostart = true
 	t.timeout.connect(func():
 		if is_instance_valid(target) and target.global_position.distance_to(z.global_position) < 22.0 and target.has_method("hurt"):
-			target.hurt(Game.miasma_dmg(5), Vector2.ZERO))
+			target.hurt(Game.miasma_dmg(5), Vector2.ZERO, false, "miasma"))
 	z.add_child(t)
 
 

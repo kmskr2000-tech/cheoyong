@@ -32,6 +32,7 @@ const COMBO := [
 ]
 const ROLL_TIME := 0.32
 const ROLL_SPEED := 200.0
+const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 var arm: Sprite2D
@@ -65,7 +66,6 @@ var haste_t := 0.0              # 연풍
 var _last_h := 1.0              # last horizontal direction (the 3/4 idle faces it)
 var shinmyeong := 0.0                  # 신명: fills with landed blows and 받아넘기기; full → 처용무
 const SIN_PER_HIT := 2.5
-const SIN_PER_PARRY := 15.0
 var parry_bonus := false        # 받아넘기기: the next blow lands double
 var parry_chain := 0
 var parry_chain_t := 0.0
@@ -79,6 +79,9 @@ var _ult_tick := 0.0
 var _burst_ready := true        # 신명폭발: once per filling
 var _last_roll_end := -10.0
 var _dash := false     # 학의 질주: a second roll right after the first
+var _roll_lock_t := 0.0       # CS-01: 구르기 종료 후 재구르기 잠금 (delta 로 감소)
+var _roll_queued := false     # CS-01: 잠금 끝 ROLL_BUFFER 전부터 저장된 선입력
+var _charge_c := 0.0          # CS-02: 강 베기 충전 시간
 const ULT_TIME := 6.0
 const TAL_COST := {"fire": 25.0, "bind": 30.0, "guard": 20.0, "wave": 20.0}
 const TAL_NAME := {"fire": "화염부", "bind": "결박부", "guard": "수호부", "wave": "파동부"}
@@ -217,10 +220,12 @@ func _physics_process(delta: float) -> void:
 		dance()
 	if not locked and Input.is_action_just_pressed("song") and state == "move" and Game.flag("flute"):
 		_start_song()
-	if not locked and Input.is_action_just_pressed("roll") and state != "roll":
-		_start_roll(dir, Game.has_skill("hak") and t_now() - _last_roll_end < 0.3)
-	elif not locked and Input.is_action_just_pressed("roll") and Game.has_skill("hak") and not _dash and t > 0.1:
-		_start_roll(dir, true)   # 학의 질주: a second tap mid-roll
+	_roll_lock_t = maxf(0.0, _roll_lock_t - delta)
+	if not locked and Input.is_action_just_pressed("roll"):
+		_roll_input(dir)
+	elif not locked and _roll_queued and _roll_lock_t <= 0.0:
+		_roll_queued = false
+		_roll_input(dir)   # 선입력이 잠금이 끝나자마자 실행된다
 	elif not locked and Input.is_action_just_pressed("attack"):
 		if state == "attack":
 			if not queued and Game.has_skill("jangdan") and t >= _swing_time() * 0.55:
@@ -237,6 +242,23 @@ func _physics_process(delta: float) -> void:
 		"attack": _attack(delta)
 		"roll": _roll(delta)
 		"song": _song(delta)
+
+
+## CS-01: 구르기 입력. 구르기 잠금(ROLL_LOCK) 중이면 끝 ROLL_BUFFER 안의 입력만 선입력으로 저장하고 그보다 이른 입력은 버린다.
+## 학의 질주(hak)의 연속 구르기는 잠금을 무시한다.
+func _roll_input(dir: Vector2) -> void:
+	if state == "roll":
+		if Game.has_skill("hak") and not _dash and t > 0.1:
+			_start_roll(dir, true)   # 학의 질주: a second tap mid-roll
+		return
+	var dash := Game.has_skill("hak") and t_now() - _last_roll_end < 0.3
+	if state == "charge" and _charge_c >= CT.CHARGE_MIN:
+		return   # CS-02: 힘을 모은 몸은 뜻대로 안 움직인다
+	if dash or _roll_lock_t <= 0.0:
+		_roll_queued = false
+		_start_roll(dir, dash)
+	else:
+		_roll_queued = _roll_lock_t <= CT.ROLL_BUFFER
 
 
 func _move(dir: Vector2) -> void:
@@ -412,11 +434,12 @@ var hurt_t := 0.0
 var hurt_pose_t := 0.0
 
 
-func hurt(dmg: int, dir: Vector2) -> void:
+## melee: 근접 접촉 공격(받아넘기기 대상). kind: "miasma" = 독기 틱(수호부가 충전 소모 없이 무시).
+func hurt(dmg: int, dir: Vector2, melee := false, kind := "") -> void:
 	if ult_t > 0.0 or state == "dead":
 		return
 	if invuln:
-		if state == "roll" and t <= 0.25 and Game.has_skill("batanum"):
+		if state == "roll" and melee and t <= _parry_window():
 			_parry(dir)
 		return
 	if hurt_t > 0.0:
@@ -663,6 +686,13 @@ func t_now() -> float:
 	return Time.get_ticks_msec() / 1000.0
 
 
+## 햅틱 (CS-08): 지원 기기만, 설정 "haptic" 이 false 면 끈다
+func _haptic(ms := CT.HAPTIC_MS) -> void:
+	if Game.setting("haptic") == false:
+		return
+	Input.vibrate_handheld(ms)
+
+
 func song_range() -> float:
 	return SONG_RANGE * (2.0 if Game.has_skill("gyeopnorae") else 1.0)   # 겹노래
 
@@ -787,12 +817,29 @@ func add_sin(n: float) -> void:
 
 
 ## 받아넘기기: rolled through a blow at the last moment — time slows, the next blow lands double
+func _parry_window() -> float:
+	return CT.PARRY_WINDOW_SKILL if Game.has_skill("batanum") else CT.PARRY_WINDOW
+
+
 func _parry(_dir: Vector2) -> void:
 	if _parry_cd > 0.0:
 		return
-	_parry_cd = 0.3
+	_parry_cd = CT.PARRY_CD
 	parry_bonus = true
-	add_sin(SIN_PER_PARRY)
+	add_sin(CT.SIN_PER_PARRY)
+	ki = minf(max_ki, ki + CT.KI_PER_PARRY)   # CS-01: 받아넘기기는 소리도 돌려준다
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+	_haptic()
+	if Game.has_skill("batanum"):   # 되받아치기: 정면의 적을 밀쳐 낸다 (피해 0, 예고·타격 중단)
+		var fwd := roll_dir if roll_dir != Vector2.ZERO else Vector2.from_angle(FACE_ANGLE[facing])
+		for e in get_tree().get_nodes_in_group("enemy"):
+			if e is PlagueGod or not (e is Node2D):
+				continue
+			var to: Vector2 = e.global_position - global_position
+			if to.length() < CT.PARRY_SHOVE_RANGE and to.normalized().dot(fwd) > 0.0 and e.has_method("take_hit"):
+				e.take_hit(0, to.normalized(), true, true)
+				if e.has_method("_interrupt"):
+					e._interrupt()
 	parry_chain += 1
 	parry_chain_t = 10.0
 	Audio.sfx("block", 0.0, 0.0)
@@ -890,6 +937,7 @@ func _roll(delta: float) -> void:
 		if Game.has_skill("yeonpung"):  # 연풍
 			haste_t = 2.0
 		_last_roll_end = -10.0 if _dash else t_now()
+		_roll_lock_t = CT.ROLL_LOCK
 		_dash = false
 		sprite.rotation = 0.0
 		sprite.scale = Vector2.ONE

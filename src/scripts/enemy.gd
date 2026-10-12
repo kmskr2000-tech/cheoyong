@@ -266,7 +266,7 @@ func _physics_process(delta: float) -> void:
 		"strike":
 			v = _strike_vel(to, d)
 			if ex.get("melee", true) and d < ex.get("contact", cfg["range"] * 0.7) and target.has_method("hurt"):
-				target.hurt(_dmg(), to.normalized())
+				target.hurt(_dmg(), to.normalized(), true)   # 근접 접촉: 받아넘기기 대상
 			if st >= cfg["strike"]:
 				_after_strike(to, d)
 		"stagger":   # vulnerable after a charge, a slam or an eclipse
@@ -320,6 +320,13 @@ func _begin_tell(to: Vector2) -> void:
 	sprite.play("tell")
 	reveal_t = maxf(reveal_t, cfg["tell"] + cfg["strike"] + 0.3)
 	telegraph.emit()
+
+
+## 예고·타격 중단 (파동부·강 베기·되받아치기 공용, CS-04)
+func _interrupt() -> void:
+	if state in ["tell", "strike", "vanish", "lure"]:
+		state = "hurt"; st = 0.0
+		cd = 0.6
 
 
 func _stagger(sec: float) -> void:
@@ -454,7 +461,7 @@ func _on_strike(to: Vector2, d: float) -> void:
 			aux_t = 1.4   # blackout
 		"jeoseung_guard":
 			if d < 62.0 and to.normalized().dot(lunge_dir) > 0.75 and target.has_method("hurt"):
-				target.hurt(_dmg(), lunge_dir)
+				target.hurt(_dmg(), lunge_dir, true)   # 찌르기: 근접 접촉
 
 
 func _strike_vel(to: Vector2, d: float) -> Vector2:
