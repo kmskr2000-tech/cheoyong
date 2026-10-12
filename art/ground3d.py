@@ -5,7 +5,7 @@ S/T stone stairs). Columns are drawn back to front (painter's algorithm): each c
 on screen row y-h and its front face fills the rows below it, so every tier shows a lit top plane and a
 shaded cliff face — masonry (석축) for the terrace, rough strata for natural ridges and pond banks.
 Top faces reuse the hand-dotted ground textures of tiles.py; lighting shifts the ramp index, so the
-palette stays pixel-art. Outputs (godot/assets/levels/): <id>.png, <id>_n.png, <id>_water.png and
+palette stays pixel-art. Outputs (src/assets/levels/): <id>.png, <id>_n.png, <id>_water.png and
 <id>.json (screen offset, tier size, height rows, collision rectangles in screen space).
 """
 import importlib.util, json, pathlib
@@ -13,7 +13,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).parent
-OUT = ROOT.parent / 'godot' / 'assets' / 'levels'
+OUT = ROOT.parent / 'src' / 'assets' / 'levels'
 spec = importlib.util.spec_from_file_location('tiles', ROOT / 'tiles.py')
 tiles = importlib.util.module_from_spec(spec); spec.loader.exec_module(tiles)
 

@@ -1,5 +1,7 @@
 # 신 처용가 — 제1장 「처용가」
 
+> **구조 변경 (2026-10-12, ADR-001)**: 옛 웹판(JS Canvas)은 `legacy-web/`로 옮겼다. 현재 개발 줄기는 Godot이며 코드 루트는 `src/`(`project.godot`)다. 아래 "실행·조작·진행·구조·테스트"는 **옛 웹판(`legacy-web/`) 기준**이다. Godot판 실행·검증은 `CLAUDE.md`의 "웹 빌드"·"검증"을 따른다.
+
 한국 신화 기반 도트 탑다운 액션 RPG. 동해 용왕의 아들 처용이 경주 변두리의 역병을 쫓아 폐가의 역신과 맞선다.
 본 게임은 삼국유사의 처용 설화를 재해석한 픽션입니다.
 
@@ -7,7 +9,7 @@
 빌드 과정이 없다. 정적 파일만 서빙하면 된다 (ES 모듈이라 `file://`로는 열리지 않음).
 
 ```bash
-cd cheoyong
+cd legacy-web
 python3 -m http.server 8000
 # 브라우저에서 http://localhost:8000/
 ```
@@ -61,14 +63,14 @@ URL에 `?touch=1`을 붙이면 강제로 켜고, `?touch=0`을 붙이면 강제�
 세이브: 브라우저 localStorage (`cheoyong.ch1.save`). 마을 진입·휴식, 폐가 입구에서 자동 저장. 타이틀의 "이어하기"로 마지막 체크포인트부터.
 
 ## 구조
-- `src/main.js` 루프·씬·세이브·디버그 훅
-- `src/world.js` 레벨(타일·충돌·카메라). 월드는 480×270 오프스크린 캔버스에 그린 뒤 2배 업스케일
-- `src/post.js` HD-2D 연출: 컬러 라이트맵·동적 광원·블룸·틸트시프트·달빛 줄기·전경 패럴랙스·색보정·비네팅·환경 파티클·림 라이트·부드러운 그림자
-- `src/entities.js` 처용·적·역신·부적 결계·이펙트
-- `src/story.js` 컷신·대사·의뢰·상점·보스 연출·엔딩
-- `src/maps.js` 맵 생성 (고정 시드)
-- `src/gfx.js` 도트 스프라이트·타일·소품 (전부 코드로 그림, 외부 에셋 없음)
-- `src/ui.js` HUD·대화창·메뉴 / `src/audio.js` WebAudio 합성 효과음 / `src/input.js` 키 입력 / `src/state.js` 전역 상태·밸런스 수치
+- `legacy-web/src/main.js` 루프·씬·세이브·디버그 훅
+- `legacy-web/src/world.js` 레벨(타일·충돌·카메라). 월드는 480×270 오프스크린 캔버스에 그린 뒤 2배 업스케일
+- `legacy-web/src/post.js` HD-2D 연출: 컬러 라이트맵·동적 광원·블룸·틸트시프트·달빛 줄기·전경 패럴랙스·색보정·비네팅·환경 파티클·림 라이트·부드러운 그림자
+- `legacy-web/src/entities.js` 처용·적·역신·부적 결계·이펙트
+- `legacy-web/src/story.js` 컷신·대사·의뢰·상점·보스 연출·엔딩
+- `legacy-web/src/maps.js` 맵 생성 (고정 시드)
+- `legacy-web/src/gfx.js` 도트 스프라이트·타일·소품 (전부 코드로 그림, 외부 에셋 없음)
+- `legacy-web/src/ui.js` HUD·대화창·메뉴 / `legacy-web/src/audio.js` WebAudio 합성 효과음 / `legacy-web/src/input.js` 키 입력 / `legacy-web/src/state.js` 전역 상태·밸런스 수치
 
 ## 테스트
 `../tests/` 의 Playwright 스크립트가 `?debug=1` 모드로 실제 키 입력을 보내 플레이한다.

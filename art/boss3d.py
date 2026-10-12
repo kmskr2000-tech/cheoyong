@@ -5,7 +5,7 @@ a tall rotting bell of a robe whose hem dissolves into nothing, long sleeves end
 sores weeping on the cloth. Modelled at a man's scale and rendered x3.1 (~136px against 처용's 44),
 in the same muted palette and sel-out outline. The disguise frame ('human') is a pale scholar at
 a man's size in the same cell, so the reveal reads as him swelling up.
-Writes godot/assets/sprites/plague_god.png: idle0..3 (float), cast, swipe, hurt, human.
+Writes src/assets/sprites/plague_god.png: idle0..3 (float), cast, swipe, hurt, human.
 """
 import math, pathlib, sys
 import numpy as np

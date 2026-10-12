@@ -1,5 +1,5 @@
 {
- "out": "godot/assets/levels/pyega1.png",
+ "out": "src/assets/levels/pyega1.png",
  "kind": "지형",
  "made": "art/ground3d.py"
 }

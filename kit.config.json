@@ -1,7 +1,7 @@
 {
   "board": {
     "gen": "art/_gen",
-    "assets": "godot/assets",
+    "assets": "src/assets",
     "flow": [
       { "name": "타이틀·인트로", "about": "「떠나는 자」 — 바닷속에서 백사장까지", "sections": ["1"],
         "assets": ["title_bg", "intro_*", "npc_dragonking", "npc_brother*", "music_title"], "image": "art/out/board/stage1.png" },

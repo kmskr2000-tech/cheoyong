@@ -1,5 +1,5 @@
 {
- "out": "godot/assets/props/geumjul.png",
+ "out": "src/assets/props/geumjul.png",
  "kind": "소품",
  "made": "art/vox.py · art/props.py"
 }

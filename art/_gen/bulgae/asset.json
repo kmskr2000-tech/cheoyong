@@ -1,5 +1,5 @@
 {
- "out": "godot/assets/sprites/bulgae.png",
+ "out": "src/assets/sprites/bulgae.png",
  "kind": "스프라이트",
  "made": "art/build.py · art/enemies.py · art/monsters.py"
 }

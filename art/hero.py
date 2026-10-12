@@ -9,7 +9,7 @@ it stays pixel art. Details live on the surfaces (eyes, brows, the 용비늘 sha
 Outlines are sel-out: a dark shade of the colour beside them, softer on inner overlaps.
 
 Palette: muted, dusty and cool, warm only in skin and brass (the brief: "지금 너무 쨍함").
-Writes godot/assets/sprites/cheoyong.png in the frame order player.gd expects (feet on row 44).
+Writes src/assets/sprites/cheoyong.png in the frame order player.gd expects (feet on row 44).
 Usage: python3 art/hero.py [--preview N]
 """
 import math, pathlib, sys
@@ -17,7 +17,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = pathlib.Path(__file__).parent
-GODOT = ROOT.parent / 'godot' / 'assets' / 'sprites'
+GODOT = ROOT.parent / 'src' / 'assets' / 'sprites'
 W, H, FEET = 32, 48, 44
 
 
