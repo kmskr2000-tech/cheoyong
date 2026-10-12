@@ -1618,6 +1618,18 @@ func spawns_safe(note: String) -> void:
 		await must(near >= 140.0, "%s 스폰 %s ↔ 가장 가까운 요괴 %.0f ≥ 140 (어그로 130)" % [note, sp, near])
 
 
+## 연출 트리거(사각형 모서리·중심) ↔ 모든 요괴 ≥ 140 (어그로 130): 트리거를 밟는 순간 전투가 확정돼 있으면 안 된다
+func triggers_safe(note: String) -> void:
+	var l := lvl()
+	for tr in l.def.get("triggers", []):
+		var r: Rect2 = tr[0]
+		var near := 9999.0
+		for pt in [r.position, r.position + Vector2(r.size.x, 0), r.position + Vector2(0, r.size.y), r.end, r.get_center()]:
+			for e in l.def.get("enemies", []):
+				near = minf(near, l.lift(pt).distance_to(l.lift(Vector2(e[1], e[2]))))
+		await must(near >= 140.0, "%s 트리거 %s ↔ 가장 가까운 요괴 %.0f ≥ 140 (어그로 130)" % [note, tr[1], near])
+
+
 func all_idle() -> bool:
 	for e in get_nodes_in_group("enemy"):
 		if e.get("state") != "idle":
@@ -1647,6 +1659,7 @@ func sc_ch2_m2() -> void:
 	await must(lvl().def["exits"].size() == 3, "산길 출구 3개 (서·북·동)")
 	await must(get_nodes_in_group("enemy").size() == 6, "산길 요괴 6체")
 	await spawns_safe("산길")
+	await triggers_safe("산길")
 
 	step("산길 북쪽 → 버려진 마을 (SC2-17)")
 	await goto_exit(1, "old_village")
@@ -1686,6 +1699,7 @@ func sc_ch2_m2() -> void:
 	await must(G.checkpoint == "den1" and G.checkpoint_spawn() == ["den1", "start"], "체크포인트·이어하기 = den1")
 	await must(get_nodes_in_group("enemy").size() == 7, "소굴 외곽 요괴 7체")
 	await spawns_safe("소굴 외곽")
+	await triggers_safe("소굴 외곽")
 	step("SC2-04: 입구에서 오른쪽으로 걸어 sight 트리거 (tp 없음)")
 	await free_player()
 	Input.action_press("move_right")

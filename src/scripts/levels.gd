@@ -187,7 +187,7 @@ const DATA := {
 		"anchors": {"raid": Rect2(380, 285, 70, 30), "raiders": [Vector2(330, 320), Vector2(390, 300)], "exit": Vector2(706, 9)},
 	},
 	# 지리산 산길 — 산군·불도깨비·장승(SC2-15)·산신각(SC2-16). 서(화개)·북(버려진 마을, M2)·동(소굴 외곽, M2) 출구. 북 출구 도착점(fromVillage)이 장승 어그로 안이라
-	# 장승·산군을 동쪽으로 옮겼다(M2): 모든 스폰이 요괴 어그로(130, lift 좌표) 밖.
+	# 장승·산군을 동쪽 숲 마당으로 옮겼다(M2): 모든 스폰·SC2-15 트리거가 요괴 어그로(130, lift 좌표) 밖.
 	# 그림에 거송·숲·산신각·제상이 이미 있어 pine·seonang·산신각 소품은 얹지 않는다. 길목(x538~625) 폭 약 64.
 	"jiri_path": {
 		"music": "dread", "amb": "wind",
@@ -200,8 +200,9 @@ const DATA := {
 		"npcs": [["sansin", "npc_sansin", 250, 175, "산신령"]],
 		"interact": [["shrine", 258, 158, "산신각"]],
 		# 산군 3(의뢰 A 「길목의 범」 대상은 산군) · 불도깨비 2 · 길목 직후 단독 장승 1 (jangseung_taki 트리거 = SC2-15). 도착 후 x≈430 까지 적 없음(산신각 150px+, 어그로 130).
-		"enemies": [["sangun", 440, 192], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 830, 112], ["sangun", 945, 225], ["sangun", 920, 95], ["dokkaebi_fire", 930, 288]],
-		"triggers": [[Rect2(765, 95, 45, 32), "jangseung"]],
+		"enemies": [["sangun", 440, 192], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 885, 118], ["sangun", 950, 262], ["sangun", 940, 185], ["dokkaebi_fire", 900, 215]],
+		# SC2-15 장승 첫 접촉: 트리거는 장승·산군·불도깨비 모두에서 어그로 130 밖(≥140, 화면엔 장승이 보이는 거리)이어야 한다 — 연출 전 전투 확정 금지
+		"triggers": [[Rect2(712, 96, 30, 32), "jangseung"]],
 		"exits": [[Rect2(0, 181, 6, 50), "hwagae", "fromPath"], [Rect2(620, 0, 76, 20), "old_village", "fromPath"], [Rect2(1106, 64, 14, 64), "den1", "start"]],
 		"anchors": {"exit": Vector2(14, 205)},
 	},
@@ -230,7 +231,7 @@ const DATA := {
 		"name": "도깨비 소굴 외곽",
 		"ground": "pyega1",
 		"ambient": Color(0.27, 0.28, 0.44),
-		"spawns": {"start": Vector2(26, 392), "fromDen2": Vector2(556, 386)},
+		"spawns": {"start": Vector2(26, 410), "fromDen2": Vector2(556, 386)},
 		"props": [["pillar", 130, 424, null], ["pillar", 190, 290, null], ["pillar", 290, 360, null], ["pillar", 365, 385, null], ["pillar", 470, 436, null], ["pillar", 520, 392, null],
 			["jars", 60, 300, null], ["jars", 90, 308, null], ["jars", 175, 255, null], ["jars", 560, 424, null]],
 		"lights": [[146, 200, GHOSTFIRE, 0.7, 0.5], [300, 267, GHOSTFIRE, 0.5, 0.5], [470, 400, GHOSTFIRE, 0.45, 0.5], [60, 400, GHOSTFIRE, 0.4, 0.5]],
@@ -240,7 +241,7 @@ const DATA := {
 		"enemies": [["dokkaebi_oneeye", 250, 415], ["dokkaebi_oneeye", 225, 262], ["dokkaebi_fire", 235, 318], ["dokkaebi_fire", 330, 405], ["dokkaebi_oneeye", 146, 222],
 			["sangun", 395, 432], ["jangseung_taki", 312, 332]],
 		"vents": [Vector2(250, 300), Vector2(330, 420), Vector2(490, 410)],
-		"triggers": [[Rect2(62, 372, 36, 40), "sight"], [Rect2(540, 372, 28, 24), "deep"]],
+		"triggers": [[Rect2(62, 400, 36, 40), "sight"], [Rect2(540, 372, 28, 24), "deep"]],
 		"exits": [[Rect2(0, 368, 6, 50), "jiri_path", "fromDen"], [Rect2(574, 366, 16, 30), "den2", "start"]],
 		"anchors": {"exit": Vector2(584, 382)},
 	},

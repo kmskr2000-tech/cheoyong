@@ -1005,6 +1005,8 @@ func _den1_deep(level: Node) -> void:
 
 ## SC2-05: 외눈박이가 감투로 사라질 때(enemy.gd) — 첫 번째는 시스템 문구, 처음 3번은 도착점에 용패 잔영(반짝임)
 func oneeye_vanish(level: Node, at: Vector2) -> void:
+	if Game.level_id != "den1":   # SC2-05 는 소굴 외곽의 학습 구간 몫 — 마을 외눈박이가 잔영·문구를 먼저 써 버리지 않게
+		return
 	var n := Game.flag("yongpae_trace_n")
 	if n >= 3 or not level.has_method("_glint"):
 		return

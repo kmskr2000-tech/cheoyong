@@ -20,7 +20,7 @@ const ROUTES := {
 	"jiri_path": [Vector2(200, 205), Vector2(300, 190), Vector2(440, 195), Vector2(470, 235), Vector2(580, 215), Vector2(625, 150), Vector2(640, 100), Vector2(665, 80), Vector2(765, 235), Vector2(940, 100), Vector2(960, 250), Vector2(10, 205)],
 	# 2장 M2 (폴백 지형 village/pyega1/gwana/pyega2 — 걸을 수 있는 자리에 맞춘 좌표, 마지막 지점이 출구 안쪽)
 	"old_village": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 380), Vector2(320, 262), Vector2(430, 168), Vector2(480, 125), Vector2(535, 70), Vector2(14, 380)],
-	"den1": [Vector2(100, 392), Vector2(250, 415), Vector2(235, 318), Vector2(225, 262), Vector2(146, 222), Vector2(312, 332), Vector2(395, 432), Vector2(556, 386), Vector2(582, 384)],
+	"den1": [Vector2(100, 410), Vector2(250, 415), Vector2(235, 318), Vector2(225, 262), Vector2(146, 222), Vector2(312, 332), Vector2(395, 432), Vector2(556, 386), Vector2(582, 384)],
 	"den2": [Vector2(150, 350), Vector2(240, 282), Vector2(272, 228), Vector2(330, 200), Vector2(390, 160), Vector2(490, 64), Vector2(490, 44), Vector2(100, 405)],
 	"den3": [Vector2(284, 330), Vector2(284, 308), Vector2(400, 190), Vector2(480, 150), Vector2(700, 200), Vector2(284, 416)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
@@ -29,10 +29,10 @@ const ROUTES := {
 # 키 "<맵>:<스폰>" → 걸어갈 footprint 지점들(빈 배열 = 스폰에서 2초 가만히). 마지막 지점에서도 2초 버틴다. 트리거·출구는 꺼 둔다(장면 전환·대사 없이 거리만 본다).
 const LIVE := {
 	"jiri_path:fromHwagae": [Vector2(240, 195)],
-	"jiri_path:fromVillage": [],
+	"jiri_path:fromVillage": [Vector2(727, 112)],   # SC2-15 장승 트리거 중심까지 (북쪽 출구에서 걸어서)
 	"jiri_path:fromDen": [],
 	"old_village:start": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 378)],
-	"den1:start": [Vector2(80, 392)],
+	"den1:start": [Vector2(80, 418)],
 	"den1:fromDen2": [Vector2(554, 384)],
 	"den2:start": [],
 	"den2:fromDen3": [],
