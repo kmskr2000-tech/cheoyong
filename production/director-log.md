@@ -306,5 +306,5 @@
 - [지시] 02:47 — 에이전트 배정: Agent "프로그래밍팀-저사양폴백" finished · 1h 49m 46s
 - [지시] 02:47 — 에이전트 배정: Agent "감사팀-진전검증" finished · 3m 11s
 - [지시] 02:47 — 에이전트 배정: 감사 순회 7을 통과해서 브랜치 3개를 승인했습니다. 통합배포 에이전트가 이 순서로 머지하고 재검증·배포합니다(기한 04:30).
-- [지시] 02:57 — 에이전트 배정: Background agent "프로그래밍팀-통합배포" didn't finish before the previous session ended
 - [결정] 02:59 전 팀 — VM 재부팅(~02:55) 후 복구: 재부팅 직전 통합배포가 balance-apply(361b424)·combat-fx(8ff2500)·lowend-fallback(22b4357)을 main 에 머지 완료(PR #47·#48 포함). 라이브는 20261013022948(머지 전) 그대로 → 통합배포 재개해 main 재검증(smoke·combat_strategy·save·art_walk·chapter1·quality_fallback) 후 배포 지시(기한 04:30). 17분 점검 크론 재등록. 가동 에이전트는 통합배포뿐.
+- [지시] 03:02 — 에이전트 배정: 재부팅 후 상태를 확인했습니다. 챕터1 작업 3건이 이미 main에 머지돼 있었고, 라이브 배포만 안 된 상태입니다.
