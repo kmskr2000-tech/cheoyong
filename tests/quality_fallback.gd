@@ -140,7 +140,7 @@ func _level_check() -> void:
 
 func _snap(lv: Node) -> Dictionary:
 	var d := {"lights": lv.flicker.size(), "lights_on": 0, "shadow": 0, "shadow0": 0, "normal": 0,
-		"ash": lv._ash.amount, "shafts": lv._shafts_layer.visible, "bloom": float(lv._post_mat.get_shader_parameter("bloom"))}
+		"ash": lv._ash.amount, "shafts": lv._shafts_layer.visible, "bloom": _bloom(lv)}
 	for l in lv.flicker:
 		if l.visible: d.lights_on += 1
 		if l.shadow_enabled: d.shadow += 1
@@ -148,3 +148,8 @@ func _snap(lv: Node) -> Dictionary:
 	for n in lv.find_children("*", "Sprite2D", true, false):
 		if (n as Sprite2D).texture is CanvasTexture: d.normal += 1
 	return d
+
+
+func _bloom(lv: Node) -> float:
+	var v: Variant = lv._post_mat.get_shader_parameter("bloom")
+	return 0.9 if v == null else float(v)   # 한 번도 설정 안 했으면 셰이더 기본값(0.9)

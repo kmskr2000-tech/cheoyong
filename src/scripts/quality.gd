@@ -81,7 +81,7 @@ func feed(ms: float) -> void:
 		if _over_s >= DROP_HOLD_S and tier > 0:
 			var rose_recently := tier == _rose_to and _clock - _rose_at < RELOCK_S
 			if rose_recently:
-				_ceiling = tier   # 방금 올렸다 다시 떨어짐: 그 등급 위로는 올라가지 않는다
+				_ceiling = tier - 1   # 방금 올렸다 다시 떨어짐: 그 등급 위로는 올라가지 않는다
 			_change(tier - 1, "drop ema=%.1fms > %.1fms for %.1fs" % [ema_ms, DROP_MS, _over_s])
 	else:
 		if ema_ms < DROP_RESET_MS:
