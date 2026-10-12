@@ -4,6 +4,7 @@ extends "harness.gd"
 ## 봇 정책으로 실제 AI·판정·피해식을 태워 "처치 시간·받은 피해·받아넘기기 횟수"를 잰다. 결과 줄은 "RES " 로 시작.
 ## 시간은 프레임/60 (--fixed-fps 60 이면 time_scale 1 에서 프레임당 1/60초).
 
+var _dbg := false
 var T := 0.0          # 측정용 게임 시간(초)
 var rng := RandomNumberGenerator.new()
 
@@ -26,6 +27,7 @@ func _main() -> void:
 		"econ": await sc_econ()
 		"dbg": await sc_dbg()
 		"ttk2": await sc_ttk2()
+		"bossdbg": await sc_boss(true)
 		_: await fail("알 수 없는 프로브: " + scn)
 
 
@@ -228,10 +230,13 @@ func _reader(e, to: Vector2, d: float, frame_n: int) -> void:
 
 # ================================================================ boss
 ## 역신 전투 봇. skill: 0=완벽한 리더 … 1=전혀 안 읽음. miss = 각 예고를 놓칠 확률.
-func sc_boss() -> void:
-	var pols := [["reader", 0.0, false], ["tap", 1.0, false], ["reader", 0.5, false]]
+func sc_boss(dbg := false) -> void:
+	_dbg = dbg
+	var pols := [["reader", 0.0, true], ["reader", 0.0, false], ["tap", 1.0, false], ["reader", 0.5, false]]
+	if dbg:
+		pols = [["tap", 1.0, false]]
 	var boss = await cs_wake_boss()
-	var n := 2
+	var n := 3
 	for spec in pols:
 		var wins := 0
 		var deaths_sum := 0
@@ -274,6 +279,7 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 	while tt < limit:
 		await process_frame
 		frame_n += 1
+		pump = boss.state == "wait" and boss.phase == 2   # 2페이즈 전환 대사(SC1-18)를 넘긴다 — 안 넘기면 보스가 영영 "wait" (보스 실측 무효의 원인 2)
 		tt += 1.0 / 60.0 * Engine.time_scale
 		if boss.state in ["kneel", "dead"]:
 			win = true
@@ -291,7 +297,7 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 			p.invuln = false
 			boss.reset_fight()
 			boss.position = home
-			p.position = boss.position + Vector2(-110, 0)
+			p.position = lvl().lift(lvl().def["anchors"]["boss_respawn"])   # 실제 부활 지점. (boss-110 은 입구 봉쇄문 밖이라 봇이 영영 못 들어옴 — 실측 무효의 원인 3)
 			p.ki = 40.0
 			p.shinmyeong = 0.0
 			p2_start = -1.0
@@ -301,6 +307,8 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 			p2_start = tt
 		var to: Vector2 = boss.global_position - p.global_position
 		var d := to.length()
+		if _dbg and frame_n % 60 == 0:
+			print("RES DBG t=%.0f boss=%s hp=%.0f bpos=%s ppos=%s pstate=%s d=%.0f" % [tt, boss.state, boss.hp, str(boss.global_position), str(p.global_position), p.state, d])
 		# 패턴 인스턴스 키
 		var key := "%s_%d_%d" % [boss.state, boss.pat_i, boss.coughs]
 		if key != key_prev:
@@ -365,6 +373,7 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 				Input.action_press("attack")
 			else:
 				Input.action_release("attack")
+	pump = false
 	bot_release_all()
 	var t_total := tt
 	if p2_start > 0.0:
