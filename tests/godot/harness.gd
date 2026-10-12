@@ -9,7 +9,7 @@ extends SceneTree
 
 signal _halt   # 절대 emit 안 함 — 실패 후 코루틴을 멈춰 두는 용도
 
-const BOSS_MAX := 1200.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
+const BOSS_MAX := 1500.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
 const SPEED := 4.0          # Engine.time_scale (대사·페이드·카드가 실시간이라 가속)
 var scn := ""
 var G: Node                 # autoload Game
@@ -1219,8 +1219,8 @@ func sc_cs_boss() -> void:
 	boss.set_physics_process(false)   # 패턴이 멋대로 돌지 않게 상태를 직접 만든다
 	boss.state = "idle"
 
-	step("받는 피해 배율: 평시 ×1, 열림 ×1.5, 안개·졸개 시전 ×1.25")
-	for spec in [["idle", 50], ["open", 75], ["fog", 63], ["clones", 63]]:
+	step("받는 피해 배율: 평시 ×0.5(BOSS_IDLE_MULT), 열림 ×2.0, 안개·졸개 시전 ×1.25")
+	for spec in [["idle", 25], ["open", 100], ["fog", 63], ["clones", 63]]:
 		boss.hp = BOSS_MAX
 		boss.state = spec[0]
 		boss.take_hit(50, Vector2.RIGHT)
@@ -1259,7 +1259,7 @@ func sc_cs_boss() -> void:
 	await must(boss.state == "open" and boss.position.distance_to(bp) < 6.0, "열림 중 이동하지 않는다")
 	boss.hp = BOSS_MAX
 	boss.take_hit(50, Vector2.ZERO)
-	await must(int(BOSS_MAX - boss.hp) == 75, "열림 중 만충 강 베기 50 → 75")
+	await must(int(BOSS_MAX - boss.hp) == 100, "열림 중 만충 강 베기 50 → 100 (BOSS_OPEN_MULT 2.0)")
 	await until(func(): return boss.state == "idle", "열림 종료 → idle", 120)
 
 	step("2페이즈 기침은 2연속, 두 번째 뒤에 0.9초 열림")

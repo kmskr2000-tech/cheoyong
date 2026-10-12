@@ -368,10 +368,10 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 			if f.global_position.distance_to(p.global_position) < 34.0:
 				in_fog = true
 				var away: Vector2 = (p.global_position - f.global_position).normalized()
-				if rng.randf() >= miss or pol == "reader":
+				if rng.randf() >= miss or pol == "reader" or pol == "window":
 					if read:
 						bot_dir(away)
-		if in_fog and read and pol == "reader":
+		if in_fog and read and (pol == "reader" or pol == "window"):
 			continue
 		# ----- 기침 읽기: 숨결이 나가기 직전(0.1초 전) 구르기 → 받아넘기기 (읽었을 때), 못 읽으면 그대로 서 있는다
 		if st == "cough" and (pol == "reader" or pol == "window") and read and p.state != "roll":
