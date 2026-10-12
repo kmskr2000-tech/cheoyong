@@ -198,8 +198,8 @@ const DATA := {
 		"lights": [],
 		"npcs": [["sansin", "npc_sansin", 250, 175, "산신령"]],
 		"interact": [["shrine", 258, 158, "산신각"]],
-		# 산군 3(의뢰 A 「길목의 범」 대상은 산군) · 불도깨비 2 · 길목 직후 단독 장승 1 (jangseung_taki 트리거 = SC2-15). 도착 후 x≈355 까지 적 없음.
-		"enemies": [["sangun", 355, 165], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 665, 95], ["sangun", 765, 260], ["sangun", 940, 100], ["dokkaebi_fire", 960, 260]],
+		# 산군 3(의뢰 A 「길목의 범」 대상은 산군) · 불도깨비 2 · 길목 직후 단독 장승 1 (jangseung_taki 트리거 = SC2-15). 도착 후 x≈430 까지 적 없음(산신각 150px+, 어그로 130).
+		"enemies": [["sangun", 440, 192], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 665, 95], ["sangun", 765, 260], ["sangun", 940, 100], ["dokkaebi_fire", 960, 260]],
 		"triggers": [[Rect2(625, 75, 30, 40), "jangseung"]],
 		"exits": [[Rect2(0, 181, 6, 50), "hwagae", "fromPath"]],
 		"anchors": {"exit": Vector2(14, 205)},
