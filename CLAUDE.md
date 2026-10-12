@@ -23,7 +23,8 @@
 - 레벨 데이터 `scripts/levels.gd`: props(5번째 칸 = 표시 조건 플래그), npcs(6번째 칸 "hidden"), interact, triggers, vents, exits, ambient.
 - 이전 웹판(JS Canvas)은 `legacy-web/`(`index.html`, `src/`)로 옮겼다. 참고용 원본이며 새 작업은 Godot(`src/`)에서 한다. 레포 루트 `index.html`은 `legacy-web/`로 보내는 임시 안내 페이지다(Godot 웹 빌드 배포 전까지).
 
-## 아트 파이프라인 (전부 코드로 생성, 외부 에셋 없음)
+## 아트 파이프라인 (코드 생성 + 사용자 제공 AI 도트 세트의 정규화 임포트)
+- 외부 세트(`files/game-assets`)는 사용자 승인으로 사용 가능(2026-10-12). `art/import_external.py`로 정규화한 뒤에만 `src/assets`에 넣는다. 판정·한계는 `design/art/asset-integration.md`. 상업 이용 약관 확인은 출시 전 사용자 몫.
 - `art/src/*.py` 도트 격자 → `python3 art/build.py` (처용 팔 컷아웃)
 - `art/hero.py` 처용: 작은 3D 인형(타원체·원뿔대)을 레이캐스트로 바로 도트화 → `cheoyong.png` 22프레임(정면·3/4·옆·뒤·걷기·공격). 차분한 6단 팔레트, 셀아웃 외곽선
 - `art/people.py` NPC 16명: 같은 렌더러에 사람마다 스펙(색·갓/사모·수염·치마·흉배·지팡이·키) → `npc_*.png` 5프레임
