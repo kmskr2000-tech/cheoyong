@@ -77,7 +77,7 @@ func _ready() -> void:
 	var aura := PointLight2D.new()
 	aura.texture = _radial()
 	aura.color = Color(0.45, 0.95, 0.4)
-	aura.energy = 0.8
+	aura.energy = 0.45
 	aura.texture_scale = 1.8
 	aura.position = Vector2(0, -52)
 	add_child(aura)

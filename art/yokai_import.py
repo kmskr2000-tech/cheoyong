@@ -33,8 +33,8 @@ def clean(im, speck=False):
     def dark(x, y):
         r, g, b, a = px[x, y]
         return a > 0 and max(r, g, b) <= 30
-    corners = sum(1 for p in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)] if px[p][3] > 200 and max(px[p][:3]) <= 30)
-    if corners >= 3:
+    top = sum(1 for p in [(0, 0), (w - 1, 0)] if px[p][3] > 200 and max(px[p][:3]) <= 30)
+    if top == 2:   # opaque black matte (the waterghost set): both top corners are solid black
         stack = [(x, y) for x in range(w) for y in (0, h - 1)] + [(x, y) for y in range(h) for x in (0, w - 1)]
         seen = set()
         while stack:
