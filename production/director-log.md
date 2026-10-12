@@ -293,3 +293,7 @@
 - [지시] 02:37 — 에이전트 배정: Agent "프로그래밍팀-S4버그수정" finished · 38m 5s
 - [검토] 02:42 프로그래밍팀-전투밸런스적용(12f9b3c) — 상수 HP1000/IDLE0.5/OPEN2.0/CAST1.25/OPEN_IF_HIT0, 봇 회피 개선 후 n=5: 탭 4/5(23초·사망 1.8) reader 0/5 window 0/5. 전체 회귀 통과(combat_strategy 11/11, smoke 7/7, chapter1, tap_dominance, save 42). reader>=탭은 봇 한계로 미증명 → 사람 플레이 확인 항목. 현재 main(보스 HP 480)은 27초·사망 0이라 개선 효과는 명확. 감사 순회7 검증 후 승인·머지 예정(balance→fx 순).
 - [승인] 02:45 감사팀 순회7(fcc6eb4) 통과 — prog/balance-apply 12f9b3c, asset/combat-fx 6ce838f, prog/lowend-fallback 8299cc0 승인. 머지 순서 balance→fx→lowend, 통합배포가 머지·재검증·배포(기한 04:30). 인지 사항: balance 에 일반 요괴 체감 변경 포함(예고 굳음·CONTACT_MULT·hit-stop·구르기 선입력). 폰 확인 추가: 보스 난이도(탭 우세 여부), hit-stop·받아넘기기 슬로모 체감, 저사양 폰 임계(34.8/22ms), 이름표 클램프 모서리.
+- [지시] 02:47 — 에이전트 배정: 저사양폴백이 완료를 보고했습니다(prog/lowend-fallback 8299cc0). 아직 승인하지 않았고, 진행 중인 감사 순회 7이 이 브랜치도 판정합니다.
+- [지시] 02:47 — 에이전트 배정: Agent "프로그래밍팀-저사양폴백" finished · 1h 49m 46s
+- [지시] 02:47 — 에이전트 배정: Agent "감사팀-진전검증" finished · 3m 11s
+- [지시] 02:47 — 에이전트 배정: 감사 순회 7을 통과해서 브랜치 3개를 승인했습니다. 통합배포 에이전트가 이 순서로 머지하고 재검증·배포합니다(기한 04:30).
