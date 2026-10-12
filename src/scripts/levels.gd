@@ -150,7 +150,7 @@ const DATA := {
 		"exits": [],
 		# 이야기가 열어 주는 출구 (story.gd 가 해당 플래그가 서면 level._exit(def.gates[이름]) 로 연다): [Rect2, 목적지, 스폰]
 		"gates": {"pyega": [Rect2(0, 355, 6, 48), "pyega1", "start"], "gwana": [Rect2(550, 19, 24, 19), "gwana", "start"]},
-		"anchors": {"home_nanyeong": Vector2(118, 243), "gwana_gate": Vector2(562, 27)},
+		"anchors": {"home_nanyeong": Vector2(104, 247), "gwana_gate": Vector2(562, 27)},
 		"wisps": Vector2(230, 360),
 	},
 }
