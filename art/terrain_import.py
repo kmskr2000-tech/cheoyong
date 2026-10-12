@@ -24,11 +24,13 @@ SPARE = {'forest': 'forest', 'flowerfield': 'flowerfield', 'shrine': 'shrine', '
 COLORS = 56
 
 
-def process(name, box, tone, size):
+def process(name, box, tone, size, img=None):
+    """img: 이미 합성한 PIL 이미지를 넘기면 name/box 는 무시한다(2장 지형 art/ch2_terrain.py 가 사용)."""
     w, h = size
-    im = Image.open(SRC / f'{name}.webp').convert('RGB')
+    im = img.convert('RGB') if img is not None else Image.open(SRC / f'{name}.webp').convert('RGB')
     W, H = im.size
-    im = im.crop((int(box[0]*W), int(box[1]*H), int(box[2]*W), int(box[3]*H)))
+    if img is None:
+        im = im.crop((int(box[0]*W), int(box[1]*H), int(box[2]*W), int(box[3]*H)))
     # cover-fit to (w,h), centre crop
     s = max(w / im.width, h / im.height)
     im = im.resize((round(im.width*s), round(im.height*s)), Image.BOX)
