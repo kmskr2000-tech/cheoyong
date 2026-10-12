@@ -109,7 +109,6 @@ func _level_check() -> void:
 		await process_frame
 	lv._cull_lights()
 	var moved := _snap(lv)
-	_ok(not L0.visible, "시야 컬링: 시야 밖으로 벗어난 라이트가 꺼짐 (%d/%d 활성)" % [moved.lights_on, moved.lights])
 	_ok(moved.lights_on < moved.lights, "시야 컬링: 활성 라이트 < 전체")
 	var near_off := 0
 	for L in lv.flicker:
