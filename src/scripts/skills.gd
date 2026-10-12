@@ -38,8 +38,8 @@ const LIST := [
 	# ② 춤
 	{"id": "nabi", "tree": "chum", "tier": 1, "name": "나비춤", "live": true,
 		"desc": "구르기 거리 +30%."},
-	{"id": "batanum", "tree": "chum", "tier": 1, "name": "받아넘기기", "live": true,
-		"desc": "구르는 중 맞으면 시간이 느려지고 반격한다."},
+	{"id": "batanum", "tree": "chum", "tier": 1, "name": "되받아치기", "live": true,
+		"desc": "구르기 직후 받아넘기는 창이 넓어지고, 받아넘기면 정면의 적을 밀쳐 낸다."},
 	{"id": "yeonpung", "tree": "chum", "tier": 1, "name": "연풍", "live": true,
 		"desc": "구르고 나서 2초간 이동 속도 +25%."},
 	{"id": "geommu", "tree": "chum", "tier": 2, "name": "검무", "live": true,
