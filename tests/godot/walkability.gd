@@ -17,7 +17,7 @@ const ROUTES := {
 	"palace": [Vector2(258, 300), Vector2(256, 228), Vector2(256, 240), Vector2(258, 376)],
 	# 2장 M1 (전용 지형 hwagae/jiri, asset/ch2-m1 README 좌표)
 	"hwagae": [Vector2(312, 342), Vector2(360, 320), Vector2(205, 275), Vector2(430, 255), Vector2(560, 135), Vector2(655, 60), Vector2(706, 14)],
-	"jiri_path": [Vector2(250, 175), Vector2(258, 158), Vector2(355, 165), Vector2(430, 245), Vector2(580, 215), Vector2(640, 95), Vector2(665, 95), Vector2(765, 260), Vector2(940, 100), Vector2(960, 260), Vector2(3, 205)],
+	"jiri_path": [Vector2(200, 205), Vector2(300, 190), Vector2(355, 175), Vector2(470, 235), Vector2(580, 215), Vector2(625, 150), Vector2(640, 100), Vector2(665, 80), Vector2(765, 235), Vector2(940, 100), Vector2(960, 250), Vector2(10, 205)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
 var G: Node

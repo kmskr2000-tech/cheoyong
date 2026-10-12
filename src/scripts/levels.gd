@@ -194,7 +194,7 @@ const DATA := {
 		"ground": "jiri",
 		"ambient": Color(0.40, 0.44, 0.60),
 		"spawns": {"fromHwagae": Vector2(24, 205), "start": Vector2(24, 205)},
-		"props": [["rockwall", 556, 152, null], ["rockwall", 604, 152, null], ["rockwall", 556, 310, null], ["rockwall", 604, 310, null], ["cairn", 430, 240, null]],
+		"props": [["rockwall", 532, 152, null], ["rockwall", 580, 152, null], ["rockwall", 556, 310, null], ["rockwall", 604, 310, null], ["cairn", 430, 240, null]],
 		"lights": [],
 		"npcs": [["sansin", "npc_sansin", 250, 175, "산신령"]],
 		"interact": [["shrine", 258, 158, "산신각"]],
