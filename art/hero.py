@@ -200,7 +200,7 @@ def figure(pose, sp=HERO):
         P.append(Ell((0, 40.0 + up, -1.2), (4.6, 2.5, 4.2), 'hat', tag='bokdu'))
         for side in (-1, 1):
             P.append(Cone((side * 3.4, 39.0 + up, -3.0), (side * 8.2, 35.2 + up, -4.6), 1.2, 0.9, 'hat', caps=True))
-    elif hat == 'geumgwan':         # 신라 금관 형태(고증 미확정): gold band, 出-shaped uprights, two antler tines
+    elif hat == 'geumgwan':         # 신라 금관 형태(고증 미확정): gold band, three straight uprights, two antler tines; coral tips stand in for 곡옥
         P.append(Cone((0, 37.8 + up, -0.4), (0, 40.4 + up, -0.5), 6.1, 6.3, 'gold', kz=0.97, caps=False))
         for x, top in ((-3.8, 44.4), (0.0, 46.0), (3.8, 44.4)):
             P.append(Cone((x, 40.0 + up, -0.5), (x, top + up, -0.5), 0.9, 0.8, 'gold', caps=True))
@@ -341,7 +341,7 @@ def details(pr, p, n, tone, mat, lam, sp=HERO):
     elif pr.tag == 'belt':
         buckle = (np.abs(x) < 1.3) & (z > 0)
         mat = np.where(buckle, 'brass', mat)
-        if sp.get('badge'):   # 과대: studded plates along the belt (gold, or silver for lower ranks)
+        if sp.get('badge'):   # 과대: studded plates along the belt (gold, or the 'collar' silver ramp for lower ranks — shares that ramp with the 동정)
             plates = (z > -2.0) & (np.abs(x) >= 1.3) & (np.abs(x) < 6.4) & ((np.floor(np.abs(x) / 2.1)) % 2 == 0)
             mat = np.where(plates, sp['badge'], mat)
     elif pr.tag == 'torso':
