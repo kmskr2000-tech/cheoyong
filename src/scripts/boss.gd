@@ -13,6 +13,7 @@ signal knelt
 signal phase_two
 
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 const CELL := Vector2i(120, 98)   # art/yokai_import.py (Drive boss-plagueking, 96px art = twice a man's height)
 const FEET_ROW := 97.0
 const MAX_HP := 480.0  # 1장 첫 보스: 대금 콤보 열두어 번
@@ -235,6 +236,7 @@ func _begin(s: String) -> void:
 func _open(sec: float) -> void:
 	_begin("open")
 	open_t = sec
+	CFX.open_mark(self, sec, true)   # 열림 단서: 발밑 금붉은 고리 + 머리 위 약점 표식 (아트팀)
 
 
 ## 받는 피해 배율: 열림 ×1.5, 안개·졸개 시전 중 ×1.25 ("시전 노출"), 평시 ×1.0
@@ -466,6 +468,7 @@ func _defeat() -> void:
 	_clear_tells()
 	remove_from_group("enemy")
 	Game.reward_purify("plague_god", global_position, get_parent())
+	CFX.purify(get_parent(), global_position, 2.0)
 	if not Game.has_tear():
 		Game.accessories.append(Game.TEAR_NAME)
 		Game.say_toast("장신구 「%s」을 얻었다 — %s" % [Game.TEAR_NAME, Game.tear_desc()], Color(0.75, 0.95, 0.7))

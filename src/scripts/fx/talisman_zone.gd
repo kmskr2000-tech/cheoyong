@@ -5,6 +5,7 @@ extends Node2D
 ##   bind — 결박부: 요괴 발밑 결계. 안의 요괴는 느려지고(bind_t) 0.5초마다 2 피해.
 
 const CT := preload("res://scripts/combat_tuning.gd")
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 
 var kind := "fire"
 var radius := 58.0
@@ -67,6 +68,7 @@ func _physics_process(delta: float) -> void:
 		for e in get_tree().get_nodes_in_group("enemy"):
 			if _inside(e) and "bind_t" in e:
 				e.bind_t = 0.2
+				CFX.bind_mark(e)   # 결박된 적 머리 위 사슬 표식
 	if _tick <= 0.0:
 		_tick = 0.3 if kind == "fire" else 0.5
 		for e in get_tree().get_nodes_in_group("enemy"):
@@ -81,6 +83,7 @@ func _physics_process(delta: float) -> void:
 				tick = 5
 				if "bind_t" in e and e.bind_t > 0.0:
 					tick = ceili(5.0 * CT.FIRE_ON_BIND_MULT)   # S1 불길 가두기: 결박된 적 위의 불길 ×1.6 (8)
+					CFX.synergy(e, "×%.1f" % CT.FIRE_ON_BIND_MULT)   # 결박 위 화염 표시 (아트팀)
 			e.take_hit(tick, Vector2.ZERO, false, true)
 	if _t >= life - 0.4:
 		_fx.emitting = false

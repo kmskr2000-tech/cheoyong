@@ -34,6 +34,7 @@ const COMBO := [
 const ROLL_TIME := 0.32
 const ROLL_SPEED := 200.0
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 
 @onready var sprite: AnimatedSprite2D = $Sprite
 var arm: Sprite2D
@@ -87,6 +88,7 @@ var _charge_hold := false     # CS-02: 이 눌림이 베기를 시작시켰다(�
 var _hold_t := 0.0            # CS-02: 베기 버튼을 누르고 있는 시간
 var _charge_full := false
 var _charge_fx: Line2D
+var _charge_aura: Sprite2D
 const ULT_TIME := 6.0
 const TAL_COST := {"fire": 25.0, "bind": 30.0, "guard": 20.0, "wave": 20.0}
 const TAL_NAME := {"fire": "화염부", "bind": "결박부", "guard": "수호부", "wave": "파동부"}
@@ -392,6 +394,7 @@ func _end_attack(keep_hold := false) -> void:
 	_charge_full = false
 	if _charge_fx:
 		_charge_fx.visible = false
+		sprite.modulate = Color.WHITE
 	if not keep_hold:
 		_charge_hold = false
 		_hold_t = 0.0
@@ -503,6 +506,7 @@ func _charge(delta: float, dir: Vector2) -> void:
 	if _charge_c >= CT.CHARGE_FULL and not _charge_full:
 		_charge_full = true   # 만충 번쩍임 + 진동
 		_ring_fx(Color(1.0, 0.95, 0.7), 30.0, 0.25)
+		CFX.full_flash(self, sprite)
 		_haptic()
 	if not Input.is_action_pressed("attack"):
 		if _charge_c >= CT.CHARGE_MIN:
@@ -523,7 +527,11 @@ func _charge_fx_update() -> void:
 		_charge_fx.z_as_relative = false
 		_charge_fx.position = Vector2(0, -4)
 		add_child(_charge_fx)
+		_charge_aura = CFX.make_aura(_charge_fx, slash.material)
 	_charge_fx.visible = true
+	CFX.aura_step(_charge_aura, _charge_c, CT.CHARGE_MIN, CT.CHARGE_FULL)
+	if _charge_full:   # 만충 유지: 몸이 숨 쉬듯 밝아진다
+		sprite.modulate = Color(1.2, 1.15, 1.0).lerp(Color(1.5, 1.4, 1.05), 0.5 + 0.5 * sin(_charge_c * 22.0))
 	var k := clampf(_charge_c / CT.CHARGE_FULL, 0.0, 1.0)
 	var pts := PackedVector2Array()
 	var n := maxi(2, int(k * 32.0))
@@ -562,6 +570,7 @@ func _release_charge() -> void:
 	_charge_full = false
 	if _charge_fx:
 		_charge_fx.visible = false
+		sprite.modulate = Color.WHITE
 	state = "slash"
 	t = 0.0
 	hit_done = true
@@ -586,6 +595,7 @@ func _release_charge() -> void:
 			e.take_hit(dmg, to.normalized(), true, false, true, tt)
 			add_sin(CT.SIN_PER_CHARGED)
 			_spark(e.global_position + Vector2(0, -12))
+			CFX.pierce(get_parent(), e.global_position + Vector2(0, -14), to.normalized(), tt, CT.ARMOR.has(e.get("kind")))
 			hit_landed.emit(e)
 	slash_base = base
 
@@ -634,8 +644,10 @@ func hurt(dmg: int, dir: Vector2, melee := false, kind := "") -> void:
 			shield_t = 0.0
 			ki = minf(max_ki, ki + CT.GUARD_REFUND)   # 직접 타격을 막아 사라질 때 환급 (마지막 충전에서 1회)
 			stats_changed.emit(hp, max_hp, ki, max_ki)
-			Game.float_text(get_parent(), global_position + Vector2(0, -44), ["+소리"])
+			CFX.guard(self, true, CT.GUARD_REFUND)
 			_haptic()
+		else:
+			CFX.guard(self, false)
 		hurt_t = 0.5
 		Audio.sfx("block", -2.0)
 		_ring_fx(Color(1.0, 0.9, 0.55), 26.0, 0.35)
@@ -1095,7 +1107,11 @@ func _parry(_dir: Vector2) -> void:
 	Audio.sfx("block", 0.0, 0.0)
 	_ring_fx(Color(1, 1, 1), 34.0, 0.4)
 	Game.float_text(get_parent(), global_position + Vector2(0, -48), ["받아넘기기"])
-	Engine.time_scale = 0.35
+	CFX.parry(self, CT.KI_PER_PARRY)
+	Engine.time_scale = 0.05   # 시간 정지감: 섬광 순간(실시간 0.07초)은 거의 멈추고, 나머지 구간이 0.35배속 (총 0.35초는 그대로)
+	get_tree().create_timer(0.07, true, false, true).timeout.connect(func():
+		if Engine.time_scale < 0.9:
+			Engine.time_scale = 0.35)
 	get_tree().create_timer(0.35, true, false, true).timeout.connect(func(): Engine.time_scale = 1.0)
 	if parry_chain >= 3:
 		parry_chain = 0

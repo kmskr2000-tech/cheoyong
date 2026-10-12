@@ -13,6 +13,7 @@ extends CharacterBody2D
 ## (group "downed"). Only 처용가 purifies it (purify()); left alone it rises again.
 
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
+const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 
 const KINDS := {
 	"dog": {"sheet": "plague_dog", "cell": Vector2i(44, 30), "feet": 28, "hp": 30, "speed": 62.0,
@@ -334,6 +335,7 @@ func _interrupt() -> void:
 func _stagger(sec: float) -> void:
 	state = "stagger"; st = 0.0
 	stagger_time = sec
+	CFX.open_mark(self, sec)   # 약점 노출 단서 (아트팀)
 
 
 ## movement while closing in
@@ -664,6 +666,7 @@ func _down() -> void:
 	sprite.rotation = 0.25 if kind == "dog" else 0.0
 	sprite.scale = Vector2(1.0, 0.8)
 	collapsed.emit()
+	CFX.downed_sigil(self)   # 쓰러진 요괴 발밑: 노래를 기다리는 보랏빛 문양 (아트팀)
 	miasma = CPUParticles2D.new()
 	miasma.amount = 18
 	miasma.lifetime = 1.6
@@ -681,6 +684,7 @@ func _down() -> void:
 
 
 func _rise() -> void:
+	CFX.clear_sigil(self)
 	remove_from_group("downed")
 	add_to_group("enemy")
 	miasma.queue_free()
@@ -706,6 +710,9 @@ func _purify() -> void:
 	remove_from_group("downed")
 	purified.emit()
 	Audio.sfx("purify", -4.0, 0.03)
+	CFX.clear_sigil(self)
+	if not is_clone:
+		CFX.purify(get_parent(), global_position)   # 연꽃이 피고 맑은 넋이 오른다 (아트팀)
 	if not is_clone:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
 		var lv: Node = get_tree().current_scene
 		var r := Game.reward_purify(kind, global_position, get_parent())
