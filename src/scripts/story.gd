@@ -33,6 +33,10 @@ func on_enter(level: Node) -> void:
 		"gyeongju":
 			Game.set_flag("arrived")
 			_gyeongju_enter(level)
+		"hwagae":
+			_hwagae_enter(level)
+		"jiri_path":
+			_jiri_enter(level)
 
 
 const RUMOR := {
@@ -47,6 +51,9 @@ const RUMOR := {
 
 
 func interact(level: Node, id: String) -> void:
+	if Game.level_id in ["hwagae", "jiri_path"]:   # 2장: 1장의 소문·잡담 표와 섞이지 않게 따로 처리
+		await _ch2_interact(level, id)
+		return
 	if Game.flag("rumor") and RUMOR.has(id) and not Game.flag("appointed"):
 		await level.talk(RUMOR[id])
 		if not "cheoyong" in Game.tals and id in ["villagerA", "elder", "villagerB", "villagerC", "apothecary"]:
@@ -78,6 +85,8 @@ func trigger(level: Node, id: String) -> void:
 		"close": _close(level)
 		"inner": _inner_room(level)
 		"audience": _audience(level)
+		"raid": _raid(level)
+		"jangseung": _jangseung_first(level)
 
 
 # ================================================================ 1장 1-1 백사장 (SC1-01~04)
@@ -599,7 +608,10 @@ func _gyeongju_after(level: Node) -> void:
 	if Game.flag("chapter1_done"):
 		# SB-28: the ending was already seen. Continuing a finished save lands in free roam, not in the farewell again.
 		nan.talkable = true
-		Game.say_toast("2장은 준비 중입니다")   # SB-30
+		if Game.ch2_enabled():
+			_enter_ch2()   # 2장 스위치가 켜진 빌드: 끝난 1장 세이브는 곧장 2장으로
+		else:
+			Game.say_toast("2장은 준비 중입니다")   # SB-30
 	elif Game.flag("appointed"):
 		for id in DAY_PEOPLE + ["child", "villagerC"]:
 			if id != "nanyeong":
@@ -695,7 +707,10 @@ func _farewell(level: Node) -> void:
 	await Game.card("1장 「처용가」", "끝", 1.8)
 	Game.set_flag("chapter1_done")
 	Game.save()
-	Game.to_title()
+	if Game.ch2_enabled():
+		_enter_ch2()   # SC2-01 로 이어진다 (스위치가 꺼져 있으면 1장 그대로 타이틀)
+	else:
+		Game.to_title()
 
 
 # ================================================================ 용패 길잡이 (바이블 2-5)
@@ -723,4 +738,120 @@ func objective(level: Node):
 			if b and b.state == "wait": return level.def["anchors"]["boss_goal"]
 		"palace":
 			return Vector2(256, 228)
+		"hwagae":
+			if not f.call("raided"): return Vector2(345, 250) if f.call("ch2_start") else null
+			if not f.call("ch2_old_man"): return Vector2(385, 173)
+			return level.def["anchors"]["exit"]
+		"jiri_path":
+			return null
 	return null
+
+
+# ================================================================ 2장 「도깨비골」 마일스톤 1 (design/levels/ch2-dokkaebigol.md §10)
+## 1장 → 2장 연결. chapter1_done 는 그대로 서 있고, 2장 진행은 ch2_* 플래그로 따로 센다.
+func _enter_ch2() -> void:
+	Game.checkpoint = "hwagae"
+	Game.change_level("hwagae", "start", "2장 「도깨비골」", "지리산")
+
+
+## SC2-01: 처음 들어오면 장사치가 하소연한다. 그 뒤 습격 트리거(SC2-02)를 연다.
+func _hwagae_enter(level: Node) -> void:
+	Game.set_flag("flute")
+	Game.checkpoint = "hwagae"
+	var elder: Npc = level.npc("elder")
+	if Game.flag("ch2_old_man"):
+		level._exit(level.def["gates"]["path"])
+		elder.set_present(true)
+		return
+	if Game.flag("raided"):
+		Game.set_flag("night")   # SC2-02 후 밤
+		elder.set_present(true)
+		return
+	if not Game.flag("ch2_start"):
+		Game.set_flag("ch2_start")
+		Game.save()
+		var p: Node2D = level.get_node("Player")
+		p.locked = true
+		await level.get_tree().create_timer(0.8).timeout
+		await level.talk([{"name": "장사치", "text": "도깨비들이 장터를 털어 간다오! 방망이로 사람을 날려버린다오!"}])   # SC2-01
+		p.locked = false
+	level.add_trigger(level.def["anchors"]["raid"], "raid")
+
+
+## SC2-02: 외눈박이 둘이 장터에 난입한다(연출 — 덤비지 않는다). 눈이 탁기로 검다. 밤으로 다시 불러온다.
+func _raid(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	var raiders: Array = []
+	for at in level.def["anchors"]["raiders"]:
+		var e: Enemy = level.spawn_enemy("dokkaebi_oneeye", at)
+		e.set_physics_process(false)   # 연출용: 공격·추적 없음
+		e.remove_from_group("enemy")
+		raiders.append(e)
+	Audio.sfx("door", -6.0)
+	await level.get_tree().create_timer(1.0).timeout
+	await level.talk([{"name": "처용", "text": "…오염됐다."}])   # SC2-02
+	for e in raiders:
+		if is_instance_valid(e):
+			var tw: Tween = e.create_tween()
+			tw.tween_property(e.sprite, "modulate:a", 0.0, 0.6)
+			tw.tween_callback(e.queue_free)
+	await level.get_tree().create_timer(0.8).timeout
+	Game.set_flag("raided")
+	Game.set_flag("night")
+	Game.save()
+	Game.change_level("hwagae", "start")   # 밤 재로드: 노인이 나타난다
+
+
+func _ch2_interact(level: Node, id: String) -> void:
+	match id:
+		"sangin":
+			await level.talk([{"name": "장사치", "text": "동쪽 산길로 갔을 게요. 조심하시오." if Game.flag("raided")
+				else "도깨비들이 장터를 털어 간다오! 방망이로 사람을 날려버린다오!"}])
+		"jumo":
+			await level.talk([{"name": "주모", "text": "해 지면 문을 걸어 잠그시오. 요즘 밤엔 방망이 소리가 들려오."}])
+		"victim":
+			await level.talk([{"name": "털린 짐꾼", "text": "짐을 통째로 빼앗겼소. …눈이 시커멓더이다."}])
+		"board":
+			await level.talk([{"text": "방(榜): 도깨비 사태로 길손은 해 지기 전 저자에 들라. — 의뢰는 준비 중"}])
+		"elder":
+			if not Game.flag("ch2_old_man"):
+				await level.talk([{"name": "노인", "text": "역병 때 사람들이 물건을 버리고 도망갔지. 그 물건들에 혼이 깃든 게야."}])   # SC2-03
+				Game.set_flag("ch2_old_man")
+				Game.save()
+				level._exit(level.def["gates"]["path"])
+				Game.say_toast("동쪽 산길이 열렸다.")
+			else:
+				await level.talk([{"name": "노인", "text": "산으로 가려거든 길목의 장승을 조심하게."}])
+		"sansin":
+			await _shrine(level)
+		"shrine":
+			await _shrine(level)
+		_:
+			await level.talk([{"text": "…"}])
+
+
+func _jiri_enter(_level: Node) -> void:   # 장승 트리거(SC2-15)는 레벨 정의가 매번 건다; _jangseung_first 가 한 번만 말한다
+	Game.set_flag("flute")
+	Game.checkpoint = "jiri_path"
+
+
+## SC2-15: 길목 직후 장승 첫 접촉
+func _jangseung_first(level: Node) -> void:
+	if Game.flag("jangseung_seen"):
+		return
+	Game.set_flag("jangseung_seen")
+	await level.talk([{"name": "처용", "text": "…한때는 마을을 지키던 것이다."}])
+
+
+## SC2-16: 산신각 — 산신령 (D-B: 용왕은 죽지 않았다, '당부')
+func _shrine(level: Node) -> void:
+	if not Game.flag("shrine_seen"):
+		Game.set_flag("shrine_seen")
+		await level.talk([
+			{"name": "산신령", "text": "아비는 바다에 있고 아들은 산을 걷는구려. 아비의 당부를 잊지 마오."},
+			{"name": "처용", "text": "…잊지 않았소."},
+			{"name": "산신령", "text": "저 아래 빈 마을에 우는 아이가 있소. 아무도 들어주질 않는구려."},
+		])
+	else:
+		await level.talk([{"name": "산신령", "text": "산이 깊소. 서두르지 마오."}])

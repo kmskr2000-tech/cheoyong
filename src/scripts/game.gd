@@ -129,6 +129,12 @@ func change_level(id: String, spawn: String, title := "", sub := "") -> void:
 	_busy = false
 
 
+## 2장 진입 스위치. 기본은 꺼짐 — 1장 엔딩(작별 → 1절 → 타이틀)은 그대로다.
+## 켜는 법: 테스트 인자 --ch2, 또는 플래그 ch2_unlocked(디렉터 승인 후 통합배포가 켠다).
+func ch2_enabled() -> bool:
+	return "--ch2" in OS.get_cmdline_user_args() or flag("ch2_unlocked") == 1
+
+
 ## back to the title screen (after the chapter ends, or from the menu)
 func to_title() -> void:
 	await fade(1.0, 0.8)
@@ -552,6 +558,8 @@ func death_report() -> String:
 
 ## where a fresh start / continue / death puts you
 func checkpoint_spawn() -> Array:
+	if flag("ch2_start") and checkpoint in ["hwagae", "jiri_path"]:   # 2장(챕터2 M1): 1장 분기보다 먼저 본다
+		return [checkpoint, "start"]
 	if checkpoint == "gyeongju" or flag("arrived"):
 		return ["gyeongju", "home" if flag("night") else "start"]
 	return ["beach", "start"]
