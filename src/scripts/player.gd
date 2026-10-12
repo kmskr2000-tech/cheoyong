@@ -53,7 +53,6 @@ var max_hp := 100.0
 var hp := 100.0
 var max_ki := 100.0
 var ki := 100.0
-const KI_REGEN := 6.0 # per second
 var spawn := Vector2.ZERO
 var interact: Callable          # level hook: returns true if something was talked to / examined
 var gentle_hits := 0            # tutorial: the next N hits only knock back (no damage)
@@ -406,7 +405,7 @@ func _resolve_hit(c: Dictionary, base: float) -> void:
 		if not whirl and absf(wrapf(to.angle() - base, -PI, PI)) > 1.3 and to.length() > 10:
 			continue
 		if e.has_method("take_hit"):
-			var m := mult * (1.3 if Game.has_skill("gyeolbak2") and e.get("bind_t") > 0.0 else 1.0)   # 결박부·진
+			var m := mult * _bind_mult(e)   # 결박된 적에 대한 베기 ×1.2 (결박부·진 ×1.4)
 			e.take_hit(int(round(c["dmg"] * m)), to.normalized(), last or parry_bonus)
 			add_sin(SIN_PER_HIT)
 			_spark(e.global_position + Vector2(0, -12))
@@ -639,6 +638,8 @@ func hurt(dmg: int, dir: Vector2, melee := false, kind := "") -> void:
 		gentle_hits -= 1  # 벌 없이 배운다: early hits only push him back
 		dmg = 0
 	hp = maxf(0.0, hp - dmg)
+	if dmg > 0:
+		add_sin(-CT.SIN_PENALTY_HIT)   # 피해를 입으면 신명이 흩어진다 (대충 싸우면 처용무가 안 온다)
 	stats_changed.emit(hp, max_hp, ki, max_ki)
 	if hp <= 0.0:
 		_die()
@@ -656,7 +657,7 @@ func _process(delta: float) -> void:
 	hurt_t = maxf(0.0, hurt_t - delta)
 	hurt_pose_t = maxf(0.0, hurt_pose_t - delta)
 	if ki < max_ki and state != "dead":
-		ki = minf(max_ki, ki + KI_REGEN * delta)
+		ki = minf(max_ki, ki + CT.KI_REGEN * delta)
 		stats_changed.emit(hp, max_hp, ki, max_ki)
 
 
@@ -730,13 +731,42 @@ func _song(delta: float) -> void:
 		for i in 5:
 			_ripple(OBANG[i], i * 0.08)
 		var n := 0
+		var heal_hp := 0
+		var gain_ki := 0.0
 		for d in get_tree().get_nodes_in_group("downed"):
 			if d.global_position.distance_to(global_position) < song_range():
+				var tier := _purify_tier(d)
 				d.purify()
 				n += 1
+				if tier == "normal":   # 정화가 전투 중 회복의 유일한 길 (보스 제외)
+					heal_hp += int(max_hp * CT.HP_PURIFY_NORMAL)
+					gain_ki += CT.KI_PURIFY_NORMAL
+				elif tier == "elite":
+					heal_hp += int(max_hp * CT.HP_PURIFY_ELITE)
+					gain_ki += CT.KI_PURIFY_ELITE
+		if heal_hp > 0 or gain_ki > 0.0:
+			ki = minf(max_ki, ki + gain_ki)
+			heal(heal_hp)
+			Game.float_text(get_parent(), global_position + Vector2(0, -34), ["+%d 체력 +%d 소리" % [heal_hp, int(gain_ki)]])
 		arm.visible = false
 		state = "move"
 		sang.emit(n)
+
+
+## 정화 보상 등급: "normal"/"elite", 보상 대상이 아니면 ""
+func _purify_tier(d: Node) -> String:
+	var k = d.get("kind")
+	if k == null or d.get("is_clone") == true or d.get("state") != "downed":
+		return ""
+	var tier: String = Bestiary.entry(k)["tier"]
+	return tier if tier in ["normal", "elite"] else ""
+
+
+func heal(n: float) -> void:
+	if state == "dead" or n <= 0.0:
+		return
+	hp = minf(max_hp, hp + n)
+	stats_changed.emit(hp, max_hp, ki, max_ki)
 
 
 func _note() -> void:
@@ -921,15 +951,10 @@ func _talisman() -> void:
 			get_parent().add_child(z)
 			Audio.sfx("slash", -2.0, 0.3)
 		"bind":
-			var at := position + Vector2.from_angle(ang) * 40.0
-			var bd := 110.0
-			for e in get_tree().get_nodes_in_group("enemy"):
-				var dd: float = e.global_position.distance_to(global_position)
-				if dd < bd:
-					bd = dd; at = e.global_position
+			var at := _bind_spot(position + Vector2.from_angle(ang) * 40.0)
 			var z := TalismanZone.new()
 			z.kind = "bind"
-			z.radius = 40.0
+			z.radius = CT.BIND_RADIUS
 			z.life = 8.0 + (4.0 if Game.has_skill("gyeolbak2") else 0.0)
 			z.position = at
 			get_parent().add_child(z)
@@ -947,6 +972,26 @@ func _talisman() -> void:
 			for i in 3:
 				SoundWave.fire(self, ang + (i - 1) * 0.35, 4)
 	_paper_fx()
+
+
+## 결박부 설치 위치 (CS-04): 110px 안 적 중 "반지름 40 안에 가장 많은 적을 담는 적"의 위치. 동수면 가장 가까운 적.
+func _bind_spot(fallback: Vector2) -> Vector2:
+	var foes := get_tree().get_nodes_in_group("enemy")
+	var best := fallback
+	var best_n := 0
+	var best_d := 1e9
+	for c in foes:
+		var dd: float = c.global_position.distance_to(global_position)
+		if dd >= CT.BIND_PICK_RANGE:
+			continue
+		var n := 0
+		for o in foes:
+			var to: Vector2 = o.global_position - c.global_position
+			if Vector2(to.x, to.y / 0.6).length() <= CT.BIND_RADIUS + 6.0:   # 장판과 같은 지면 타원
+				n += 1
+		if n > best_n or (n == best_n and dd < best_d):
+			best_n = n; best_d = dd; best = c.global_position
+	return best
 
 
 ## the paper talisman flares above his head as it is spent
@@ -985,9 +1030,9 @@ func _ring_fx(col: Color, r: float, time: float) -> void:
 
 # ---------------------------------------------------------------- 신명 · 받아넘기기 · 처용무
 func add_sin(n: float) -> void:
-	shinmyeong = minf(100.0, shinmyeong + n)
+	shinmyeong = clampf(shinmyeong + n, 0.0, 100.0)
 	sin_changed.emit(shinmyeong)
-	if shinmyeong >= 100.0 and _burst_ready and Game.has_skill("sinmyeong"):
+	if n > 0.0 and shinmyeong >= 100.0 and _burst_ready and Game.has_skill("sinmyeong"):
 		_burst_ready = false   # 신명폭발: the brim spills over by itself
 		_ring_fx(Color(1.0, 0.85, 0.45), 90.0, 0.5)
 		for e in get_tree().get_nodes_in_group("enemy"):

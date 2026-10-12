@@ -487,6 +487,8 @@ func _after_strike(to: Vector2, d: float) -> void:
 			Audio.sfx("fire", -8.0)
 			h.position = position + lunge_dir * 22.0
 			get_parent().add_child(h)
+		"dog", "sea", "mama":
+			_stagger(CT.STAGGER_AFTER[kind])   # 후딜: ×1.5 피해 창 (읽고 피했으면 열린다)
 		"sangun", "pado":
 			_stagger(1.0)
 		"jangseung_taki":

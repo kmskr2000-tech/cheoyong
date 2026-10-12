@@ -248,6 +248,8 @@ func _main() -> void:
 		"cs_parry": await sc_cs_parry()
 		"cs_charge": await sc_cs_charge()
 		"cs_guard": await sc_cs_guard()
+		"cs_targeting": await sc_cs_targeting()
+		"cs_economy": await sc_cs_economy()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -997,4 +999,167 @@ func sc_cs_guard() -> void:
 	p.stun(1.0)
 	await must(p.slow_t <= 0.0 and p.stun_t <= 0.0, "구르기 중 둔화·기절 없음 slow=%s stun=%s inv=%s st=%s" % [p.slow_t, p.stun_t, p.invuln, p.state])
 	await cs_idle()
+	await done()
+
+
+func sc_cs_targeting() -> void:
+	step("CS-04 준비")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+
+	step("후딜: 헛돌진한 들개 0.5초·갯귀 0.8초·마마귀신 1.2초, 후딜 중 피해 ×1.5")
+	for spec in [["dog", 0.5], ["sea", 0.8], ["mama", 1.2]]:
+		var e = cs_dummy(spec[0], home + Vector2(300, 0))
+		e.state = "strike"
+		e.st = e.cfg["strike"] + 0.01
+		e.set_physics_process(true)
+		await tick(1)
+		e.set_physics_process(false)
+		await must(e.state == "stagger" and absf(e.stagger_time - spec[1]) < 0.001, "%s 후딜 %.1f초" % [spec[0], spec[1]])
+		var h: int = e.hp
+		e.take_hit(10, Vector2.RIGHT)
+		await must(h - e.hp == 15, "%s 후딜 중 피해 10 → 15" % spec[0])
+		e.queue_free()
+
+	step("마마귀신 장갑 ×0.6: 3연타 18→11·화염 틱 5→3, 강 베기·처용무(charged)는 무시")
+	var m = cs_dummy("mama", home + Vector2(300, 0))
+	var mh: int = m.hp
+	m.take_hit(18, Vector2.RIGHT)
+	await must(mh - m.hp == 11, "18 → 11")
+	mh = m.hp
+	m.take_hit(5, Vector2.ZERO, false, true)
+	await must(mh - m.hp == 3, "화염 틱 5 → 3")
+	mh = m.hp
+	m.take_hit(30, Vector2.ZERO, false, true, true)
+	await must(mh - m.hp == 30, "charged(처용무) 장갑 무시")
+	m.queue_free()
+
+	step("결박부: 군집 중심에 깔려 졸개 3마리를 동시에 포획한다 (가까운 외톨이 대신)")
+	p.position = home
+	p.facing = "right"
+	var lone = cs_dummy("ghoul", home + Vector2(-50, 0))
+	var c1 = cs_dummy("ghoul", home + Vector2(95, -10))
+	var c2 = cs_dummy("ghoul", home + Vector2(100, 8))
+	var c3 = cs_dummy("ghoul", home + Vector2(88, 6))
+	G.tal_idx = 1
+	p.ki = 100.0
+	await must(p.current_talisman() == "bind", "결박부 선택")
+	p._talisman()
+	await tick(1)
+	var zone = null
+	for c in lvl().get_children():
+		if c.get("kind") == "bind" and c.get("radius") != null:
+			zone = c
+	await must(zone != null, "결박 장판 생성")
+	await tick(3)
+	await must(c1.bind_t > 0.0 and c2.bind_t > 0.0 and c3.bind_t > 0.0, "군집 3마리 모두 결박")
+	await must(lone.bind_t <= 0.0, "외톨이는 결박되지 않음")
+	zone.queue_free()
+
+	step("결박된 적 위의 화염 틱은 8, 아닌 적은 5 (S1)  /  결박된 적에 대한 베기 ×1.2")
+	for e in [lone, c1, c2, c3]:
+		e.queue_free()
+	await tick(2)
+	var fz = load("res://scripts/fx/talisman_zone.gd").new()
+	fz.kind = "fire"
+	fz.angle = 0.0
+	fz.position = home
+	var a = cs_dummy("ghoul", home + Vector2(30, 0))
+	var b = cs_dummy("ghoul", home + Vector2(30, 6))
+	a.bind_t = 5.0
+	lvl().add_child(fz)
+	await tick(2)
+	await must(a.cfg["hp"] - a.hp == 8, "결박된 적 화염 8: " + str(a.cfg["hp"] - a.hp))
+	await must(b.cfg["hp"] - b.hp == 5, "비결박 화염 5: " + str(b.cfg["hp"] - b.hp))
+	fz.queue_free()
+	b.queue_free()
+	a.position = home + Vector2(24, 0)
+	a.hp = a.cfg["hp"]
+	p.facing = "right"
+	await tick(1)
+	await press("attack")
+	await until(func(): return a.hp < a.cfg["hp"], "베기 적중", 60)
+	await must(a.cfg["hp"] - a.hp == 12, "결박된 적 베기 10 ×1.2 = 12: " + str(a.cfg["hp"] - a.hp))
+	G.skills = ["gyeolbak2"]
+	await must(absf(p._bind_mult(a) - 1.4) < 0.001, "gyeolbak2 ×1.4")
+	G.skills = []
+	await done()
+
+
+func sc_cs_economy() -> void:
+	step("CS-05 준비")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+
+	step("소리 재생 초당 4.0")
+	p.ki = 0.0
+	await tick(60)
+	await must(p.ki > 3.5 and p.ki < 4.5, "1초 재생 ≈ 4.0: " + str(p.ki))
+
+	step("피해를 입으면 신명 −12 (0 하한), 수호부가 막은 피격은 감점 없음")
+	p.shinmyeong = 50.0
+	p.hurt_t = 0.0
+	p.hurt(5, Vector2.LEFT)
+	await must(absf(p.shinmyeong - 38.0) < 0.01, "50 → 38")
+	p.hurt_t = 0.0
+	p.shinmyeong = 5.0
+	p.hurt(5, Vector2.LEFT)
+	await must(p.shinmyeong == 0.0, "0 하한")
+	p.hurt_t = 0.0
+	p.shinmyeong = 30.0
+	p.shield = 1
+	p.hurt(5, Vector2.LEFT)
+	await must(p.shinmyeong == 30.0, "수호부로 막으면 감점 없음")
+
+	step("정화 보상: normal 4마리 → 체력 +16·소리 +32 (Lv.3), elite → 체력 +12·소리 +20")
+	G.set_flag("hanpuri_" + G.level_id)   # 이 단계에선 한풀이 보너스를 끈다(아래 단계에서 따로 검증)
+	G.lv = 3
+	p.max_hp = G.max_hp()
+	p.hp = 40.0
+	p.ki = 0.0
+	p.hurt_t = 0.0
+	p.position = home
+	var foes := []
+	for i in 4:
+		foes.append(cs_dummy("ghoul", home + Vector2(12 + i * 4, 4 * i - 6)))
+	for e in foes:
+		e.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await sing_now()
+	await must(absf(p.hp - 56.0) < 0.6, "체력 +16: " + str(p.hp))
+	await must(p.ki > 31.5 and p.ki < 40.0, "소리 +32 (+재생): " + str(p.ki))
+	await cs_idle()
+	p.hp = 40.0
+	p.ki = 0.0
+	var el = cs_dummy("mama", home + Vector2(14, 0))
+	el.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await sing_now()
+	await must(absf(p.hp - 52.0) < 0.6, "elite 체력 +12: " + str(p.hp))
+	await must(p.ki > 19.5 and p.ki < 28.0, "elite 소리 +20: " + str(p.ki))
+
+	step("한풀이(구역 전원 정화, 최소 3) 성립 시 체력 +15%")
+	G.flags.erase("hanpuri_" + G.level_id)
+	G.lv = 3
+	G.deok = 0   # 레벨업(전회복)이 체력 대조를 흐리지 않게
+	p.max_hp = G.max_hp()
+	cs_purge()
+	await tick(2)
+	var lv_ := lvl()
+	lv_._purified_n = 0
+	p.hp = 20.0
+	var trio := []
+	for i in 3:
+		trio.append(cs_dummy("ghoul", home + Vector2(12 + i * 4, 4 * i - 6)))
+	for e in trio:
+		e.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await sing_now()
+	await must(G.flag("hanpuri_" + G.level_id) == 1, "한풀이 성립")
+	# 3마리 정화(4×3=12) + 한풀이 15% of 112 = 16.8
+	await must(absf(p.hp - (20.0 + 12.0 + 16.8)) < 1.0, "체력 +12 + 16.8: " + str(p.hp))
 	await done()
