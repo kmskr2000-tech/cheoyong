@@ -18,6 +18,16 @@ var _pd: Array[float] = []   # draw calls
 var _po: Array[float] = []   # canvas items drawn (objects in frame)
 var _last_us := 0
 var _finishing := false
+var _cpu0 := 0.0   # /proc/self/stat utime+stime (초) — 프레임 시간이 다른 프로세스 때문에 부풀어도 CPU 소비량은 그대로 남는다
+
+
+static func _cpu_s() -> float:
+	var f := FileAccess.open("/proc/self/stat", FileAccess.READ)
+	if f == null: return -1.0
+	var line := f.get_line()   # /proc 파일은 길이가 0으로 보고돼 get_as_text()가 비어 있다
+	if line.find(")") < 0: return -1.0
+	var parts := line.substr(line.rfind(")") + 1).strip_edges().split(" ")
+	return (float(parts[11]) + float(parts[12])) / 100.0   # utime, stime (14·15번째 필드; ')' 뒤 인덱스 11·12)
 
 
 func _ready() -> void:
@@ -55,6 +65,7 @@ func _place() -> void:
 
 func _perf_sample() -> void:
 	var now := Time.get_ticks_usec()
+	if frame_i == perf_warm: _cpu0 = _cpu_s()
 	if frame_i > perf_warm and _last_us > 0:
 		_pw.append((now - _last_us) / 1000.0)
 		_pp.append(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0)
@@ -76,6 +87,7 @@ static func _stat(a: Array[float]) -> String:
 func _perf_report() -> void:
 	var lv := get_tree().current_scene
 	var lights := 0
+	var shadow_lights := 0
 	var occ := 0
 	var shaders := 0
 	var nodes := 0
@@ -83,16 +95,21 @@ func _perf_report() -> void:
 	while not stack.is_empty():
 		var n: Node = stack.pop_back()
 		nodes += 1
-		if n is Light2D: lights += 1
+		if n is Light2D:
+			lights += 1
+			if (n as Light2D).shadow_enabled: shadow_lights += 1
 		elif n is LightOccluder2D: occ += 1
 		if n is CanvasItem and (n as CanvasItem).material is ShaderMaterial: shaders += 1
 		stack.append_array(n.get_children())
 	print("PERF level=", Game.level_id, " frames=", _pw.size())
 	print("  wall_ms   ", _stat(_pw), "   (xvfb 소프트웨어 렌더: 상대 비교용)")
+	var cpu1 := _cpu_s()
+	if _cpu0 >= 0.0 and cpu1 >= 0.0 and not _pw.is_empty():
+		print("  cpu_ms/frame %.1f   (프로세스 CPU 시간 ÷ 프레임, 부하 영향 적음)" % ((cpu1 - _cpu0) * 1000.0 / (_pw.size() + 1)))
 	print("  process_ms ", _stat(_pp))
 	print("  physics_ms ", _stat(_pf))
 	print("  drawcalls ", _stat(_pd), "  canvas_items ", _stat(_po))
-	print("  nodes %d lights %d occluders %d shader_items %d enemies %d" % [nodes, lights, occ, shaders, get_tree().get_nodes_in_group("enemy").size()])
+	print("  nodes %d lights %d (그림자 %d) occluders %d shader_items %d enemies %d" % [nodes, lights, shadow_lights, occ, shaders, get_tree().get_nodes_in_group("enemy").size()])
 	print("  tex_mem_MB %.2f  video_mem_MB %.2f  static_mem_MB %.1f  orphan_nodes %d" % [
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0,
 		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / 1048576.0,
@@ -113,9 +130,11 @@ func _process(_delta: float) -> void:
 	if frames > 0 or _finishing:
 		return
 	_finishing = true
-	await RenderingServer.frame_post_draw
+	if DisplayServer.get_name() != "headless":   # 헤드리스에서는 frame_post_draw 가 오지 않아 영원히 멈춘다
+		await RenderingServer.frame_post_draw
 	if perf: _perf_report()
-	get_viewport().get_texture().get_image().save_png(out)
+	if not (perf and DisplayServer.get_name() == "headless"):
+		get_viewport().get_texture().get_image().save_png(out)
 	print("t=", Time.get_ticks_msec(), "ms  captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	var pl = get_tree().current_scene.get_node_or_null("Player")
 	var bs = get_tree().current_scene.get_node_or_null("Boss")
