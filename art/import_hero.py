@@ -170,7 +170,7 @@ def build():
 
 # sheet index plan (must match player.gd)
 def layout(F):
-    cells = [None] * 100
+    cells = [None] * 110
     idle = F['idle']
     cells[0] = idle['down']
     cells[1] = idle['up']; cells[2] = idle['right']
@@ -196,7 +196,34 @@ def layout(F):
     for k, d in enumerate(['down', 'up', 'right']):
         for i in range(3):
             cells[78 + k * 3 + i] = F['run'][d][i]
-    return cells[:87]
+    # ---- 구르기 전용(87~104): 방향별 6컷 = 웅크림 / 말아쥠(90° 단위 회전 x3) / 착지.  달리기 컷을 재료로 변형 합성
+    for k in range(3):
+        base = cells[79 + k * 3]
+        for i, c in enumerate(roll_cells(base)):
+            cells[87 + k * 6 + i] = c
+    return cells[:105]
+
+def squash(t, sx, sy, cy=None):
+    """feet-anchored resize of the figure bbox (NEAREST)."""
+    bb = t.getbbox(); fig = t.crop(bb)
+    w, h = max(1, round(fig.width * sx)), max(1, round(fig.height * sy))
+    fig = fig.resize((w, h), Image.NEAREST)
+    n = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
+    cxm = (bb[0] + bb[2]) // 2
+    n.alpha_composite(fig, (max(0, min(CELL - w, cxm - w // 2)), (FEET + 1 - h) if cy is None else cy - h // 2))
+    return n
+
+def roll_cells(base):
+    crouch = squash(base, 1.0, 0.72)                        # 웅크림: 무게를 낮추고
+    ball = squash(base, 0.95, 0.58, cy=FEET - 13)           # 몸을 말아 쥐고
+    bb = ball.getbbox(); sq = max(bb[2] - bb[0], bb[3] - bb[1])
+    out = [crouch]
+    for ang in (-90, -180, -270):                          # 한 바퀴: 등 → 머리 → 배
+        r = ball.rotate(ang, resample=Image.NEAREST, center=(CELL / 2, FEET - 13))
+        out.append(r)
+    out.append(squash(base, 1.05, 0.66))                    # 착지(깊은 무릎)
+    out.append(squash(base, 1.0, 0.9))                      # 일어서기
+    return out
 
 def finish(cells):
     sheet = Image.new('RGBA', (CELL * len(cells), CELL), (0, 0, 0, 0))

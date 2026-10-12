@@ -127,6 +127,7 @@ func _ready() -> void:
 	_add_anim(frames, tex, "die", [74, 75, 76, 77])
 	for d in 3:
 		_add_anim(frames, tex, dirs[d] + "_run", [78 + d * 3, 79 + d * 3, 80 + d * 3])
+		_add_anim(frames, tex, dirs[d] + "_roll", [87 + d * 6, 88 + d * 6, 89 + d * 6, 90 + d * 6, 91 + d * 6, 92 + d * 6])  # 구르기 전용 컷(art/import_hero.py roll_cells)
 	sprite.sprite_frames = frames
 	sprite.offset = Vector2(0, FRAME.y / 2.0 - FEET_ROW)
 	sprite.play("down_idle")
@@ -878,7 +879,7 @@ func _roll(delta: float) -> void:
 	_slide()
 	# 춤 구르기: one full turn on the spot of the step, the robe flaring (rendered, art/hero.py)
 	var rrow := "right" if facing == "left" else facing   # 구르기: 드라이브 '달리기' 컷을 낮게 몰아친다
-	_pose(rrow + "_run", int(k * 9.0) % 3)
+	_pose(rrow + "_roll", mini(int(k * 6.0), 5))
 	sprite.flip_h = facing == "left"
 	ghost_t -= delta
 	if ghost_t <= 0.0:
