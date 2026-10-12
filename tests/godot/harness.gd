@@ -9,7 +9,7 @@ extends SceneTree
 
 signal _halt   # 절대 emit 안 함 — 실패 후 코루틴을 멈춰 두는 용도
 
-const BOSS_MAX := 1350.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
+const BOSS_MAX := 1000.0   # PlagueGod.MAX_HP = CT.BOSS_HP (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
 const SPEED := 4.0          # Engine.time_scale (대사·페이드·카드가 실시간이라 가속)
 var scn := ""
 var G: Node                 # autoload Game
@@ -1277,11 +1277,17 @@ func sc_cs_boss() -> void:
 	boss.phase = 1
 	await until(func(): return boss.state == "idle", "열림 종료", 120)
 
-	step("펄스 뒤 열림 1.0초")
-	boss.position = p.position + Vector2(30, 0)
+	step("펄스: 피했으면 열림 1.0초, 붙어서 맞았으면 열림 없음(BOSS_OPEN_IF_HIT)")
+	boss.position = p.position + Vector2(120, 0)   # 펄스 사거리(80) 밖 = 피함
 	boss._begin("pulse")
 	await until(func(): return boss.state == "open", "펄스 → 열림", 120)
-	await must(absf(boss.open_t - 1.0) < 0.001, "열림 1.0초")
+	await must(absf(boss.open_t - 1.0) < 0.001, "피한 펄스 뒤 열림 1.0초")
+	await until(func(): return boss.state == "idle", "열림 종료", 120)
+	p.hp = 100.0
+	boss.position = p.position + Vector2(30, 0)   # 붙어서 맞음
+	boss._begin("pulse")
+	await until(func(): return boss.state == "open", "펄스 → 열림(0초)", 120)
+	await must(boss.open_t < 0.01, "맞은 펄스 뒤 열림 없음(0초)")
 	await until(func(): return boss.state == "idle", "열림 종료", 120)
 	boss.position = p.position + Vector2(220, 0)
 

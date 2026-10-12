@@ -74,13 +74,14 @@ const SIN_PENALTY_HIT := 12.0       # 0~20  피해를 입으면 신명 −
 const BOSS_OPEN_COUGH := 1.2        # 0.8~1.6  기침 후 열림
 const BOSS_OPEN_COUGH_P2 := 0.9
 const BOSS_OPEN_PULSE := 1.0
+const BOSS_OPEN_IF_HIT := 0.0       # 기침·펄스에 실제로 맞았을 때의 열림(초). 0=열림 없음 — 예고를 안 읽고 연타만 하면 열림 창이 안 생김
 const BOSS_IDLE_MULT := 0.5        # 열림·시전이 아닌 때 받는 피해 배율 (<1: 예고 중에 연타만 해서는 보스가 잘 안 깎임 — "읽고 열림 창을 노리는" 쪽이 보상받게)
 const BOSS_OPEN_MULT := 2.0         # 1.2~1.8  열림 배율
 const BOSS_CAST_MULT := 1.25        # 시전 노출 배율
 const BOSS_INTERRUPT_OPEN := 1.2    # 시전 중단 후 열림
 const BOSS_PHASE_SHIFT := 1.2       # 2페이즈 전환 열림
 const BOSS_PHASE_KI := 30.0         # 10~50  2페이즈 소리 보상
-const BOSS_HP := 1350.0            # 700~1500  잠정(보고서 P2): 숙련 처치 60~90초 목표, 실측은 production/qa/boss-ttk.md
+const BOSS_HP := 1000.0            # 700~1500  잠정(보고서 P2): 숙련 처치 60~90초 목표, 실측은 production/qa/boss-ttk.md
 
 # ---- 터치 (§7)
 const HAPTIC_MS := 25
