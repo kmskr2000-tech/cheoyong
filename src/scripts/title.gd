@@ -72,6 +72,18 @@ func _ready() -> void:
 		layer.add_child(l)
 		_opts.append(l)
 		_actions.append(items[i][1])
+	var note := Label.new()   # fiction notice (no real-world names)
+	note.text = "본 게임은 삼국유사 처용 설화를 재해석한 픽션입니다"
+	note.add_theme_font_override("font", font)
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", Color(0.62, 0.66, 0.76))
+	note.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.05))
+	note.add_theme_constant_override("outline_size", 4)
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.position = Vector2(0, 250)
+	note.size = Vector2(480, 14)
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(note)
 	_paint()
 	for c in layer.get_children():
 		c.modulate.a = 0.0
