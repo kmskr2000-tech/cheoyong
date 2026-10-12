@@ -186,22 +186,97 @@ const DATA := {
 		# raid: SC2-02 습격 무대(트리거) · raiders: 난입한 외눈박이 자리 · exit: 열린 출구 안쪽(용패 길잡이)
 		"anchors": {"raid": Rect2(380, 285, 70, 30), "raiders": [Vector2(330, 320), Vector2(390, 300)], "exit": Vector2(706, 9)},
 	},
-	# 지리산 산길 — 산군·불도깨비·장승(SC2-15)·산신각(SC2-16). 이번 마일스톤은 서쪽 출구(화개)만 있고, 북(버려진 마을)·동(소굴)은 다음 마일스톤.
+	# 지리산 산길 — 산군·불도깨비·장승(SC2-15)·산신각(SC2-16). 서(화개)·북(버려진 마을, M2)·동(소굴 외곽, M2) 출구. 북 출구 도착점(fromVillage)이 장승 어그로 안이라
+	# 장승·산군을 동쪽 숲 마당으로 옮겼다(M2): 모든 스폰·SC2-15 트리거가 요괴 어그로(130, lift 좌표) 밖.
 	# 그림에 거송·숲·산신각·제상이 이미 있어 pine·seonang·산신각 소품은 얹지 않는다. 길목(x538~625) 폭 약 64.
 	"jiri_path": {
 		"music": "dread", "amb": "wind",
 		"name": "지리산 산길",
 		"ground": "jiri",
 		"ambient": Color(0.40, 0.44, 0.60),
-		"spawns": {"fromHwagae": Vector2(24, 205), "start": Vector2(24, 205)},
+		"spawns": {"fromHwagae": Vector2(24, 205), "start": Vector2(24, 205), "fromVillage": Vector2(656, 46), "fromDen": Vector2(1088, 100)},
 		"props": [["rockwall", 532, 152, null], ["rockwall", 580, 152, null], ["rockwall", 556, 310, null], ["rockwall", 604, 310, null], ["cairn", 430, 240, null]],
 		"lights": [],
 		"npcs": [["sansin", "npc_sansin", 250, 175, "산신령"]],
 		"interact": [["shrine", 258, 158, "산신각"]],
 		# 산군 3(의뢰 A 「길목의 범」 대상은 산군) · 불도깨비 2 · 길목 직후 단독 장승 1 (jangseung_taki 트리거 = SC2-15). 도착 후 x≈430 까지 적 없음(산신각 150px+, 어그로 130).
-		"enemies": [["sangun", 440, 192], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 665, 95], ["sangun", 765, 260], ["sangun", 940, 100], ["dokkaebi_fire", 960, 260]],
-		"triggers": [[Rect2(625, 75, 30, 40), "jangseung"]],
-		"exits": [[Rect2(0, 181, 6, 50), "hwagae", "fromPath"]],
+		"enemies": [["sangun", 440, 192], ["dokkaebi_fire", 580, 215], ["jangseung_taki", 885, 118], ["sangun", 950, 262], ["sangun", 940, 185], ["dokkaebi_fire", 900, 215]],
+		# SC2-15 장승 첫 접촉: 트리거는 장승·산군·불도깨비 모두에서 어그로 130 밖(≥140, 화면엔 장승이 보이는 거리)이어야 한다 — 연출 전 전투 확정 금지
+		"triggers": [[Rect2(712, 96, 30, 32), "jangseung"]],
+		"exits": [[Rect2(0, 181, 6, 50), "hwagae", "fromPath"], [Rect2(620, 0, 76, 20), "old_village", "fromPath"], [Rect2(1106, 64, 14, 64), "den1", "start"]],
 		"anchors": {"exit": Vector2(14, 205)},
+	},
+	# ===== 2장 마일스톤 2: old_village · den1 · den2 · den3 (설계서 §4.3~4.6). 전용 땅그림이 아직 없어 기존 지형으로 폴백 — production/qa/ch2-m2-asset-needs.md.
+	# 좌표는 폴백 지형(걸을 수 있는 자리, tests/art_walk.sh)에 맞춘 값이고, 스폰·연출 트리거는 모든 요괴에서 어그로 130(lift 좌표) 이상 떨어져 있다.
+	# 버려진 마을 — 폴백 지형 village(1장 경주 변두리 땅그림). 서쪽 어귀(무덤)·우물 둘레·북동 끝. SC2-17~20(의뢰 B).
+	"old_village": {
+		"music": "dread", "amb": "wind",
+		"name": "버려진 마을",
+		"ground": "village",
+		"ambient": Color(0.30, 0.31, 0.46),
+		"spawns": {"start": Vector2(26, 382), "fromPath": Vector2(26, 382)},
+		"props": [["jars", 205, 318, null], ["jars", 168, 262, null], ["cairn", 96, 392, null]],
+		"lights": [[135, 232, GHOSTFIRE, 0.5, 0.5], [160, 340, GHOSTFIRE, 0.5, 0.55], [520, 90, GHOSTFIRE, 0.45, 0.5]],
+		"npcs": [["girl_soul", "npc_ghost", 150, 336, "빈집의 넋"]],
+		# doll(짚인형, 의뢰 B)은 girl_soul 사연을 들은 뒤 story.gd 가 add_interact 로 켠다. grave = 마을 어귀 무덤
+		"interact": [["grave", 96, 380, "무덤"]],
+		# 불도깨비 3 · 외눈박이 1. 폴백 지형엔 우회로가 없어 요괴를 피해 갈 수는 없지만, 사연·인형·무덤은 서쪽 절반(요괴 어그로 밖)에 둬서 전투 없이 의뢰를 끝낼 수 있다.
+		"enemies": [["dokkaebi_fire", 360, 225], ["dokkaebi_fire", 425, 175], ["dokkaebi_fire", 480, 112], ["dokkaebi_oneeye", 535, 60]],
+		"exits": [[Rect2(0, 355, 6, 48), "jiri_path", "fromVillage"]],
+		"anchors": {"doll": Vector2(126, 250), "grave": Vector2(96, 380), "exit": Vector2(14, 380)},
+	},
+	# 도깨비 소굴 외곽 — 폴백 지형 pyega1(1장 폐가 마당). 서쪽 입구 홀(A) → 아래 긴 복도 → 동쪽 안쪽(C), 위쪽 곁방(B·샛길). SC2-04·05.
+	"den1": {
+		"music": "dread", "amb": "wind",
+		"name": "도깨비 소굴 외곽",
+		"ground": "pyega1",
+		"ambient": Color(0.27, 0.28, 0.44),
+		"spawns": {"start": Vector2(26, 410), "fromDen2": Vector2(556, 386)},
+		"props": [["pillar", 130, 424, null], ["pillar", 190, 290, null], ["pillar", 290, 360, null], ["pillar", 365, 385, null], ["pillar", 470, 436, null], ["pillar", 520, 392, null],
+			["jars", 60, 300, null], ["jars", 90, 308, null], ["jars", 175, 255, null], ["jars", 560, 424, null]],
+		"lights": [[146, 200, GHOSTFIRE, 0.7, 0.5], [300, 267, GHOSTFIRE, 0.5, 0.5], [470, 400, GHOSTFIRE, 0.45, 0.5], [60, 400, GHOSTFIRE, 0.4, 0.5]],
+		"npcs": [],
+		"interact": [],
+		# A 학습용 외눈박이 1(SC2-05) · B 외눈박이·불도깨비 2 · 샛길 외눈박이 · C 산군 + 단독 장승 (일반 6 + 장승 1 = 7)
+		"enemies": [["dokkaebi_oneeye", 250, 415], ["dokkaebi_oneeye", 225, 262], ["dokkaebi_fire", 235, 318], ["dokkaebi_fire", 330, 405], ["dokkaebi_oneeye", 146, 222],
+			["sangun", 395, 432], ["jangseung_taki", 312, 332]],
+		"vents": [Vector2(250, 300), Vector2(330, 420), Vector2(490, 410)],
+		"triggers": [[Rect2(62, 400, 36, 40), "sight"], [Rect2(540, 372, 28, 24), "deep"]],
+		"exits": [[Rect2(0, 368, 6, 50), "jiri_path", "fromDen"], [Rect2(574, 366, 16, 30), "den2", "start"]],
+		"anchors": {"exit": Vector2(584, 382)},
+	},
+	# 도깨비 곳간(정예 관문) — 폴백 지형 gwana(1장 관아 마당). 남서 입구 → 마당 → 북동 문(장산범 정화 전엔 막힘). SC2-21.
+	"den2": {
+		"music": "dread", "amb": "wind",
+		"name": "도깨비 곳간",
+		"ground": "gwana",
+		"ambient": Color(0.30, 0.30, 0.46),
+		"spawns": {"start": Vector2(95, 395), "fromDen3": Vector2(490, 64)},
+		"props": [["pillar", 250, 252, null], ["pillar", 330, 255, null], ["pillar", 385, 195, null], ["pillar", 372, 150, null], ["jars", 240, 300, null], ["jars", 300, 300, null], ["beam", 140, 340, null]],
+		"lights": [[200, 204, GHOSTFIRE, 0.7, 0.5], [343, 100, GHOSTFIRE, 0.6, 0.5], [496, 80, GHOSTFIRE, 0.5, 0.5], [148, 416, GHOSTFIRE, 0.4, 0.5]],
+		"npcs": [],
+		"interact": [],
+		"enemies": [["jangsanbeom", 272, 228], ["dokkaebi_oneeye", 235, 282], ["dokkaebi_oneeye", 358, 185], ["dokkaebi_fire", 385, 235]],
+		"exits": [[Rect2(50, 400, 100, 19), "den1", "fromDen2"], [Rect2(450, 36, 80, 12), "den3", "start"]],
+		# door: 동쪽 문 앞을 막는 막(정예 정화 전). 열림 = den2_gate_cleared
+		"anchors": {"door": Rect2(430, 66, 110, 12), "exit": Vector2(490, 44)},
+	},
+	# 두억시니의 방 — 폴백 지형 pyega2(1장 역신의 방: 보스 실루엣이 그림에 있다). M2 는 입장 연출(SC2-06·07)까지, 전투는 다음 마일스톤.
+	"den3": {
+		"music": "dread", "amb": "",
+		"name": "두억시니의 방",
+		"ground": "pyega2",
+		"ambient": Color(0.3, 0.29, 0.44),
+		"spawns": {"start": Vector2(284, 395)},
+		"props": [["pillar", 360, 150, null], ["pillar", 600, 150, null], ["pillar", 360, 236, null], ["pillar", 600, 236, null], ["altar", 480, 190, [-20, CANDLE, 1.1, 1.3]],
+			["jars", 300, 150, null], ["jars", 700, 235, null]],
+		"lights": [[400, 160, GHOSTFIRE, 0.6, 0.8], [282, 309, GHOSTFIRE, 0.5, 0.5], [640, 187, CANDLE, 0.5, 0.7]],
+		"npcs": [],
+		"interact": [],
+		"enemies": [],
+		"triggers": [[Rect2(262, 296, 46, 24), "gate"]],
+		"exits": [[Rect2(262, 410, 46, 12), "den2", "fromDen3"]],
+		# door: 입장 뒤 입구 복도를 닫는 막 · hall: 두억시니가 설 홀 중앙(M3)
+		"anchors": {"door": Rect2(262, 344, 46, 12), "hall": Vector2(480, 190), "exit": Vector2(284, 416)},
 	},
 }

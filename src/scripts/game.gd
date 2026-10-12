@@ -207,6 +207,7 @@ func reward_purify(kind: String, where: Vector2, parent: Node, mult := 1.0) -> D
 		"deok": int(randi_range(t["deok"][0], t["deok"][1]) * mult),
 		"money": int(randi_range(t["money"][0], t["money"][1]) * mult),
 		"mat": "",
+		"kind": kind,
 	}
 	if has_skill("yeouiju"):  # 여의주 공명
 		r["jeonggi"] = int(r["jeonggi"] * 1.2)
@@ -556,9 +557,13 @@ func death_report() -> String:
 	return ", ".join(parts)
 
 
+## 2장 레벨 id (체크포인트로 쓰일 수 있는 곳). 새 2장 맵은 여기에도 넣는다.
+const CH2_LEVELS := ["hwagae", "jiri_path", "old_village", "den1", "den2", "den3"]
+
+
 ## where a fresh start / continue / death puts you
 func checkpoint_spawn() -> Array:
-	if checkpoint in ["hwagae", "jiri_path"]:   # 2장(챕터2 M1): 1장 분기보다 먼저 본다
+	if checkpoint in CH2_LEVELS:   # 2장(챕터2 M1·M2): 1장 분기보다 먼저 본다
 		if flag("ch2_start") and ch2_enabled():
 			return [checkpoint, "start"]
 		return ["gyeongju", "start"]   # 스위치가 꺼진 빌드에서 2장 세이브/체크포인트: 2장 지점으로 들이지 않고 경주로 (경주에서 '2장은 준비 중')

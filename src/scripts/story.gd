@@ -37,6 +37,14 @@ func on_enter(level: Node) -> void:
 			_hwagae_enter(level)
 		"jiri_path":
 			_jiri_enter(level)
+		"old_village":
+			_village_enter(level)
+		"den1":
+			_den1_enter(level)
+		"den2":
+			_den2_enter(level)
+		"den3":
+			_den3_enter(level)
 
 
 const RUMOR := {
@@ -51,7 +59,7 @@ const RUMOR := {
 
 
 func interact(level: Node, id: String) -> void:
-	if Game.level_id in ["hwagae", "jiri_path"]:   # 2장: 1장의 소문·잡담 표와 섞이지 않게 따로 처리
+	if Game.level_id in Game.CH2_LEVELS:   # 2장: 1장의 소문·잡담 표와 섞이지 않게 따로 처리
 		await _ch2_interact(level, id)
 		return
 	if Game.flag("rumor") and RUMOR.has(id) and not Game.flag("appointed"):
@@ -87,6 +95,9 @@ func trigger(level: Node, id: String) -> void:
 		"audience": _audience(level)
 		"raid": _raid(level)
 		"jangseung": _jangseung_first(level)
+		"sight": _den1_sight(level)
+		"deep": _den1_deep(level)
+		"gate": _den3_gate(level)
 
 
 # ================================================================ 1장 1-1 백사장 (SC1-01~04)
@@ -743,7 +754,18 @@ func objective(level: Node):
 			if not f.call("ch2_old_man"): return Vector2(385, 173)
 			return level.def["anchors"]["exit"]
 		"jiri_path":
-			return null
+			return Vector2(1100, 100)   # 동쪽 소굴 (M2). 북쪽 마을은 산신령이 일러 준 선택 구간
+		"old_village":
+			if not f.call("girl_heard"): return Vector2(150, 336)
+			if f.call("q_b") < 2: return level.def["anchors"]["doll"]
+			if f.call("q_b") < 3: return level.def["anchors"]["grave"]
+			return level.def["anchors"]["exit"]
+		"den1":
+			return level.def["anchors"]["exit"]
+		"den2":
+			return level.def["anchors"]["exit"] if f.call("den2_gate_cleared") else Vector2(272, 228)
+		"den3":
+			return Vector2(284, 300) if not f.call("boss2_intro_seen") else level.def["anchors"]["hall"]
 	return null
 
 
@@ -809,6 +831,9 @@ func _raid(level: Node) -> void:
 
 
 func _ch2_interact(level: Node, id: String) -> void:
+	if Game.level_id == "old_village":
+		await _village_interact(level, id)
+		return
 	match id:
 		"sangin":
 			await level.talk([{"name": "장사치", "text": "동쪽 산길로 갔을 게요. 조심하시오." if Game.flag("raided")
@@ -858,5 +883,196 @@ func _shrine(level: Node) -> void:
 			{"name": "처용", "text": "…잊지 않았소."},
 			{"name": "산신령", "text": "저 아래 빈 마을에 우는 아이가 있소. 아무도 들어주질 않는구려."},
 		])
+		if Game.flag("q_b") == 0:
+			Game.set_flag("q_b")   # 의뢰 B 수주 (북쪽 산길 끝 버려진 마을)
 	else:
 		await level.talk([{"name": "산신령", "text": "산이 깊소. 서두르지 마오."}])
+
+
+# ================================================================ 2장 「도깨비골」 마일스톤 2 (design/levels/ch2-dokkaebigol.md §4.3~4.6, §9, §10)
+## 1장 체크포인트·스폰 규칙: 레벨에 들어올 때마다 체크포인트를 그 레벨로 옮긴다 (den3 만 SC2-06 뒤에 옮긴다).
+func _ch2_arrive(level_id: String) -> void:
+	Game.set_flag("flute")
+	Game.checkpoint = level_id
+
+
+## 연출 공통: 플레이어를 묶고 잠깐 기다린 뒤 대사를 연다. 끝나면 풀린다 (level.talk 가 푼다).
+func _beat(level: Node, lines: Array, wait := 0.8) -> void:
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().create_timer(wait).timeout
+	await level.talk(lines)
+
+
+## SC2-17: 버려진 마을 진입. 사연(SC2-18)·인형(SC2-19)·무덤(SC2-20)은 서쪽 절반(요괴 어그로 밖)에 있다.
+func _village_enter(level: Node) -> void:
+	_ch2_arrive("old_village")
+	if Game.flag("q_b") >= 3:
+		level.npc("girl_soul").set_present(false)
+	elif Game.flag("girl_heard") and Game.flag("q_b") < 2:
+		level.add_interact("doll", level.def["anchors"]["doll"], "짚인형", true)
+	if not Game.flag("village_seen"):
+		Game.set_flag("village_seen")
+		Game.save()
+		await _beat(level, [{"name": "처용", "text": "…서둘러 떠난 자리다."}])   # SC2-17
+
+
+## 의뢰 B 「빈집의 아이」 (q_b: 0 미수주 · 1 수주 · 2 인형 회수 · 3 완료 / girl_heard: 사연을 들었다 / q_b_clean: 마을에서 아직 아무도 정화하지 않았다)
+func _village_interact(level: Node, id: String) -> void:
+	match id:
+		"girl_soul":
+			if Game.flag("q_b") >= 3:
+				await level.talk([{"name": "빈집의 넋", "text": "…고마워요."}])
+			elif not Game.flag("girl_heard"):
+				Game.set_flag("girl_heard")
+				Game.set_flag("q_b", maxi(Game.flag("q_b"), 1))
+				if Game.flag("q_b_clean") == 0 and Game.flag("hanpuri_old_village") == 0:
+					Game.set_flag("q_b_clean")   # 이 순간부터 마을 요괴를 정화하지 않고 끝내면 무전투 보너스
+				await level.talk([
+					{"name": "빈집의 넋", "text": "엄마가 짚인형을 두고 갔어요. 같이 가자고 했는데… 두고 갔어요."},   # SC2-18
+					{"name": "처용", "text": "…찾아주마."},
+				])
+				level.add_interact("doll", level.def["anchors"]["doll"], "짚인형", true)
+				Game.say_toast("의뢰 「빈집의 아이」 — 짚인형을 찾아 주자.")
+				Game.save()
+			elif Game.flag("q_b") < 2:
+				await level.talk([{"name": "빈집의 넋", "text": "…인형이 있었는데. 서쪽 빈집 뒤꼍에…"}])
+			else:
+				await level.talk([{"name": "빈집의 넋", "text": "…인형을 안고 가고 싶어요. 어귀 무덤으로 와 줘요."}])
+		"doll":
+			level.remove_interact("doll")
+			Audio.sfx("pickup", -4.0, 0.0)
+			Game.set_flag("q_b", 2)
+			await level.talk([{"name": "처용", "text": "…여기 있다."}])   # SC2-19
+			Game.say_toast("짚인형을 얻었다.")
+			Game.save()
+		"grave":
+			if Game.flag("q_b") < 2:
+				await level.talk([{"text": "이름 없는 무덤이다. 풀이 말랐다."}])
+			elif Game.flag("q_b") < 3:
+				await _grave_rite(level)
+			else:
+				await level.talk([{"text": "…풀이 다시 푸르다."}])
+
+
+## SC2-20: 무덤에서 굿 — 처용은 말 없이 노래로. 아이 넋이 승천하고 한풀이 보상(전투 없이 끝내면 +30%).
+func _grave_rite(level: Node) -> void:
+	if level.has_meta("rite_busy"):   # 노래하는 동안 플레이어는 풀려 있다 → 같은 굿이 겹쳐 시작되지 않게
+		return
+	level.set_meta("rite_busy", true)
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().create_timer(0.4).timeout
+	p.locked = false
+	p.sing()
+	await level.get_tree().create_timer(1.8).timeout
+	p.locked = true
+	var girl: Npc = level.npc("girl_soul")
+	girl.talkable = false
+	var tw: Tween = girl.create_tween().set_parallel()
+	tw.tween_property(girl.sprite, "modulate:a", 0.0, 1.4)
+	tw.tween_property(girl.sprite, "position:y", girl.sprite.position.y - 18.0, 1.4)
+	await tw.finished
+	await level.talk([{"name": "빈집의 넋", "text": "…고마워요."}])   # SC2-20
+	girl.set_present(false)
+	var mult := 1.3 if Game.flag("q_b_clean") == 1 else 1.0
+	Game.reward_bonus(int(80 * mult), int(120 * mult), p.global_position, level)
+	Game.set_flag("q_b", 3)
+	Game.say_toast("의뢰 완료 — 빈집의 아이" + (" (전투 없이: +30%)" if mult > 1.0 else ""), Color(0.75, 0.9, 1.0))
+	Game.save()
+
+
+## 소굴 외곽: SC2-04(소굴 어귀에서 졸개의 목소리) · SC2-05(첫 외눈박이 감투 → 용패)
+func _den1_enter(_level: Node) -> void:
+	_ch2_arrive("den1")
+
+
+func _den1_sight(level: Node) -> void:
+	if Game.flag("den_sight"):
+		return
+	Game.set_flag("den_sight")
+	await level.get_tree().process_frame
+	await level.talk([{"name": "도깨비 졸개", "text": "크르릉…! 물러가라…!"}])   # SC2-04
+
+
+func _den1_deep(level: Node) -> void:
+	if Game.flag("den_deep"):
+		return
+	Game.set_flag("den_deep")
+	await level.get_tree().process_frame
+	await level.talk([{"name": "처용", "text": "…울고 있다."}])
+
+
+## SC2-05: 외눈박이가 감투로 사라질 때(enemy.gd) — 첫 번째는 시스템 문구, 처음 3번은 도착점에 용패 잔영(반짝임)
+func oneeye_vanish(level: Node, at: Vector2) -> void:
+	if Game.level_id != "den1":   # SC2-05 는 소굴 외곽의 학습 구간 몫 — 마을 외눈박이가 잔영·문구를 먼저 써 버리지 않게
+		return
+	var n := Game.flag("yongpae_trace_n")
+	if n >= 3 or not level.has_method("_glint"):
+		return
+	Game.set_flag("yongpae_trace_n", n + 1)
+	if n == 0:
+		Game.say_toast("용패가 탁기의 흐름을 비춘다.", Color(0.75, 0.9, 1.0))   # SC2-05
+	var mark: Node2D = level._glint(at)   # _glint 가 레벨에 붙여 준다
+	await level.get_tree().create_timer(1.6).timeout
+	if is_instance_valid(mark):
+		mark.queue_free()
+
+
+## 도깨비 곳간: SC2-21 입장. 동쪽 문은 정예 장산범 정화 전까지 막혀 있다(den2_gate_cleared).
+func _den2_enter(level: Node) -> void:
+	_ch2_arrive("den2")
+	if not Game.flag("den2_gate_cleared"):
+		level.set_meta("door", level.add_barrier(level.def["anchors"]["door"]))
+	if not Game.flag("den2_seen"):
+		Game.set_flag("den2_seen")
+		Game.save()
+		await _beat(level, [
+			{"name": "처용", "text": "…누가 부르는 것 같다."},   # SC2-21
+			{"name": "장산범", "text": "…거기 누구 있소?"},
+		])
+
+
+## 정화 훅 (level.on_purified 에서): 장산범 정화 → 곳간 동문 · 마을에서 정화하면 의뢰 B 의 무전투 보너스 소멸
+func purified(level: Node, kind: String) -> void:
+	if Game.level_id == "den2" and kind == "jangsanbeom" and not Game.flag("den2_gate_cleared"):
+		Game.set_flag("den2_gate_cleared")
+		var door = level.get_meta("door", null)
+		if is_instance_valid(door):
+			door.queue_free()
+		Game.say_toast("곳간 동쪽 문이 열렸다.")
+		Game.save()
+	elif Game.level_id == "old_village" and Game.flag("q_b") in [1, 2] and Game.flag("q_b_clean") == 1:
+		Game.set_flag("q_b_clean", 0)
+
+
+## 두억시니의 방: 입장하면 입구 복도가 닫힌다(SC2-06·07 연출, 체크포인트 den3). 재도전(boss2_intro_seen)이면 연출을 건너뛰고 1초 뒤 시작한다.
+## M2 에는 보스 전투가 없다 — 연출 뒤 안내만 하고 문을 다시 연다 (두억시니전은 다음 마일스톤).
+func _den3_enter(_level: Node) -> void:
+	Game.set_flag("flute")
+	if not Game.flag("boss2_intro_seen"):
+		Game.checkpoint = "den2"   # 연출 전까지는 곳간이 체크포인트 (SC2-06 에서 den3 로 옮긴다)
+
+
+func _den3_gate(level: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().process_frame
+	var door: Node = level.add_barrier(level.def["anchors"]["door"])   # 입구 복도가 닫힌다
+	Audio.sfx("door", -6.0)
+	if not Game.flag("boss2_intro_seen"):
+		Game.checkpoint = "den3"
+		Game.set_flag("boss2_intro_seen")
+		Game.save()
+		await level.get_tree().create_timer(0.8).timeout
+		await level.talk([
+			{"name": "두억시니", "text": "인간! 인간이 버렸으면서, 왜 도로 뺏으려 드느냐!"},   # SC2-06
+			{"name": "두억시니", "text": "우리는 버려졌다! 버려진 것들의 설움을 네가 아느냐!"},   # SC2-07
+			{"name": "처용", "text": "…안다."},
+		])
+	else:
+		await level.get_tree().create_timer(1.0).timeout   # 재도전: 연출 생략, 곧 전투 (M2: 전투 미구현)
+		p.locked = false
+	Game.say_toast("두억시니와의 싸움은 다음 마일스톤에서 이어진다.", Color(1.0, 0.7, 0.5))
+	if is_instance_valid(door):
+		door.queue_free()

@@ -257,6 +257,8 @@ func _main() -> void:
 		"boss_retry": await sc_boss_retry()
 		# ---- 2장 마일스톤 1 smoke (tests/chapter1_playthrough.sh ch2_m1 로 단독 실행; 기본 1장 목록에는 넣지 않는다)
 		"ch2_m1": await sc_ch2_m1()
+		# ---- 2장 마일스톤 2 (old_village·den1~3, tests/chapter1_playthrough.sh ch2_m2): 실제 걷기 + 정화 경로, tp 는 레벨 이동(출구 중심)에만
+		"ch2_m2": await sc_ch2_m2()
 		# ---- 2장 진입 검증(prog/ch2-enter): ch2_farewell·ch2_continue 는 --ch2 로, ch2_off_continue 는 인자 없이(꺼짐) 실행
 		"ch2_farewell": await sc_ch2_farewell()
 		"ch2_continue": await sc_ch2_continue()
@@ -1529,7 +1531,7 @@ func sc_ch2_m1() -> void:
 	await tp_to_interact("shrine")
 	await interact("shrine")
 	await until(func(): return G.flag("shrine_seen") == 1 and not player().locked, "SC2-16 산신령", 1500)
-	await tp(Vector2(640, 95))
+	await tp(lvl().def["triggers"][0][0].get_center())   # SC2-15 장승 트리거 (M2: 북쪽 출구 개방으로 장승이 동쪽으로 옮겨졌다)
 	await until(func(): return G.flag("jangseung_seen") == 1, "SC2-15 장승 첫 접촉", 1500)
 	step("산길 서쪽 출구 → 화개 저자 (이어하기 저장값 유지)")
 	await until(func(): return not player().locked, "조작 가능", 1500)
@@ -1601,4 +1603,191 @@ func sc_ch2_off_continue() -> void:
 	await must(G.level_id == "gyeongju", "여전히 경주 (hwagae 로 가지 않음)")
 	await must(G.checkpoint_spawn()[0] == "gyeongju", "꺼짐 상태의 재시작·사망 지점도 경주 (checkpoint 값 자체는 보존)")
 	await must(G.flag("ch2_start") == 1, "2장 진행 플래그는 보존 (스위치를 다시 켜면 이어진다)")
+	await done()
+
+
+# ================================================================ 2장 M2: 버려진 마을(의뢰 B) → 소굴 외곽(SC2-04·05) → 곳간(SC2-21, 동문) → 두억시니의 방(SC2-06·07, 체크포인트)
+## 연출 전 전투 확정 방지: 스폰은 요괴에서 어그로(130, lift 좌표) 140 이상, 연출 순간 요괴는 전부 idle. 지형상 걷기는 tests/ch2_aggro.sh(--live) 가 따로 검증한다.
+func spawns_safe(note: String) -> void:
+	var l := lvl()
+	for sp in l.def["spawns"]:
+		var a: Vector2 = l.lift(l.def["spawns"][sp])
+		var near := 9999.0
+		for e in l.def.get("enemies", []):
+			near = minf(near, a.distance_to(l.lift(Vector2(e[1], e[2]))))
+		await must(near >= 140.0, "%s 스폰 %s ↔ 가장 가까운 요괴 %.0f ≥ 140 (어그로 130)" % [note, sp, near])
+
+
+## 연출 트리거(사각형 모서리·중심) ↔ 모든 요괴 ≥ 140 (어그로 130): 트리거를 밟는 순간 전투가 확정돼 있으면 안 된다
+func triggers_safe(note: String) -> void:
+	var l := lvl()
+	for tr in l.def.get("triggers", []):
+		var r: Rect2 = tr[0]
+		var near := 9999.0
+		for pt in [r.position, r.position + Vector2(r.size.x, 0), r.position + Vector2(0, r.size.y), r.end, r.get_center()]:
+			for e in l.def.get("enemies", []):
+				near = minf(near, l.lift(pt).distance_to(l.lift(Vector2(e[1], e[2]))))
+		await must(near >= 140.0, "%s 트리거 %s ↔ 가장 가까운 요괴 %.0f ≥ 140 (어그로 130)" % [note, tr[1], near])
+
+
+func all_idle() -> bool:
+	for e in get_nodes_in_group("enemy"):
+		if e.get("state") != "idle":
+			return false
+	return true
+
+
+func goto_exit(i: int, to_level: String) -> void:
+	var iid := level_iid()
+	await free_player()
+	player().position = lvl().lift(exit_center(i))   # 풀린 즉시 같은 프레임에 출구로 (연타가 근처 상호작용을 다시 열어 묶지 않게; 연출 직후 대사는 호출 쪽이 tick 으로 기다린다)
+	await tick(3)
+	await until(func(): return level_ready(to_level, iid), "%s 진입" % to_level, 3000)
+	await tick(3)
+
+
+func sc_ch2_m2() -> void:
+	step("준비: 1장을 끝내고 M1(화개 저자·산길)을 지난 세이브")
+	G.flags["ch2_unlocked"] = 1
+	for f in ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided", "night", "ch2_old_man"]:
+		G.flags[f] = 1
+	G.level_id = "jiri_path"
+	G.spawn_name = "start"
+	pump = true
+	await boot_level()
+	await free_player()
+	await must(lvl().def["exits"].size() == 3, "산길 출구 3개 (서·북·동)")
+	await must(get_nodes_in_group("enemy").size() == 6, "산길 요괴 6체")
+	await spawns_safe("산길")
+	await triggers_safe("산길")
+
+	step("산길 북쪽 → 버려진 마을 (SC2-17)")
+	await goto_exit(1, "old_village")
+	await must(G.checkpoint == "old_village" and G.checkpoint_spawn() == ["old_village", "start"], "체크포인트·이어하기 = old_village")
+	await must(get_nodes_in_group("enemy").size() == 4, "마을 요괴 4체 (불도깨비 3·외눈박이 1)")
+	await spawns_safe("마을")
+	await until(func(): return G.flag("village_seen") == 1, "SC2-17 마을 진입 연출", 900)
+	await must(all_idle(), "연출 중 요괴 전부 idle")
+	await free_player()
+
+	step("의뢰 B: 사연(SC2-18) → 짚인형(SC2-19) → 무덤 굿(SC2-20), 전투 없이 +30%")
+	await must(G.flag("q_b") == 0, "산신각 전이라 q_b = 0")
+	await tp_to_npc("girl_soul")
+	await interact("girl_soul")
+	await until(func(): return G.flag("girl_heard") == 1 and not player().locked, "SC2-18 사연", 1500)
+	await must(G.flag("q_b") == 1 and G.flag("q_b_clean") == 1, "수주 q_b=1, 무전투 보너스 유효")
+	await free_player()
+	await tp_to_interact("doll")
+	await interact("doll")
+	await until(func(): return G.flag("q_b") == 2 and not player().locked, "SC2-19 짚인형 회수", 900)
+	await free_player()
+	await tp_to_interact("grave")
+	var jg0: int = G.jeonggi
+	var dk0: int = G.deok if G.get("deok") != null else 0
+	await interact("grave")
+	await until(func(): return G.flag("q_b") == 3 and not player().locked, "SC2-20 무덤 굿", 2500)
+	await must(G.jeonggi - jg0 >= 104, "무전투 보상 정기 +104 (80×1.3): +%d" % (G.jeonggi - jg0))
+	await must(not lvl().npc("girl_soul").visible, "아이 넋 승천")
+	G.save()
+
+	step("마을 → 산길(fromVillage) 복귀 → 동쪽 소굴 외곽 (SC2-04)")
+	await goto_exit(0, "jiri_path")
+	await must(G.checkpoint == "jiri_path", "산길 체크포인트")
+	await spawns_safe("산길 복귀")
+	await must(all_idle(), "북쪽 도착 직후 요괴 전부 idle")
+	await goto_exit(2, "den1")
+	await must(G.checkpoint == "den1" and G.checkpoint_spawn() == ["den1", "start"], "체크포인트·이어하기 = den1")
+	await must(get_nodes_in_group("enemy").size() == 7, "소굴 외곽 요괴 7체")
+	await spawns_safe("소굴 외곽")
+	await triggers_safe("소굴 외곽")
+	step("SC2-04: 입구에서 오른쪽으로 걸어 sight 트리거 (tp 없음)")
+	await free_player()
+	Input.action_press("move_right")
+	await until(func(): return G.flag("den_sight") == 1, "SC2-04 졸개의 목소리 (걸어서)", 900)
+	Input.action_release("move_right")
+	await must(all_idle(), "SC2-04 순간 요괴 전부 idle (연출 전 전투 확정 없음)")
+	await tick(8)   # 트리거 다음 프레임에 대사가 열린다
+	await free_player()
+
+	step("SC2-05: 외눈박이 감투 → 용패 (잔영 3회 한정)")
+	var a_pos: Vector2 = lvl().lift(Vector2(250, 415))
+	god = true
+	player().position = a_pos + Vector2(-60, 0)
+	await until(func(): return G.flag("yongpae_trace_n") >= 1, "외눈박이 첫 감투 (SC2-05 문구·잔영)", 1800)
+	await must(G.flag("yongpae_trace_n") <= 3, "잔영 3회 한정")
+	cs_purge()
+	god = false
+	await tick(5)
+	step("깊은 곳(deep) 트리거 → 처용 독백")
+	await tp(Vector2(554, 384))
+	await until(func(): return G.flag("den_deep") == 1, "deep 트리거", 600)
+	await tick(8)
+	await free_player()
+
+	step("동쪽 → 도깨비 곳간 (SC2-21), 동문 막힘")
+	await goto_exit(1, "den2")
+	await must(G.checkpoint == "den2", "체크포인트 = den2")
+	await must(get_nodes_in_group("enemy").size() == 4, "곳간 요괴 4체 (장산범 정예 1 + 외눈박이 2 + 불도깨비 1)")
+	await spawns_safe("곳간")
+	await until(func(): return G.flag("den2_seen") == 1, "SC2-21 곳간 입장", 900)
+	await must(all_idle(), "SC2-21 순간 요괴 전부 idle")
+	await free_player()
+	var door = lvl().get_meta("door", null)
+	await must(is_instance_valid(door), "동쪽 문 막이 서 있다 (정예 정화 전)")
+	await must(G.flag("den2_gate_cleared") == 0, "den2_gate_cleared = 0")
+	step("장산범 정화(실제 노래) → 동쪽 문 열림")
+	var elite = null
+	for e in get_nodes_in_group("enemy"):
+		if e.get("kind") == "jangsanbeom":
+			elite = e
+	await must(elite != null, "정예 장산범이 있다")
+	for e in get_nodes_in_group("enemy"):
+		if e != elite:
+			e.remove_from_group("enemy")
+			e.queue_free()
+	god = true
+	elite.take_hit(9999, Vector2.ZERO)
+	await tick(3)
+	await until(func(): return elite.state == "downed", "장산범 쓰러짐", 600)
+	player().position = elite.position + Vector2(-14, 4)
+	await tick(2)
+	await sing_now()
+	await until(func(): return G.flag("den2_gate_cleared") == 1, "동쪽 문 해금 플래그", 900)
+	await tick(3)
+	await must(not is_instance_valid(door), "동쪽 문 막이 사라졌다")
+	god = false
+	G.save()
+
+	step("두억시니의 방 (SC2-06·07): 입구에서 위로 걸어 gate 트리거, 체크포인트 den3")
+	await goto_exit(1, "den3")
+	await must(G.checkpoint == "den2", "연출 전 체크포인트는 den2")
+	await must(G.flag("boss2_intro_seen") == 0, "boss2_intro_seen = 0")
+	await free_player()
+	Input.action_press("move_up")
+	await until(func(): return G.flag("boss2_intro_seen") == 1, "SC2-06 gate (걸어서)", 900)
+	Input.action_release("move_up")
+	await until(func(): return G.checkpoint == "den3", "체크포인트 den3", 60)
+	await until(func(): return not player().locked, "SC2-06·07 끝", 2500)
+	await must(G.checkpoint_spawn() == ["den3", "start"], "이어하기·사망 리스폰 = den3 start")
+	step("재도전: 연출 건너뜀 (boss2_intro_seen)")
+	G.level_id = "den3"
+	G.spawn_name = "start"
+	var iid2 := level_iid()
+	await boot_level()
+	await free_player()
+	Input.action_press("move_up")
+	await until(func(): return player().position.y < lvl().lift(Vector2(0, 330)).y, "gate 통과", 900)
+	Input.action_release("move_up")
+	await tick(30)
+	await must(lvl()._talking == 0, "재도전: 대사창 없음 (SC2-06~07 스킵)")
+	await until(func(): return not player().locked, "1초 뒤 풀림", 600)
+
+	step("이어하기 지점: 스위치 켜짐=각 맵 start, 꺼짐=경주")
+	for id in ["old_village", "den1", "den2", "den3"]:
+		G.checkpoint = id
+		await must(G.checkpoint_spawn() == [id, "start"], "켜짐 checkpoint=%s → start" % id)
+	G.flags["ch2_unlocked"] = 0
+	for id in ["old_village", "den1", "den2", "den3"]:
+		G.checkpoint = id
+		await must(G.checkpoint_spawn()[0] == "gyeongju", "꺼짐 checkpoint=%s → 경주(2장 지점으로 들이지 않음)" % id)
 	await done()
