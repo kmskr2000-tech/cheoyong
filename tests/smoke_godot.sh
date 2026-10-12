@@ -23,5 +23,6 @@ run beach 60 --level=beach
 run pyega 300 --level=pyega1 --test-enemies
 run boss 400 --boss
 run kneel 300 --boss-kneel
+run endcont 200 --level=gyeongju --flags=arrived,met_nanyeong,sang_child,briefed,summoned,rescued,rumor,king_call,appointed,chapter1_done
 echo "ERR_CANT_OPEN lines: $(cat "$OUT"/*.log | grep -c ERR_CANT_OPEN)  (out: $OUT)"
 exit $fail

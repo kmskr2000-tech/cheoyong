@@ -114,6 +114,7 @@ func _pick_flute(level: Node) -> void:
 	# the creature comes up into the village; the fishers scatter
 	var yokai: Enemy = level.spawn_enemy("sea", Vector2(334, 90))
 	yokai.name = "Gaetgwi"
+	_arm_fight(level, yokai)   # B03: purifying him before the trigger is stepped on must still end the scene
 	for id in ["fisherA", "fisherB", "fisherC"]:
 		var n: Npc = level.npc(id)
 		n.set_present(true)
@@ -142,6 +143,11 @@ func _test_fight(level: Node) -> void:
 		level.npc(id).talkable = false
 	level.get_node("Player").position = level.lift(Vector2(334, 150))
 	await level.get_tree().process_frame
+	if "--beach-early-purify" in OS.get_cmdline_user_args():   # B03 test hook: the chain must be armed before any trigger is stepped on
+		var y: Enemy = level.get_node("Gaetgwi")
+		_arm_fight(level, y)
+		print("EARLY_PURIFY_ARMED=", y.purified.get_connections().size())
+		return
 	_fight(level)
 
 
@@ -151,6 +157,7 @@ func _fight(level: Node) -> void:
 	var yokai: Enemy = level.get_node_or_null("Gaetgwi")
 	if yokai == null:
 		return
+	_arm_fight(level, yokai)
 	var p: Node2D = level.get_node("Player")
 	p.gentle_hits = 3          # 벌 없이 배운다
 	yokai.cd = 3.5             # 먼저 베기를 배울 틈을 준다
@@ -160,7 +167,14 @@ func _fight(level: Node) -> void:
 			level.hud.guide(""), CONNECT_ONE_SHOT)
 	yokai.telegraph.connect(func(): _teach_roll(level), CONNECT_ONE_SHOT)
 	yokai.collapsed.connect(func(): level.hud.guide("song"))
-	yokai.purified.connect(func(): _after_fight(level))
+
+
+## connect the "he is purified → SC1-06" chain exactly once, as soon as the 개귀 exists
+func _arm_fight(level: Node, yokai: Enemy) -> void:
+	if yokai.has_meta("fight_armed"):
+		return
+	yokai.set_meta("fight_armed", true)
+	yokai.purified.connect(func(): _after_fight(level), CONNECT_ONE_SHOT)
 
 
 ## the first wind-up: time slows and the roll button glows until he rolls (or the slam lands)
@@ -251,6 +265,8 @@ func _talk_nanyeong(level: Node) -> void:
 		])
 		Game.set_flag("met_nanyeong")
 		_show_sick_child(level)
+	elif Game.flag("chapter1_done"):
+		await level.talk([{"name": "난영", "text": "…노래가 완성되면, 라 했소. 기다리고 있겠소."}])
 	elif Game.flag("night") and not Game.flag("rescued"):
 		await level.talk([{"name": "난영", "text": "다녀오시오. …바람에서 탁한 냄새가 나오."}])
 	elif not Game.flag("sang_child"):
@@ -549,7 +565,11 @@ func _gyeongju_after(level: Node) -> void:
 	var nan: Npc = level.npc("nanyeong")
 	nan.position = level.lift(Vector2(196, 166))   # 이제 처용의 집에 산다
 	level.npc("child").set_present(true)
-	if Game.flag("appointed"):
+	if Game.flag("chapter1_done"):
+		# SB-28: the ending was already seen. Continuing a finished save lands in free roam, not in the farewell again.
+		nan.talkable = true
+		Game.say_toast("2장은 준비 중입니다")   # SB-30
+	elif Game.flag("appointed"):
 		for id in DAY_PEOPLE + ["child", "villagerC"]:
 			if id != "nanyeong":
 				level.npc(id).set_present(false)

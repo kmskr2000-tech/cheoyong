@@ -4,7 +4,7 @@ extends Node2D
 ## Story beats hook in through Story (story.gd).
 
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6)}
+const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6), "board": Vector2(18, 8)}
 
 var light_tex: Texture2D
 
@@ -407,18 +407,25 @@ func _wet_feet(d: float) -> void:
 
 
 ## run a dialogue with the hero frozen
+var _talking := 0          # dialogues running or queued; the hero/enemies stay frozen until the last one ends
+var _talk_frozen: Array = []
+
 func talk(lines: Array) -> void:
 	$Player.locked = true
+	_talking += 1
 	# the world holds its breath while someone speaks: 요괴 don't get free hits during dialogue
-	var frozen: Array = []
 	for e in get_tree().get_nodes_in_group("enemy") + get_tree().get_nodes_in_group("downed"):
 		if e.is_physics_processing():
 			e.set_physics_process(false)
-			frozen.append(e)
+			_talk_frozen.append(e)
 	await dialog.say(lines)
-	for e in frozen:
+	_talking -= 1
+	if _talking > 0:
+		return
+	for e in _talk_frozen:
 		if is_instance_valid(e):
 			e.set_physics_process(true)
+	_talk_frozen.clear()
 	$Player.locked = false
 
 
@@ -476,7 +483,10 @@ func _ground() -> void:
 		ec.shape = es
 		ec.position = r.get_center()
 		body.add_child(ec)
-	for r in meta["collision"]:
+	var extra: Array = []
+	for wr in def.get("walls", []):   # hand-placed seals for holes in the baked cliff collision (lifted px)
+		extra.append([wr.position.x, wr.position.y, wr.size.x, wr.size.y])
+	for r in meta["collision"] + extra:
 		var col := CollisionShape2D.new()
 		var sh := RectangleShape2D.new()
 		sh.size = Vector2(r[2], r[3])
