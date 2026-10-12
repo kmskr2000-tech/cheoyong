@@ -99,5 +99,13 @@ func _initialize() -> void:
 	var after := [G.flags, G.money, G.items, G.checkpoint, G.jeonggi, G.deok, G.lv, G.skill_points, G.skills, G.mats, G.dogam, G.tal, G.tals, G.accessories, G.titles]
 	_ck("c2 round trip identical", after == before)
 	_ck("c3 no leftover tmp file", not FileAccess.file_exists("user://save.json.tmp"))
+	# (d) 역신의 눈물: 효과 on/off + 세이브/로드 후 유지
+	G.new_game()
+	_ck("d1 no tear: miasma dmg unchanged", G.miasma_dmg(5) == 5 and G.miasma_dmg(6) == 6)
+	G.accessories = [G.TEAR_NAME]
+	_ck("d2 tear: miasma dmg reduced", G.miasma_dmg(5) == 3 and G.miasma_dmg(6) == 4 and G.miasma_dmg(1) == 1)
+	G.save(); G.new_game()
+	_ck("d3 no tear after new_game", G.miasma_dmg(5) == 5)
+	_ck("d4 tear persists after load", G.load_save() and G.has_tear() and G.miasma_dmg(5) == 3)
 	_clean()
 	quit(1 if fails > 0 else 0)
