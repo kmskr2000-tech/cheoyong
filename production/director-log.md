@@ -92,6 +92,9 @@
 - [배포·승인] 프로그래밍팀-통합배포 — prog/bugfix2 → 20261012195152, asset/hero-detail → 20261012200305(version.json 확인). smoke 7/7(boss는 VM 부하 load 20으로 타임아웃 후 단독·560초 재실행 PASS), save_check 36, regress_bugfix2·dialog_queue PASS. 미배포(대기): asset/terrain-collision, prog/combat-strategy(각 체크포인트 '완료' 시).
 - [보완요청] 프로그래밍팀-통합배포 — /tmp(tmpfs 512M) 가득 참으로 방치된 staging 4개 삭제는 타당. 그러나 `rm -rf /tmp/tmp.*` 광범위 삭제는 다른 에이전트 임시 디렉터리를 지웠을 수 있음 → 이상 징후 시 의심. 재발 방지로 agent-rules.md 규칙 6·7 추가(자기 경로만 삭제, 로그는 디렉터만 작성). 현재 /tmp 26%. 에이전트가 wt-web 사본에 쓴 로그(af435dd)는 이 로그에 병합함.
 
+- [점검 20:06] 프로그래밍팀-전투전략구현P0: CS-01~06, CS-08(HUD 충전 링) 커밋, CS-07·P1 남음, 설계 변경 제안 3건(열림 중 close_t 정지, 역신 사망 카운터 키 분리, jangseung melee=false 유지)은 편차 최소라 수용. QA팀-유저플레이테스트: B02 수정 확인, 신규 버그 없음, S3 인트로 키보드 건너뛰기 불가(터치 전용 안내). 아트팀-지형충돌재배치: 17분 무커밋 → 커밋·push 재촉, 마감 단축 고려해 완료 맵부터 push 지시.
+- [지시] 프로그래밍팀-버그수정 — chapter1_playthrough corrupt_save 시나리오 베이스라인부터 실패 건 수정(SB-28 이어하기 표시와 관련 가능), 6/6 통과 확인.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
