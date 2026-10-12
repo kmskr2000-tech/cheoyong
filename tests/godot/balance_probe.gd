@@ -368,10 +368,32 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 			if f.global_position.distance_to(p.global_position) < 34.0:
 				in_fog = true
 				var away: Vector2 = (p.global_position - f.global_position).normalized()
-				if rng.randf() >= miss or pol == "reader":
+				if rng.randf() >= miss or pol == "reader" or pol == "window":
 					if read:
 						bot_dir(away)
-		if in_fog and read and pol == "reader":
+		if in_fog and read and (pol == "reader" or pol == "window"):
+			continue
+		# ----- 기침 옆걸음(2026-10-13): 붉은 부채꼴(조준선 ±0.55rad, 125px) 안이면 조준선에서 옆으로 빠진다 — "맞으면 열림 없음" 규칙 아래 읽는 플레이의 회피
+		if (st == "cough" or st == "cough_again") and (pol == "reader" or pol == "window") and read and d < 135.0:
+			var rel: float = wrapf((-to).angle() - boss.aim, -PI, PI)
+			if absf(rel) < 0.75:
+				var side: float = 1.0 if rel >= 0.0 else -1.0
+				bot_dir(Vector2.from_angle(boss.aim + side * PI * 0.5))
+				Input.action_release("attack")
+				var left2: float = 1.0 / (1.35 if boss.phase == 2 else 1.0) - boss.st
+				if left2 < 0.15 and left2 > -0.01 and p._roll_lock_t <= 0.0 and p.state != "roll":
+					Input.action_press("roll")   # 숨결 직전까지 부채꼴 안이면(2페이즈 재조준) 옆으로 구른다
+				else:
+					Input.action_release("roll")
+				continue
+		# ----- 펄스 읽기: 펄스 시전(0.6초) 중 사거리(80px) 안이면 뒤로 구르거나 물러난다
+		if st == "pulse" and (pol == "reader" or pol == "window") and read and d < 95.0:
+			bot_dir((-to).normalized())
+			Input.action_release("attack")
+			if boss.st > 0.3 and d < 85.0 and p._roll_lock_t <= 0.0 and p.state != "roll":
+				Input.action_press("roll")
+			else:
+				Input.action_release("roll")
 			continue
 		# ----- 기침 읽기: 숨결이 나가기 직전(0.1초 전) 구르기 → 받아넘기기 (읽었을 때), 못 읽으면 그대로 서 있는다
 		if st == "cough" and (pol == "reader" or pol == "window") and read and p.state != "roll":

@@ -29,6 +29,7 @@ func _ready() -> void:
 		_prop(p[0], lift(Vector2(p[1], p[2])), p[3])
 	for L in def.get("lights", []):   # [x, y, colour, energy, scale] — a lit window / painted lamp on the ground picture
 		_glow_light(lift(Vector2(L[0], L[1])), L[2], L[3], L[4])
+	_prune_shadows()
 	_atmosphere()
 	var size: Array = meta["size"]
 	var tier: float = meta["tier"]
@@ -310,15 +311,23 @@ func on_purified(r: Dictionary, where: Vector2) -> void:
 var _calm_t := 0.0
 
 
+var _scan_t := 0.0
+var _hunting := false
+
+
 func _update_combat_music(d: float) -> void:
-	var p: Node2D = $Player
-	var hunting := false
-	for e in get_tree().get_nodes_in_group("enemy"):
-		if e.get("state") in ["chase", "tell", "strike", "vanish", "lure"] and e.global_position.distance_to(p.global_position) < 200.0:
-			hunting = true
-			break
-	_calm_t = 0.0 if hunting else _calm_t + d
-	if hunting:
+	# 성능: 적 순회(그룹 배열 할당)는 0.1초마다만. 평정 타이머(4초 히스테리시스)는 매 프레임 그대로 센다.
+	_scan_t -= d
+	if _scan_t <= 0.0:
+		_scan_t = 0.1
+		var p: Node2D = $Player
+		_hunting = false
+		for e in get_tree().get_nodes_in_group("enemy"):
+			if e.get("state") in ["chase", "tell", "strike", "vanish", "lure"] and e.global_position.distance_to(p.global_position) < 200.0:
+				_hunting = true
+				break
+	_calm_t = 0.0 if _hunting else _calm_t + d
+	if _hunting:
 		Audio.combat(true)
 	elif _calm_t > 4.0:
 		Audio.combat(false)
@@ -555,6 +564,36 @@ func _prop(name: String, at: Vector2, light) -> void:
 		l.set_meta("base", light[2])
 		body.add_child(l)
 		flicker.append(l)
+
+
+## 성능: 그림자를 켠 등불 중 반경 안에 가림막(LightOccluder2D)이 하나도 없는 것은 그림자 패스를 끈다.
+## 가림막이 없으면 그림자 결과가 같으므로 화면은 그대로이고, 등불마다 쓰이던 그림자 렌더(+PCF5 표본)만 사라진다.
+## 소품은 레벨 생성 때 한 번만 놓이므로(_prop 호출처 하나) 생성 직후 한 번 계산하면 된다.
+func _prune_shadows() -> void:
+	if "--no-shadow-prune" in OS.get_cmdline_user_args():   # 측정용 훅: 최적화 전/후 비교
+		return
+	var occ_rects: Array[Rect2] = []
+	for n in find_children("*", "LightOccluder2D", true, false):
+		var o := n as LightOccluder2D
+		var pts := o.occluder.polygon
+		var lo := Vector2(INF, INF)
+		var hi := Vector2(-INF, -INF)
+		for v in pts:
+			lo = lo.min(v)
+			hi = hi.max(v)
+		occ_rects.append(Rect2(o.global_position + lo, hi - lo))
+	for l in flicker:
+		if not l.shadow_enabled:
+			continue
+		var r: float = l.texture.get_width() * l.texture_scale * 0.5
+		var box := Rect2(l.global_position - Vector2(r, r), Vector2(r, r) * 2.0)
+		var hit := false
+		for rc in occ_rects:
+			if box.intersects(rc):
+				hit = true
+				break
+		if not hit:
+			l.shadow_enabled = false
 
 
 ## a light with no sprite: warms a window or lamp that is already painted into the ground picture

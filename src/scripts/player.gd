@@ -41,6 +41,7 @@ var arm: Sprite2D
 var slash: Sprite2D
 var facing := "down"
 var locked := false # dialogue / cutscene
+var _free_t := 0.0     # seconds since last unlocked (확인 키 상호작용 쿨다운)
 
 var state := "move"
 var t := 0.0
@@ -206,6 +207,7 @@ func _physics_process(delta: float) -> void:
 	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if state == "dead":
 		return
+	_free_t = 0.0 if locked else _free_t + delta   # 대사가 끝난 뒤 같은 확인 눌림이 곧바로 다시 말을 거는 일 방지
 	slow_t = maxf(0.0, slow_t - delta)
 	haste_t = maxf(0.0, haste_t - delta)
 	height_t = maxf(0.0, height_t - delta)
@@ -247,6 +249,9 @@ func _physics_process(delta: float) -> void:
 	elif not locked and _roll_queued and _roll_lock_t <= 0.0:
 		_roll_queued = false
 		_roll_input(dir)   # 선입력이 잠금이 끝나자마자 실행된다
+	elif not locked and state == "move" and _free_t > 0.3 and Input.is_action_just_pressed("confirm") \
+			and interact.is_valid() and interact.call():
+		return   # 키보드 확인(Z/Enter/Space)으로도 말 걸기·휴식·조사 (공격 버튼 외)
 	elif not locked and Input.is_action_just_pressed("attack"):
 		if state == "attack":
 			if not queued and Game.has_skill("jangdan") and t >= _swing_time() * 0.55:
