@@ -762,6 +762,11 @@ func _purify_tier(d: Node) -> String:
 	return tier if tier in ["normal", "elite"] else ""
 
 
+func gain_ki(n: float) -> void:
+	ki = minf(max_ki, ki + n)
+	stats_changed.emit(hp, max_hp, ki, max_ki)
+
+
 func heal(n: float) -> void:
 	if state == "dead" or n <= 0.0:
 		return

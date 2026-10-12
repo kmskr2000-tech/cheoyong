@@ -250,6 +250,7 @@ func _main() -> void:
 		"cs_guard": await sc_cs_guard()
 		"cs_targeting": await sc_cs_targeting()
 		"cs_economy": await sc_cs_economy()
+		"cs_boss": await sc_cs_boss()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -1162,4 +1163,165 @@ func sc_cs_economy() -> void:
 	await must(G.flag("hanpuri_" + G.level_id) == 1, "한풀이 성립")
 	# 3마리 정화(4×3=12) + 한풀이 15% of 112 = 16.8
 	await must(absf(p.hp - (20.0 + 12.0 + 16.8)) < 1.0, "체력 +12 + 16.8: " + str(p.hp))
+	await done()
+
+
+## 보스방을 깨워 역신이 idle 인 상태로 만든다 (플레이어는 조작 가능, god=false)
+func cs_wake_boss():
+	Engine.time_scale = 1.0
+	await boot_level()
+	god = true
+	pump = true
+	await clear_room()
+	await tp(Vector2(420, 190))
+	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
+	await tp(Vector2(545, 190))
+	var boss = lvl().get_node("Boss")
+	await until(func(): return boss.state == "idle", "역신 각성", 3000)
+	await until(func(): return not player().locked, "조작 가능", 600)
+	pump = false
+	god = false
+	G.skills = []
+	return boss
+
+
+func sc_cs_boss() -> void:
+	step("CS-06 준비 — 보스방, 역신 각성")
+	var boss = await cs_wake_boss()
+	var p := player()
+	var home: Vector2 = p.position
+	boss.set_physics_process(false)   # 패턴이 멋대로 돌지 않게 상태를 직접 만든다
+	boss.state = "idle"
+
+	step("받는 피해 배율: 평시 ×1, 열림 ×1.5, 안개·졸개 시전 ×1.25")
+	for spec in [["idle", 50], ["open", 75], ["fog", 63], ["clones", 63]]:
+		boss.hp = 480.0
+		boss.state = spec[0]
+		boss.take_hit(50, Vector2.RIGHT)
+		await must(int(480.0 - boss.hp) == spec[1], "%s: 50 → %d (실제 %d)" % [spec[0], spec[1], int(480.0 - boss.hp)])
+	boss.hp = 480.0
+	boss.state = "idle"
+
+	step("패턴 순서는 그대로: 1페이즈 안개-기침-졸개-기침, 2페이즈 안개-기침-졸개-기침-안개-졸개")
+	var seq1 := []
+	boss.pat_i = 0
+	for i in 4:
+		boss._next_pattern()
+		seq1.append(boss.state)
+		boss._clear_tells()
+	await must(seq1 == ["fog", "cough", "clones", "cough"], "1페이즈: " + str(seq1))
+	boss.phase = 2
+	var seq2 := []
+	boss.pat_i = 0
+	for i in 6:
+		boss._next_pattern()
+		seq2.append(boss.state)
+		boss._clear_tells()
+	await must(seq2 == ["fog", "cough", "clones", "cough", "fog", "clones"], "2페이즈: " + str(seq2))
+	boss.phase = 1
+
+	step("기침 숨결 뒤 열림 1.2초: 이동·공격 없이 서 있고 피해 ×1.5")
+	boss.set_physics_process(true)
+	boss.position = p.position + Vector2(220, 0)   # 숨결이 닿지 않는 거리
+	boss.coughs = 0
+	boss._begin("cough")
+	boss._aim_cough()
+	await until(func(): return boss.state == "open", "기침 → 열림", 120)
+	await must(absf(boss.open_t - 1.2) < 0.001, "열림 1.2초")
+	var bp: Vector2 = boss.position
+	await tick(20)
+	await must(boss.state == "open" and boss.position.distance_to(bp) < 6.0, "열림 중 이동하지 않는다")
+	boss.hp = 480.0
+	boss.take_hit(50, Vector2.ZERO)
+	await must(int(480.0 - boss.hp) == 75, "열림 중 만충 강 베기 50 → 75")
+	await until(func(): return boss.state == "idle", "열림 종료 → idle", 120)
+
+	step("2페이즈 기침은 2연속, 두 번째 뒤에 0.9초 열림")
+	boss.phase = 2
+	boss.position = p.position + Vector2(220, 0)
+	boss.coughs = 0
+	boss._begin("cough")
+	boss._aim_cough()
+	var saw_again := [false]
+	await until(func():
+		if boss.state == "cough_again" or (boss.state == "cough" and boss.coughs == 1):
+			saw_again[0] = true
+		return boss.state == "open", "2연속 기침 → 열림", 240)
+	await must(saw_again[0] and boss.coughs == 2 and absf(boss.open_t - 0.9) < 0.001, "두 번째 숨결 뒤 0.9초 열림")
+	boss.phase = 1
+	await until(func(): return boss.state == "idle", "열림 종료", 120)
+
+	step("펄스 뒤 열림 1.0초")
+	boss.position = p.position + Vector2(30, 0)
+	boss._begin("pulse")
+	await until(func(): return boss.state == "open", "펄스 → 열림", 120)
+	await must(absf(boss.open_t - 1.0) < 0.001, "열림 1.0초")
+	await until(func(): return boss.state == "idle", "열림 종료", 120)
+	boss.position = p.position + Vector2(220, 0)
+
+	step("풀 충전 강 베기가 시전 중(안개/졸개)인 역신에 맞으면 시전 중단 + 열림 1.2초, 소환 취소")
+	for pat in ["clones", "fog"]:
+		boss.hp = 480.0
+		boss._begin(pat)
+		boss.take_hit(30, Vector2.RIGHT, true, false, true, 0.5)
+		await must(boss.state == pat, "충전 0.5(반충전)는 끊지 못한다: " + pat)
+		boss.take_hit(50, Vector2.RIGHT, true, false, true, 1.0)
+		await must(boss.state == "open" and absf(boss.open_t - 1.2) < 0.001, pat + " 시전 중단 → 열림")
+		await tick(80)
+		var ghouls := get_nodes_in_group("enemy").filter(func(e): return e.get("kind") == "ghoul")
+		await must(ghouls.is_empty(), pat + ": 졸개 소환이 취소됨")
+		await until(func(): return boss.state == "idle", "idle 복귀", 120)
+
+	step("받아넘기기: 기침 숨결·펄스 접촉이 구르기 초반(0.15초)에 닿으면 발동")
+	boss.position = p.position + Vector2(60, 0)
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.03, "구르기", 30)
+	boss.aim = (p.global_position - boss.global_position).angle()
+	boss._breath()
+	await must(p.parry_bonus and absf(p.shinmyeong - 15.0) < 0.01, "숨결 접촉 → 받아넘기기")
+	p.parry_bonus = false
+	await cs_idle()
+	boss.position = p.position + Vector2(220, 0)
+
+	step("독기 안개 틱: 수호부가 켜진 동안 0 피해(충전 유지), 없으면 5")
+	p.hurt_t = 0.0
+	p.shield = 1
+	p.shield_t = 10.0
+	var hp0: float = p.hp
+	boss._poison(p.global_position)
+	await tick(75)
+	await must(p.hp == hp0 and p.shield == 1, "안개 위에서 수호부 유지·피해 0")
+	p.shield = 0
+	await tick(40)
+	await must(p.hp < hp0, "수호부가 없으면 안개 피해")
+	for f in get_nodes_in_group("fog"):
+		f.queue_free()
+	p.hp = p.max_hp
+	await tick(2)
+
+	step("2페이즈 전환: 대사 뒤 열림 1.2초(×1.5)·안개 제거·소리 +30")
+	boss.position = home + Vector2(120, -40)
+	boss._poison(home + Vector2(60, 0))
+	await tick(2)
+	await must(get_nodes_in_group("fog").size() == 1, "안개 장판 존재")
+	god = true
+	pump = true
+	p.ki = 10.0
+	boss.hp = 480.0
+	boss.state = "idle"
+	boss.take_hit(int(boss.hp - 480.0 * 0.5) + 1, Vector2.ZERO)
+	await must(boss.phase == 2, "2페이즈 진입")
+	await tick(2)
+	await must(get_nodes_in_group("fog").is_empty(), "안개 제거")
+	await until(func(): return boss.state == "open", "대사 뒤 전환 열림", 600)
+	await must(absf(boss.open_t - 1.2) < 0.001, "열림 1.2초")
+	await must(p.ki >= 39.0, "소리 +30: " + str(p.ki))
+	pump = false
+	await until(func(): return boss.state == "idle", "전환 열림 종료", 200)
+
+	step("무릎 꿇은 역신은 처용가로만 끝난다 (정화 철학)")
+	boss.take_hit(int(boss.hp) + 1, Vector2.ZERO)
+	await until(func(): return boss.state == "kneel", "무릎", 120)
+	await must(boss.is_in_group("downed"), "downed(죽음 아님)")
 	await done()

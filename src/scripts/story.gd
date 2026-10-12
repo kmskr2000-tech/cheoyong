@@ -488,7 +488,7 @@ func _boss_phase_two(level: Node, boss: PlagueGod) -> void:
 	boss.state = "wait"
 	await level.talk([{"name": "역신", "text": "이럴 수가…! 노래가… 탁기를 걷어내다니!"}])
 	if boss.state == "wait":   # one blow may cross phase two and the knee together: leave a kneeling god alone
-		boss._begin("idle")
+		boss.phase_shift()   # CS-06: 전환 열림 1.2초(×1.5) · 안개 제거 · 소리 +30 뒤 전투 재개
 
 
 ## SC1-19: 무릎 꿇은 역신의 유언
