@@ -5,6 +5,7 @@ extends CanvasLayer
 ## left half (it appears where the thumb lands) and lacquer buttons on the right.
 
 const STICK_R := 20.0
+const CT := preload("res://scripts/combat_tuning.gd")
 
 var player: Node
 var _hp_fill: TextureRect
@@ -18,6 +19,9 @@ var _tal_icon: TextureRect   # 고른 부적 아이콘 (Drive 도트)
 var _mask_icon: TextureRect  # 쓰고 있는 탈
 var _flute_icon: TextureRect # 피리를 가졌다
 var _tal_shown := ""
+var _charge_ring: Line2D     # CS-08: 베기 버튼 둘레 충전 링 (0.35 지점 표식, 만충 번쩍임)
+var _charge_mark: Line2D
+var _sin_last := 0.0
 var _touch_root: Control
 var _base: TextureRect
 var _knob: TextureRect
@@ -93,6 +97,19 @@ func _ready() -> void:
 		tb.passby_press = true
 		_touch_root.add_child(tb)
 		_buttons[b[0]] = tb
+	_charge_ring = Line2D.new()
+	_charge_ring.width = 2.0
+	_charge_ring.visible = false
+	_charge_ring.position = Vector2(430, 222)
+	_touch_root.add_child(_charge_ring)
+	_charge_mark = Line2D.new()   # CHARGE_MIN 표식: 이 선을 넘기면 놓았을 때 발동한다
+	_charge_mark.width = 2.0
+	_charge_mark.default_color = Color(1.0, 1.0, 1.0, 0.9)
+	var ma := -PI / 2 + TAU * (CT.CHARGE_MIN / CT.CHARGE_FULL)
+	_charge_mark.points = PackedVector2Array([Vector2.from_angle(ma) * 25.0, Vector2.from_angle(ma) * 32.0])
+	_charge_mark.visible = false
+	_charge_mark.position = Vector2(430, 222)
+	_touch_root.add_child(_charge_mark)
 	_tal_label = Label.new()   # which talisman the button will draw
 	_tal_label.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
 	_tal_label.add_theme_font_size_override("font_size", 12)
@@ -189,6 +206,7 @@ func _update_icons() -> void:
 
 func _process(_d: float) -> void:
 	_update_icons()
+	_update_charge_ring()
 	if not _touch_root.visible or _buttons.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
@@ -450,7 +468,32 @@ func bind(p: Node) -> void:
 	_on_sin(p.shinmyeong)
 
 
+## CS-08: 충전 중에만 보이는 링. 눈이 전투에 있어도 캐릭터 발치 링(player.gd)이 같은 값을 보여 준다.
+func _update_charge_ring() -> void:
+	if _charge_ring == null:
+		return
+	var k: float = player.charge_ratio() if player and player.has_method("charge_ratio") else 0.0
+	var on := k > 0.0 and _touch_root.visible
+	_charge_ring.visible = on
+	_charge_mark.visible = on
+	if not on:
+		return
+	var n := maxi(2, int(k * 40.0))
+	var pts := PackedVector2Array()
+	for i in n + 1:
+		pts.append(Vector2.from_angle(-PI / 2 + TAU * k * float(i) / float(n)) * 28.0)
+	_charge_ring.points = pts
+	var full := k >= 1.0
+	var ready: bool = player.get("_charge_c") != null and player._charge_c >= CT.CHARGE_MIN
+	_charge_ring.default_color = Color(1.0, 1.0, 0.8, 0.7 + 0.3 * sin(Time.get_ticks_msec() / 40.0)) if full else (Color(1.0, 0.9, 0.5, 0.95) if ready else Color(0.7, 0.8, 1.0, 0.6))
+
+
 func _on_sin(v: float) -> void:
+	if v < _sin_last - 0.5:   # 신명이 깎이면 짧게 붉게 점멸
+		var tw := create_tween()
+		tw.tween_property(_sin_fill, "self_modulate", Color(2.0, 0.3, 0.3), 0.06)
+		tw.tween_property(_sin_fill, "self_modulate", Color.WHITE, 0.2)
+	_sin_last = v
 	_sin_fill.size.x = roundf(_sin_w * clampf(v / 100.0, 0, 1))
 	_sin_fill.modulate = Color(1.4, 1.3, 1.0) if v >= 100.0 else Color.WHITE
 

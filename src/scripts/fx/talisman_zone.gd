@@ -4,6 +4,8 @@ extends Node2D
 ##   fire — 화염부: 처용 앞 부채꼴 불길. 0.3초마다 5 피해.
 ##   bind — 결박부: 요괴 발밑 결계. 안의 요괴는 느려지고(bind_t) 0.5초마다 2 피해.
 
+const CT := preload("res://scripts/combat_tuning.gd")
+
 var kind := "fire"
 var radius := 58.0
 var angle := 0.0          # fire: facing of the cone
@@ -74,7 +76,12 @@ func _physics_process(delta: float) -> void:
 				if not e in _fed and e.absorb_talisman():
 					_fed.append(e)   # 해태는 불을 먹는다
 				continue
-			e.take_hit(5 if kind == "fire" else 2, Vector2.ZERO, false, true)
+			var tick := 2
+			if kind == "fire":
+				tick = 5
+				if "bind_t" in e and e.bind_t > 0.0:
+					tick = ceili(5.0 * CT.FIRE_ON_BIND_MULT)   # S1 불길 가두기: 결박된 적 위의 불길 ×1.6 (8)
+			e.take_hit(tick, Vector2.ZERO, false, true)
 	if _t >= life - 0.4:
 		_fx.emitting = false
 	if _t >= life:

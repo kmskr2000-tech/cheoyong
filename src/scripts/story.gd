@@ -165,7 +165,10 @@ func _fight(level: Node) -> void:
 	yokai.hit_taken.connect(func():
 		if level.hud._guide == "attack":
 			level.hud.guide(""), CONNECT_ONE_SHOT)
-	yokai.telegraph.connect(func(): _teach_roll(level), CONNECT_ONE_SHOT)
+	yokai.telegraph.connect(func():
+		await _teach_roll(level)
+		if is_instance_valid(yokai):   # CS-09: 두 번째 예고에서 "맞기 직전에 구르면 받아넘긴다"를 버튼 점등만으로 보여 준다
+			yokai.telegraph.connect(func(): _teach_parry(level, yokai), CONNECT_ONE_SHOT), CONNECT_ONE_SHOT)
 	yokai.collapsed.connect(func(): level.hud.guide("song"))
 
 
@@ -184,6 +187,19 @@ func _teach_roll(level: Node) -> void:
 	Engine.time_scale = 0.3
 	var until := Time.get_ticks_msec() + 2500
 	while Time.get_ticks_msec() < until and p.state != "roll":
+		await level.get_tree().process_frame
+	Engine.time_scale = 1.0
+	if level.hud._guide == "roll":
+		level.hud.guide("")
+
+
+## CS-09: 두 번째 예고 — 구르기 버튼만 빛나고 시간이 느려진다. 글 없음. (갯귀 gentle_hits 3 은 그대로: 틀려도 벌이 없다)
+func _teach_parry(level: Node, yokai: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	level.hud.guide("roll")
+	var until := Time.get_ticks_msec() + 3500
+	while Time.get_ticks_msec() < until and is_instance_valid(yokai) and p.state != "roll" and yokai.state in ["tell", "strike"]:
+		Engine.time_scale = 0.5 if yokai.state == "tell" else 1.0
 		await level.get_tree().process_frame
 	Engine.time_scale = 1.0
 	if level.hud._guide == "roll":
@@ -489,14 +505,28 @@ func _inner_room(level: Node) -> void:
 	if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the ending sequence
 		boss.hp = 20.0
 	level.hud.show_boss(boss, "역신(疫神)")
-	# falling here means trying the room again from the stair (the door is sealed behind him)
-	p.died.connect(func(): Game.change_level("pyega2", "start"), CONNECT_ONE_SHOT)
+	Game.death_zone = "pyega2_boss"   # CS-07: 역신전 사망은 폐가2 와 따로 센다
+	# CS-12(OQ-1, 디렉터 확정): 쓰러지면 보스방 입구에서 다시 일어선다. 몹은 되살아나지 않고 역신 HP·페이즈만 초기화된다.
+	p.spawn = level.lift(level.def["anchors"]["boss_respawn"])
+	boss.home_pos = boss.position
+	p.died.connect(_boss_player_died.bind(level, boss))
 	if "--boss-kneel" in OS.get_cmdline_user_args():  # test hook: skip straight to SC1-19
 		await level.get_tree().create_timer(1.0).timeout
 		boss.take_hit(9999, Vector2.ZERO)
-	boss.phase_two.connect(_boss_phase_two.bind(level, boss), CONNECT_ONE_SHOT)
+	boss.phase_two.connect(_boss_phase_two.bind(level, boss))   # 재도전마다 다시 2페이즈를 겪으므로 ONE_SHOT 아님
 	boss.knelt.connect(_boss_knelt.bind(level), CONNECT_ONE_SHOT)
 	boss.defeated.connect(_boss_defeated.bind(level), CONNECT_ONE_SHOT)
+
+
+## CS-12: 보스전 사망 → 역신은 잠시 멈추고, 처용이 입구에서 일어서면 HP·페이즈·졸개를 초기화한다
+func _boss_player_died(level: Node, boss: PlagueGod) -> void:
+	if not is_instance_valid(boss) or boss.state in ["kneel", "dead"]:
+		return
+	boss.stand_down()
+	var p: Node = level.get_node("Player")
+	await p.respawned
+	if is_instance_valid(boss) and boss.state == "wait":
+		boss.reset_fight()
 
 
 ## SC1-18
@@ -504,7 +534,7 @@ func _boss_phase_two(level: Node, boss: PlagueGod) -> void:
 	boss.state = "wait"
 	await level.talk([{"name": "역신", "text": "이럴 수가…! 노래가… 탁기를 걷어내다니!"}])
 	if boss.state == "wait":   # one blow may cross phase two and the knee together: leave a kneeling god alone
-		boss._begin("idle")
+		boss.phase_shift()   # CS-06: 전환 열림 1.2초(×1.5) · 안개 제거 · 소리 +30 뒤 전투 재개
 
 
 ## SC1-19: 무릎 꿇은 역신의 유언
@@ -521,6 +551,7 @@ func _boss_defeated(level: Node) -> void:
 	for c in pl.died.get_connections():
 		pl.died.disconnect(c["callable"])
 	Game.set_flag("boss_done")
+	Game.death_zone = ""
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	await level.get_tree().create_timer(2.6).timeout

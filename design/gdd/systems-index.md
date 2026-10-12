@@ -2,7 +2,7 @@
 
 > **Status**: Draft (brownfield — 구현에서 역산)
 > **Created**: 2026-10-12
-> **Last Updated**: 2026-10-12
+> **Last Updated**: 2026-10-12 (행 30 추가)
 > **Source Concept**: design/gdd/game-concept.md
 
 ---
@@ -23,13 +23,13 @@
 | 2 | 플레이어 컨트롤러 (이동·구르기·상태이상) | Core | Core | MVP | Not Started | Implemented (GDD 없음) | docs/GDD.md §7 | 1 |
 | 3 | 레벨 시스템 (레벨 데이터·지형·충돌·출입구·카메라) | Core | Foundation | MVP | Not Started | Implemented (GDD 없음) | CLAUDE.md "엔진·구조" | — |
 | 4 | 세이브·체크포인트 | Persistence | Core | MVP | Not Started | Implemented (단일 슬롯) | — | 3, 9 |
-| 5 | 전투 코어 (대금 3연타·강 베기·받아넘기기·신명) | Gameplay | Core | MVP | In Review | Implemented | design/gdd/combat-core.md | 2 |
+| 5 | 전투 코어 (대금 3연타·강 베기·받아넘기기·신명) | Gameplay | Core | MVP | In Review | Implemented (전투 전략 반영·재역산 2026-10-12) | design/gdd/combat-core.md, design/gdd/combat-strategy.md (변경 설계) | 2 |
 | 6 | 정화 시스템 (쓰러짐→처용가→한풀이) | Gameplay | Feature | MVP | In Review | Implemented | design/gdd/purification.md | 5 |
-| 7 | 부적 (화염·결박·수호·파동) | Gameplay | Feature | MVP | Not Started | Implemented, 현혹·뇌성 미구현 | 기획안 §6.3 | 5, 18 |
-| 8 | 적 AI·요괴 기믹 (17종) | Gameplay | Feature | MVP | Not Started | Implemented (GDD 없음) | story-bible.md 부록 E | 5, 6 |
+| 7 | 부적 (화염·결박·수호·파동) | Gameplay | Feature | MVP | Not Started | Implemented, 현혹·뇌성 미구현 | 기획안 §6.3, design/gdd/combat-strategy.md §1·§3 (시너지·조정) | 5, 18 |
+| 8 | 적 AI·요괴 기믹 (17종) | Gameplay | Feature | MVP | Not Started | Implemented (GDD 없음) | story-bible.md 부록 E, design/gdd/combat-strategy.md §4 (정답표) | 5, 6 |
 | 9 | 스토리 비트·진행 플래그·대화 (SC ID) | Narrative | Core | MVP | Not Started | Implemented | story-bible.md | 3 |
 | 10 | 컷신·인트로·타이틀 | Narrative | Presentation | MVP | Not Started | Implemented | story-bible.md 제4부 | 9 |
-| 11 | 보스 프레임워크 (패턴·페이즈·무릎 연출) | Gameplay | Feature | MVP | Not Started | Implemented (1체) | 기획안 §7 | 5, 6, 9 |
+| 11 | 보스 프레임워크 (패턴·페이즈·무릎 연출) | Gameplay | Feature | MVP | Not Started | Implemented (1체) | 기획안 §7, design/gdd/combat-strategy.md §5 (역신 열림·2페이즈) | 5, 6, 9 |
 | 12 | 의뢰 게시판·상점·휴식 | Economy | Presentation | MVP | Not Started | Implemented (1장분) | story-bible.md SC1-10·12 | 9, 14 |
 | 13 | 성장 코어 (정기·덕망·엽전·레벨·한풀이 보너스) | Progression | Feature | MVP | Not Started | Implemented | growth-system.md §1~2·6 | 6 |
 | 14 | 스킬 트리 (28수) | Progression | Feature | Vertical Slice | Not Started | Partial (20/28 동작) | growth-system.md §4 | 13 |
@@ -48,6 +48,7 @@
 | 27 | 아트 파이프라인 도구 (art/*.py) | Meta | Foundation | MVP | Not Started | Implemented | CLAUDE.md "아트" | — |
 | 28 | 테스트·캡처 하네스 | Meta | Foundation | MVP | Not Started | Capture만 (회귀 없음) | CLAUDE.md "검증" | — |
 | 29 | 빌드·배포 (웹 내보내기·Pages) | Meta | Foundation | MVP | Not Started | **Gap** — 배포는 옛 웹판(루트가 legacy-web로 리다이렉트). 웹 내보내기는 4.4.1에서 성공 | docs/GDD.md PLATFORM.EXPORT | — |
+| 30 | 전투 전략 (적 유형별 정답·자원 트레이드오프·부적 시너지·역신 읽기 구조·터치 범위) | Gameplay | Feature | MVP | Approved | Implemented (CS-01~15, 브랜치 prog/combat-strategy; 검증 tests/combat_strategy.sh) | design/gdd/combat-strategy.md | 5, 7, 8, 11 |
 
 ---
 
@@ -133,11 +134,11 @@ Effort: S = 1 세션, M = 2~3, L = 4+.
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 29 |
+| Total systems identified | 30 |
 | 코드 Implemented | 17 (1·2·3·4·5·6·8·9·10·11·12·13·15·19·20·21·27) |
 | 코드 Partial | 4 (7·14·16·28) |
-| 코드 Not Started | 7 (17·18·22·23·24·25·26) |
-| Template-format GDD 완료 | 0 |
+| 코드 Not Started | 8 (17·18·22·23·24·25·26·30) |
+| Template-format GDD 완료 (Approved) | 1 (30 combat-strategy; 5·6은 In Review) |
 | Gap | 1 (배포) |
 
 ## Next Steps

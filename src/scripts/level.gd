@@ -1,4 +1,5 @@
 extends Node2D
+const CT := preload("res://scripts/combat_tuning.gd")
 ## A playable level built from Levels.DATA[Game.level_id]: baked tiered ground (art/ground3d.py),
 ## voxel and hand-drawn props, NPCs, enemies, exits, lighting and the HD-2D finishing pass.
 ## Story beats hook in through Story (story.gd).
@@ -300,6 +301,9 @@ func on_purified(r: Dictionary, where: Vector2) -> void:
 		Game.set_flag(key)
 		Game.say_toast("한풀이 — 이곳의 원혼이 모두 풀렸다", Color(0.75, 0.9, 1.0))
 		Game.reward_bonus(_earned_j / 2, _earned_d / 2, where, self)   # 정화율 100%: ×1.5 in total
+		var pl: Node = get_node_or_null("Player")   # CS-05: 한풀이 성립 시 체력 +15%
+		if pl and pl.has_method("heal"):
+			pl.heal(pl.max_hp * CT.HP_HANPURI)
 
 
 # ---------------------------------------------------------------- 전투 음악: 요괴가 쫓아오면 자진모리

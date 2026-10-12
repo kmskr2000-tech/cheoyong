@@ -49,6 +49,7 @@
 - 화면 확인: `xvfb-run` + `godot -- --capture=out.png --frames=N [--at=x,y] [--hold=action] [--seq=action:frame,...]`
   - 캡처 중엔 60fps 고정(프레임 ≈ 초×60). `--seq`는 실제 입력 이벤트를 보내므로 대화(confirm)도 넘길 수 있다.
   - 바로 진입: `--level=<id> [--spawn=<name>] [--flags=a,b]`, 타이틀 `--title`, 인트로 `--intro`.
-  - 테스트 훅: `--test-enemies`(또는 `--test-enemies=키,키` 요괴 소환), `--beach-fight`(SC1-05), `--boss`, `--boss-weak`, `--boss-kneel`(SC1-19부터), `--sin=100`(신명), `--skills=id,id`·`--sp=N`(수련), `--touch`(터치 버튼 표시).
+  - 테스트 훅: `--test-enemies`(또는 `--test-enemies=키,키` 요괴 소환), `--beach-fight`(SC1-05), `--boss`, `--boss-weak`, `--boss-kneel`(SC1-19부터), `--sin=100`(신명), `--skills=id,id`·`--sp=N`(수련), `--touch`(터치 버튼 표시), `--test-charge`(베기 1.5초 눌러 강 베기), `--test-parry`(구르기 직후 인공 접촉 → 받아넘기기), `--stats`(사망 카운터 출력).
+  - 전투 전략 시나리오(헤드리스, 타이밍 검증): `tests/combat_strategy.sh [cs_parry|cs_charge|cs_guard|cs_targeting|cs_economy|cs_boss|cs_deaths|cs_wave|cs_aura|cs_tutorial|cs_cover]`. 전투 상수 정본은 `src/scripts/combat_tuning.gd`.
   - 결과 줄에 남은 적·쓰러진 적·레벨·플래그·플레이어/보스 상태가 찍힌다.
 - 캡처 결과(남은 적 수 등)를 근거로 동작을 확인한 뒤에만 완료라고 보고한다.
