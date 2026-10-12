@@ -377,12 +377,12 @@ func sc_chain() -> void:
 	await until(func(): return not player().locked, "각성 후 조작 가능", 600)
 
 	step("SC1-18 2페이즈")
-	boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO)
+	boss.take_hit(int((boss.hp - BOSS_MAX * 0.5) / boss.exposure()) + 2, Vector2.ZERO)
 	await until(func(): return boss.phase == 2, "2페이즈 진입", 120)
 	await until(func(): return boss.state == "idle", "2페이즈 대사 후 전투 재개", 1500)
 
 	step("SC1-19 무릎 꿇음")
-	boss.take_hit(int(boss.hp) + 1, Vector2.ZERO)
+	boss.take_hit(int(boss.hp / boss.exposure()) + 2, Vector2.ZERO)
 	await until(func(): return boss.state == "kneel", "역신 무릎 꿇음", 120)
 	await until(func(): return lvl().hud._guide == "song", "유언 대사 후 노래 안내", 1500)
 
@@ -558,7 +558,7 @@ func sc_boss_retry() -> void:
 		var iid := level_iid()
 		god = false
 		boss = lvl().get_node("Boss")
-		boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO) if attempt == 1 else boss.take_hit(100, Vector2.ZERO)
+		boss.take_hit(int((boss.hp - BOSS_MAX * 0.5) / boss.exposure()) + 2, Vector2.ZERO) if attempt == 1 else boss.take_hit(int(100.0 / boss.exposure()), Vector2.ZERO)
 		if attempt == 1:   # 2페이즈를 겪은 뒤 죽어도 처음부터(페이즈 1)
 			await until(func(): return boss.phase == 2 and boss.state != "wait", "2페이즈 대사 후", 1500)
 		boss.take_hit(30, Vector2.ZERO)   # 일부 피해
@@ -580,9 +580,9 @@ func sc_boss_retry() -> void:
 		await must(int(G.deaths.get("pyega2_boss", 0)) == attempt + 1 and int(G.deaths.get("pyega2", 0)) == 0, "사망이 pyega2_boss 키로 집계")
 		god = true
 	step("재도전 뒤에도 격파 경로가 열려 있다")
-	boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO)
+	boss.take_hit(int((boss.hp - BOSS_MAX * 0.5) / boss.exposure()) + 2, Vector2.ZERO)
 	await until(func(): return boss.phase == 2 and boss.state == "idle", "2페이즈 대사 후 전투 재개", 1500)
-	boss.take_hit(int(boss.hp) + 1, Vector2.ZERO)
+	boss.take_hit(int(boss.hp / boss.exposure()) + 2, Vector2.ZERO)
 	await until(func(): return boss.state == "kneel", "무릎 꿇음", 600)
 	await until(func(): return lvl().hud._guide == "song", "노래 안내", 1500)
 	player().position = boss.position + Vector2(-30, 8)
@@ -1336,7 +1336,7 @@ func sc_cs_boss() -> void:
 	p.ki = 10.0
 	boss.hp = BOSS_MAX
 	boss.state = "idle"
-	boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO)
+	boss.take_hit(int((boss.hp - BOSS_MAX * 0.5) / boss.exposure()) + 2, Vector2.ZERO)
 	await must(boss.phase == 2, "2페이즈 진입")
 	await tick(2)
 	await must(get_nodes_in_group("fog").is_empty(), "안개 제거")
@@ -1347,7 +1347,7 @@ func sc_cs_boss() -> void:
 	await until(func(): return boss.state == "idle", "전환 열림 종료", 200)
 
 	step("무릎 꿇은 역신은 처용가로만 끝난다 (정화 철학)")
-	boss.take_hit(int(boss.hp) + 1, Vector2.ZERO)
+	boss.take_hit(int(boss.hp / boss.exposure()) + 2, Vector2.ZERO)
 	await until(func(): return boss.state == "kneel", "무릎", 120)
 	await must(boss.is_in_group("downed"), "downed(죽음 아님)")
 	await done()
