@@ -28,6 +28,26 @@ func _main() -> void:
 		"dbg": await sc_dbg()
 		"ttk2": await sc_ttk2()
 		"bossdbg": await sc_boss(true)
+		"walk":
+			await cs_setup()
+			for c in [Vector2(270,290),Vector2(200,290),Vector2(150,260),Vector2(300,200),Vector2(250,330),Vector2(180,200),Vector2(350,300),Vector2(120,300)]:
+				await tp(c)
+				var x0: Vector2 = player().position
+				bot_dir(Vector2(1,0)); 
+				for i in 60: await process_frame
+				var x1: Vector2 = player().position
+				bot_dir(Vector2(-1,0))
+				for i in 60: await process_frame
+				var x2: Vector2 = player().position
+				bot_dir(Vector2.ZERO)
+				print("RES walk %s start=%s right=%.0f left=%.0f" % [str(c), str(x0), x1.x-x0.x, x2.x-x1.x])
+			await done()
+		"tapclear": await sc_tapclear()
+		"tapdbg":
+			_dbg = true
+			await cs_setup()
+			await run_pack([OS.get_environment("PK") if OS.get_environment("PK") != "" else "dog"], "tap", 14.0)
+			await done()
 		_: await fail("알 수 없는 프로브: " + scn)
 
 
@@ -474,17 +494,18 @@ func sc_ttk2() -> void:
 func run_pack(pack: Array, pol: String, limit: float) -> Dictionary:
 	var p := player()
 	probe_reset(2)
-	await tp(Vector2(270, 290))
+	await tp(Vector2(150, 260))   # 열린 바닥(걸어서 막히지 않음; 270,290 은 새 지형에서 오른쪽이 막힘)
 	p.facing = "right"
 	await tick(3)
 	var foes := []
 	var k := 0
 	for kind in pack:
-		var e = cs_spawn(kind, lvl().lift(Vector2(330 + 18 * k, 270 + 28 * k)))
+		# 플레이어 기준 상대 배치 (지형이 바뀌어도 장애물 사이에 끼지 않게 — 고정 좌표는 새 지형에서 적·봇이 벽에 막혀 측정이 무효가 됐다)
+		var e = cs_spawn(kind, p.position + Vector2(68 + 14 * k, 4 + 12 * k))
 		e.state = "chase"
 		e.cd = 0.0 + 0.15 * k
 		if kind == "mulgwi":
-			e.position = lvl().lift(Vector2(320, 290))
+			e.position = p.position + Vector2(56, 4)
 		foes.append(e)
 		k += 1
 	var hp0: float = p.hp
@@ -517,6 +538,8 @@ func run_pack(pack: Array, pol: String, limit: float) -> Dictionary:
 		if p._parry_cd > 0.0 and last_pcd <= 0.0:
 			parries += 1
 		last_pcd = p._parry_cd
+		if _dbg and fn % 30 == 0:
+			print("RES PK fn=%d ts=%.2f p=%s %s e=%s %s ehp=%d" % [fn, Engine.time_scale, str(p.position), p.state, str(alive[0].position), alive[0].state, alive[0].hp])
 		var e = alive[0]
 		var nd := 1e9
 		for a in alive:
@@ -558,3 +581,31 @@ func run_pack(pack: Array, pol: String, limit: float) -> Dictionary:
 			a.queue_free()
 	await tick(2)
 	return {"win": win, "t": tt, "dmg": dmg, "hits": hits, "parries": parries}
+
+
+# ================================================================ tapclear: 지배 전략 회귀 시나리오
+## 탭 연타(접근 후 베기 연타)만으로 1장 요괴 7종을 선공 상태에서 "무피해"로 클리어할 수 없어야 한다 (2026-10-12 밸런스 적용의 합격선).
+## 통과 조건: 종별 평균 피해의 7종 평균 > 0 이고, 7종 중 절반 이상은 종별 평균 피해 > 0.
+func sc_tapclear() -> void:
+	await cs_setup()
+	var kinds := ["dog", "ghoul", "sea", "mulgwi", "maiden_ghost", "egg_ghost", "mama"]
+	var n := 6
+	var tot := 0.0
+	var hurt_kinds := 0
+	for kind in kinds:
+		var dsum := 0.0
+		var wins := 0
+		for i in n:
+			var r: Dictionary = await run_pack([kind], "tap", 40.0)
+			dsum += r["dmg"]
+			if r["win"]:
+				wins += 1
+		print("RES tapclear kind=%s tap win=%d/%d avg_dmg=%.1f" % [kind, wins, n, dsum / n])
+		tot += dsum / n
+		if dsum > 0.0:
+			hurt_kinds += 1
+	var mean := tot / kinds.size()
+	print("RES tapclear mean_dmg=%.2f hurt_kinds=%d/7" % [mean, hurt_kinds])
+	await must(mean > 0.0, "탭 연타 7종 평균 피해 > 0 (실제 %.2f)" % mean)
+	await must(hurt_kinds >= 2, "7종 중 2종 이상에서 탭 연타가 피해를 입는다 (실제 %d)" % hurt_kinds)
+	await done()
