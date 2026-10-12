@@ -16,7 +16,7 @@ const ROUTES := {
 	"pyega2": [Vector2(350, 200), Vector2(500, 213), Vector2(556, 192), Vector2(600, 213), Vector2(690, 240), Vector2(282, 405)],
 	"palace": [Vector2(258, 300), Vector2(256, 228), Vector2(256, 240), Vector2(258, 376)],
 	# 2장 M1 (임시 지형: hwagae=village, jiri_path=pyega1)
-	"hwagae": [Vector2(292, 285), Vector2(318, 220), Vector2(385, 180), Vector2(170, 365), Vector2(350, 162), Vector2(345, 250), Vector2(562, 30), Vector2(14, 379)],
+	"hwagae": [Vector2(270, 300), Vector2(405, 180), Vector2(430, 170), Vector2(192, 360), Vector2(140, 245), Vector2(345, 256), Vector2(562, 30), Vector2(14, 379)],
 	"jiri_path": [Vector2(260, 306), Vector2(330, 336), Vector2(150, 236), Vector2(485, 385), Vector2(520, 392), Vector2(14, 387)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
