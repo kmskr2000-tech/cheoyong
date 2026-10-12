@@ -11,6 +11,7 @@ Game="*res://scripts/game.gd"
 Story="*res://scripts/story.gd"
 Audio="*res://scripts/audio.gd"
 Capture="*res://scripts/capture.gd"
+Quality="*res://scripts/quality.gd"
 
 [display]
 window/size/viewport_width=480
