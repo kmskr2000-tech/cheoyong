@@ -254,7 +254,7 @@ func sc_boss(dbg := false) -> void:
 	_dbg = dbg
 	var pols := [["reader", 0.0, true], ["reader", 0.0, false], ["tap", 1.0, false], ["reader", 0.5, false]]
 	if dbg:
-		pols = [["tap", 1.0, false]]
+		pols = [[OS.get_environment("POL") if OS.get_environment("POL") != "" else "tap", float(OS.get_environment("MISS")) if OS.get_environment("MISS") != "" else 1.0, OS.get_environment("CHG") == "1"]]
 	var boss = await cs_wake_boss()
 	var n := 3
 	for spec in pols:
@@ -306,6 +306,8 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 			break
 		if p.hp <= 1000.0 - real_max:
 			deaths += 1
+			if _dbg:
+				print("RES DBG DEATH t=%.1f boss=%s phase=%d bhp=%.0f" % [tt, boss.state, boss.phase, boss.hp])
 			# 게임 규칙(CS-12): 입구 부활, 보스 HP·페이즈 초기화, 졸개 제거
 			p.state = "move"
 			p.hp = 1000.0
@@ -357,11 +359,16 @@ func run_boss(boss, pol: String, miss: float, use_charge: bool, limit: float) ->
 		if in_fog and read and pol == "reader":
 			continue
 		# ----- 기침 읽기: 숨결이 나가기 직전(0.1초 전) 구르기 → 받아넘기기 (읽었을 때), 못 읽으면 그대로 서 있는다
-		if st == "cough" and pol == "reader" and read and p.state != "roll" and p._roll_lock_t <= 0.0:
+		if st == "cough" and pol == "reader" and read and p.state != "roll":
 			var left: float = 1.0 / fast - boss.st
-			if left < 0.1 and left > -0.01 and d < 130.0:
+			if left < 0.1 and left > -0.01 and d < 130.0 and p._roll_lock_t <= 0.0:
 				bot_dir((boss.global_position - p.global_position).normalized())
 				Input.action_press("roll")
+				continue
+			elif left < 0.4 and left > -0.05 and d < 130.0 and p._roll_lock_t > 0.0:
+				# 2페이즈 두 번째 기침: 구르기 잠금 중이면 숨결 조준선(±0.55rad)에서 옆으로 걸어 빠진다 (숙련 플레이어 행동)
+				bot_dir(to.orthogonal().normalized())
+				Input.action_release("attack")
 				continue
 		Input.action_release("roll")
 		# ----- 펄스 읽기: 붙어 있으면 1.6초 규칙. 붙은 시간이 1.2초를 넘으면 한 걸음 빠진다
