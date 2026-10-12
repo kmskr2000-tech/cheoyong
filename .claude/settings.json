@@ -159,6 +159,11 @@
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/detect-gaps.sh\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "echo 'Caveman mode: caveman (auto-start). Follow the caveman skill (.claude/skills/caveman/SKILL.md) for every chat reply until the user says stop caveman or normal mode. Reply in the language the user writes in. Write code, comments, commits, PRs and docs in plain prose.'",
+            "timeout": 5
           }
         ]
       }
