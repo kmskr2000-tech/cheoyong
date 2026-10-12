@@ -1628,7 +1628,8 @@ func all_idle() -> bool:
 func goto_exit(i: int, to_level: String) -> void:
 	var iid := level_iid()
 	await free_player()
-	await tp(exit_center(i))
+	player().position = lvl().lift(exit_center(i))   # 풀린 즉시 같은 프레임에 출구로 (연타가 근처 상호작용을 다시 열어 묶지 않게; 연출 직후 대사는 호출 쪽이 tick 으로 기다린다)
+	await tick(3)
 	await until(func(): return level_ready(to_level, iid), "%s 진입" % to_level, 3000)
 	await tick(3)
 
@@ -1691,6 +1692,7 @@ func sc_ch2_m2() -> void:
 	await until(func(): return G.flag("den_sight") == 1, "SC2-04 졸개의 목소리 (걸어서)", 900)
 	Input.action_release("move_right")
 	await must(all_idle(), "SC2-04 순간 요괴 전부 idle (연출 전 전투 확정 없음)")
+	await tick(8)   # 트리거 다음 프레임에 대사가 열린다
 	await free_player()
 
 	step("SC2-05: 외눈박이 감투 → 용패 (잔영 3회 한정)")
@@ -1705,6 +1707,7 @@ func sc_ch2_m2() -> void:
 	step("깊은 곳(deep) 트리거 → 처용 독백")
 	await tp(Vector2(554, 384))
 	await until(func(): return G.flag("den_deep") == 1, "deep 트리거", 600)
+	await tick(8)
 	await free_player()
 
 	step("동쪽 → 도깨비 곳간 (SC2-21), 동문 막힘")

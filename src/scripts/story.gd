@@ -957,6 +957,9 @@ func _village_interact(level: Node, id: String) -> void:
 
 ## SC2-20: 무덤에서 굿 — 처용은 말 없이 노래로. 아이 넋이 승천하고 한풀이 보상(전투 없이 끝내면 +30%).
 func _grave_rite(level: Node) -> void:
+	if level.has_meta("rite_busy"):   # 노래하는 동안 플레이어는 풀려 있다 → 같은 굿이 겹쳐 시작되지 않게
+		return
+	level.set_meta("rite_busy", true)
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	await level.get_tree().create_timer(0.4).timeout
@@ -1008,8 +1011,7 @@ func oneeye_vanish(level: Node, at: Vector2) -> void:
 	Game.set_flag("yongpae_trace_n", n + 1)
 	if n == 0:
 		Game.say_toast("용패가 탁기의 흐름을 비춘다.", Color(0.75, 0.9, 1.0))   # SC2-05
-	var mark: Node2D = level._glint(at)
-	level.add_child(mark)
+	var mark: Node2D = level._glint(at)   # _glint 가 레벨에 붙여 준다
 	await level.get_tree().create_timer(1.6).timeout
 	if is_instance_valid(mark):
 		mark.queue_free()
