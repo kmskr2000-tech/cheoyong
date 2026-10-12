@@ -47,7 +47,7 @@ function go(v){try{localStorage.setItem(LS,v)}catch(e){} location.replace("./"+v
 // 구버전 폴더에 남은 서비스 워커 등록을 정리한다(캐시는 새 버전 SW가 활성화될 때 Godot가 지움).
 function cleanup(v){
   if(!navigator.serviceWorker||!navigator.serviceWorker.getRegistrations) return Promise.resolve();
-  var p=navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.filter(function(r){return r.scope.indexOf("/"+v+"/")<0}).map(function(r){return r.unregister()}))}).catch(function(){});
+  var p=navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.filter(function(r){var b=location.pathname.replace(/[^\/]*$/,"");return r.scope.indexOf(location.origin+b)===0&&/\/\d{14}\/$/.test(r.scope)&&r.scope.indexOf("/"+v+"/")<0}).map(function(r){return r.unregister()}))}).catch(function(){});
   return Promise.race([p,new Promise(function(r){setTimeout(r,1000)})]);
 }
 var ctl=window.AbortController?new AbortController():null, tm=setTimeout(function(){ctl&&ctl.abort()},4000);
@@ -56,6 +56,12 @@ fetch("version.json?t="+Date.now(),{cache:"no-store",signal:ctl?ctl.signal:undef
 <noscript><p><a href="./__V__/">게임 열기</a></p></noscript></body></html>
 HTML
 sed -i "s/__V__/$V/g" "$STAGE/index.html"
+# 삭제된 구버전 폴더 주소(북마크 등)로 들어오면 404 대신 루트 로더로 보낸다.
+cat > "$STAGE/404.html" <<'HTML404'
+<!doctype html><meta charset="utf-8"><title>신 처용가</title><script>
+var m=location.pathname.match(/^(.*\/)\d{14}\//);location.replace(m?m[1]+location.search+location.hash:location.pathname.replace(/[^\/]*$/,""));
+</script>
+HTML404
 echo "staging: $STAGE (version $V, $(du -sh "$STAGE" | cut -f1))"
 [ "${1:-}" = "--dry" ] && exit 0
 cd "$STAGE"
