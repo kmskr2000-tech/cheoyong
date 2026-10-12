@@ -23,6 +23,9 @@ FEET = 58
 BG_TOL = 6   # 검은 도포(≈배경색)가 배경으로 번지지 않도록 좁게
 INK = (7, 6, 11, 255)
 PAL_N = 32
+MUL = 1.22      # 전 시트 공통 배율 보정: 머리~발 38px -> 46px (얼굴 눈코가 읽히는 최소 크기)
+GAMMA = 0.12    # 검은 도포 암부 들어올림
+BLUE_THR = 0.18 # 푸른 문양 픽셀 보존 임계
 
 _cache = {}
 def load(name):
@@ -38,7 +41,27 @@ def load(name):
         _cache[name] = (a, fg)
     return _cache[name]
 
+DRAGON = [".11.", "1221", ".12.", "..11", ".122", "1221", ".11."]
+DR_COL = {'1': (64, 112, 232), '2': (150, 205, 255)}
+def stamp_dragon(res, bm):
+    """푸른 용 문양: 가슴 위 작은 덩어리(검기 이펙트 아님)는 도트가 뭉개지므로 손으로 그린 9x7 용 글리프로 다시 찍는다."""
+    lab, n = ndimage.label(ndimage.binary_dilation(bm, iterations=1))
+    for k in range(1, n + 1):
+        m = lab == k
+        ys, xs = np.where(m & bm)
+        if len(ys) < 5 or len(ys) > 60 or ys.max() - ys.min() > 12 or xs.max() - xs.min() > 10:
+            continue
+        cy, cx = int(round(ys.mean())), int(round(xs.mean()))
+        for r, line in enumerate(DRAGON):
+            for c, ch in enumerate(line):
+                if ch in DR_COL:
+                    y, x = cy - 3 + r, cx - 2 + c
+                    if 0 <= y < res.shape[0] and 0 <= x < res.shape[1] and res[y, x, 3]:
+                        res[y, x, :3] = DR_COL[ch]
+    return res
+
 def grab(name, box, scale, flip=False):
+    scale = scale * MUL
     """crop box from sheet -> RGBA image downscaled by `scale`, feet-aligned into a CELL x CELL tile."""
     a, fg = load(name)
     x0, y0, x1, y1 = box
@@ -60,17 +83,23 @@ def grab(name, box, scale, flip=False):
     low = body & (np.arange(body.shape[0])[:, None] > bottom - 0.12 * body.shape[0])
     lx = np.where(low.any(0))[0]
     fx = (lx.min() + lx.max()) / 2.0   # foot centre
-    img = np.dstack([rgb, f.astype(np.uint8) * 255])
-    im = Image.fromarray(img, 'RGBA')
-    # premultiplied BOX downscale
-    arr = np.array(im).astype(float)
-    arr[..., :3] *= arr[..., 3:4] / 255.0
-    w, h = max(1, round(im.width * scale)), max(1, round(im.height * scale))
-    chans = [np.array(Image.fromarray(arr[..., c]).resize((w, h), Image.BOX)) for c in range(4)]
-    out = np.dstack(chans)
-    al = out[..., 3] / 255.0
-    rgbs = np.where(al[..., None] > 0, out[..., :3] / np.maximum(al[..., None], 1e-6) * 1.0, 0)
-    res = np.dstack([np.clip(rgbs, 0, 255), (al >= 0.5) * 255]).astype(np.uint8)
+    # v2 (2026-10-12 hero-detail): bg 제거 영역을 가장 가까운 전경색으로 채운 뒤 LANCZOS 축소(경계 헤일로 방지),
+    # 알파는 BOX>=0.5, 푸른 문양은 별도 마스크를 max-pool 식으로 살려 밝게 유지, 어두운 도포는 감마로 살짝 들어올려 주름·윤곽이 읽히게
+    idx = ndimage.distance_transform_edt(~f, return_distances=False, return_indices=True)
+    filled = rgb[idx[0], idx[1]]
+    if GAMMA:
+        filled = (255 * (filled / 255.0) ** (1 - GAMMA)).astype(np.uint8)
+    w, h = max(1, round(f.shape[1] * scale)), max(1, round(f.shape[0] * scale))
+    small = np.array(Image.fromarray(filled).resize((w, h), Image.LANCZOS)).astype(float)
+    al = np.array(Image.fromarray((f * 255).astype(np.uint8)).resize((w, h), Image.BOX)).astype(float) / 255
+    bl = (blue & f)
+    bcnt = np.array(Image.fromarray((bl * 255).astype(np.uint8)).resize((w, h), Image.BOX)).astype(float) / 255
+    bcol = np.array(Image.fromarray(np.where(bl[..., None], rgb, 0).astype(np.uint8)).resize((w, h), Image.BOX)).astype(float)
+    bcol = bcol / np.maximum(bcnt[..., None], 0.05)
+    bm = bcnt > BLUE_THR
+    small = np.where(bm[..., None], np.clip(bcol * 1.12 + 8, 0, 255), small)
+    res = np.dstack([np.clip(small, 0, 255), (al >= 0.5) * 255]).astype(np.uint8)
+    stamp_dragon(res, bm)
     sm = Image.fromarray(res, 'RGBA')
     fxs, bys = int(round(fx * scale)), int(round((bottom + 1) * scale))
     tile = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
@@ -118,12 +147,14 @@ def build():
                  row('attack8', [(50, 890, 330, 1240), (330, 890, 620, 1240), (620, 890, 960, 1240)], A8)],
         'up': [row('attack', [(100, 425, 360, 850), (400, 425, 620, 850), (650, 425, 950, 850)], A),
                row('attack8', [(60, 490, 330, 850), (330, 490, 640, 850), (640, 490, 960, 850)], A8),
-               row('attack', [(100, 425, 360, 850), (400, 425, 620, 850), (650, 425, 950, 850)], A)],
+               row('attack8', [(990, 385, 1290, 670), (1290, 385, 1590, 670), (1590, 385, 1910, 670)], A8)],   # 3타: 반전 대체 -> 뒷모습 전용 컷
         'right': [row('attack', [(1030, 0, 1290, 425), (1290, 0, 1560, 425), (1560, 0, 1920, 425)], A),
                   row('attack', [(1010, 425, 1290, 850), (1290, 425, 1560, 850), (1560, 425, 1920, 850)], A),
                   row('attack8', [(990, 890, 1290, 1240), (1290, 890, 1590, 1240), (1590, 890, 1910, 1240)], A8)],
     }
     F['atk']['left'] = [[t.transpose(Image.FLIP_LEFT_RIGHT) for t in c] for c in F['atk']['right']]
+    # 왼쪽 1타는 반전이 아닌 원본 '왼쪽을 보는' 컷(attack 시트 3행)
+    F['atk']['left'][0] = row('attack', [(90, 860, 340, 1250), (310, 880, 620, 1250), (950, 870, 1260, 1250)], A)
     # ---- song (flute at the lips)
     F['song'] = {'down': F['atk']['down'][1][0], 'up': F['atk']['up'][1][0], 'right': grab('attack8', (1000, 30, 1290, 410), A8)}
     F['song']['left'] = F['song']['right'].transpose(Image.FLIP_LEFT_RIGHT)
@@ -141,7 +172,7 @@ def build():
 
 # sheet index plan (must match player.gd)
 def layout(F):
-    cells = [None] * 100
+    cells = [None] * 110
     idle = F['idle']
     cells[0] = idle['down']
     cells[1] = idle['up']; cells[2] = idle['right']
@@ -167,7 +198,34 @@ def layout(F):
     for k, d in enumerate(['down', 'up', 'right']):
         for i in range(3):
             cells[78 + k * 3 + i] = F['run'][d][i]
-    return cells[:87]
+    # ---- 구르기 전용(87~104): 방향별 6컷 = 웅크림 / 말아쥠(90° 단위 회전 x3) / 착지.  달리기 컷을 재료로 변형 합성
+    for k in range(3):
+        base = cells[79 + k * 3]
+        for i, c in enumerate(roll_cells(base)):
+            cells[87 + k * 6 + i] = c
+    return cells[:105]
+
+def squash(t, sx, sy, cy=None):
+    """feet-anchored resize of the figure bbox (NEAREST)."""
+    bb = t.getbbox(); fig = t.crop(bb)
+    w, h = max(1, round(fig.width * sx)), max(1, round(fig.height * sy))
+    fig = fig.resize((w, h), Image.NEAREST)
+    n = Image.new('RGBA', (CELL, CELL), (0, 0, 0, 0))
+    cxm = (bb[0] + bb[2]) // 2
+    n.alpha_composite(fig, (max(0, min(CELL - w, cxm - w // 2)), (FEET + 1 - h) if cy is None else cy - h // 2))
+    return n
+
+def roll_cells(base):
+    crouch = squash(base, 1.0, 0.72)                        # 웅크림: 무게를 낮추고
+    ball = squash(base, 0.95, 0.58, cy=FEET - 13)           # 몸을 말아 쥐고
+    bb = ball.getbbox(); sq = max(bb[2] - bb[0], bb[3] - bb[1])
+    out = [crouch]
+    for ang in (-90, -180, -270):                          # 한 바퀴: 등 → 머리 → 배
+        r = ball.rotate(ang, resample=Image.NEAREST, center=(CELL / 2, FEET - 13))
+        out.append(r)
+    out.append(squash(base, 1.05, 0.66))                    # 착지(깊은 무릎)
+    out.append(squash(base, 1.0, 0.9))                      # 일어서기
+    return out
 
 def finish(cells):
     sheet = Image.new('RGBA', (CELL * len(cells), CELL), (0, 0, 0, 0))
@@ -178,7 +236,7 @@ def finish(cells):
     # palette unify (32 colours, no dither)
     # 푸른 이펙트(검기·용 문양)는 따로 8색, 나머지 28색 — 한 팔레트로 합치면 푸른빛이 회색으로 죽는다
     blue = op & (a[..., 2].astype(int) - a[..., 0] > 40) & (a[..., 2] > 110)
-    for mask, n in ((~blue & op, 28), (blue, 8)):
+    for mask, n in ((~blue & op, 40), (blue, 12)):
         px = a[mask][:, :3]
         if len(px) == 0:
             continue

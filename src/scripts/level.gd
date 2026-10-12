@@ -1,4 +1,5 @@
 extends Node2D
+const CT := preload("res://scripts/combat_tuning.gd")
 ## A playable level built from Levels.DATA[Game.level_id]: baked tiered ground (art/ground3d.py),
 ## voxel and hand-drawn props, NPCs, enemies, exits, lighting and the HD-2D finishing pass.
 ## Story beats hook in through Story (story.gd).
@@ -26,6 +27,8 @@ func _ready() -> void:
 		if p.size() > 4 and not Game.flag(p[4]):
 			continue  # story-gated prop
 		_prop(p[0], lift(Vector2(p[1], p[2])), p[3])
+	for L in def.get("lights", []):   # [x, y, colour, energy, scale] — a lit window / painted lamp on the ground picture
+		_glow_light(lift(Vector2(L[0], L[1])), L[2], L[3], L[4])
 	_atmosphere()
 	var size: Array = meta["size"]
 	var tier: float = meta["tier"]
@@ -237,7 +240,9 @@ func _glint(at: Vector2) -> Node2D:
 ## true when a screen position lies over open water
 func is_water(p: Vector2) -> bool:
 	var rows: Array = meta["heights"]
-	var cy := clampi(int(p.y / depth_k() / meta["ts"]), 0, rows.size() - 1)
+	# flat-baked maps ("land_tier"): the screen position sits land_tier*TIER px above its footprint row
+	var lift_px: float = float(meta.get("land_tier", 0)) * float(meta["tier"])
+	var cy := clampi(int((p.y + lift_px) / depth_k() / meta["ts"]), 0, rows.size() - 1)
 	var cx := clampi(int(p.x / meta["ts"]), 0, String(rows[0]).length() - 1)
 	return String(rows[cy])[cx] == "0"
 
@@ -296,6 +301,9 @@ func on_purified(r: Dictionary, where: Vector2) -> void:
 		Game.set_flag(key)
 		Game.say_toast("한풀이 — 이곳의 원혼이 모두 풀렸다", Color(0.75, 0.9, 1.0))
 		Game.reward_bonus(_earned_j / 2, _earned_d / 2, where, self)   # 정화율 100%: ×1.5 in total
+		var pl: Node = get_node_or_null("Player")   # CS-05: 한풀이 성립 시 체력 +15%
+		if pl and pl.has_method("heal"):
+			pl.heal(pl.max_hp * CT.HP_HANPURI)
 
 
 # ---------------------------------------------------------------- 전투 음악: 요괴가 쫓아오면 자진모리
@@ -383,7 +391,7 @@ func _update_guide(d: float) -> void:
 func _wet_feet(d: float) -> void:
 	_splash_cd -= d
 	var p: CharacterBody2D = $Player
-	if _splash_cd > 0.0 or p.velocity.length() < 10.0 or not is_water(p.global_position + Vector2(0, 30)):  # screen → roughly the footprint just ahead
+	if _splash_cd > 0.0 or p.velocity.length() < 10.0 or not is_water(p.global_position + Vector2(0, 12)):  # screen → roughly the footprint just ahead
 		return
 	_splash_cd = 0.22
 	Audio.sfx("splash", -16.0, 0.15)
@@ -547,6 +555,20 @@ func _prop(name: String, at: Vector2, light) -> void:
 		l.set_meta("base", light[2])
 		body.add_child(l)
 		flicker.append(l)
+
+
+## a light with no sprite: warms a window or lamp that is already painted into the ground picture
+func _glow_light(at: Vector2, col: Color, energy: float, scl: float) -> void:
+	var l := PointLight2D.new()
+	l.texture = light_tex
+	l.position = at
+	l.color = col
+	l.energy = energy
+	l.texture_scale = scl
+	l.height = 24.0
+	l.set_meta("base", energy)
+	add_child(l)
+	flicker.append(l)
 
 
 var flicker: Array[PointLight2D] = []

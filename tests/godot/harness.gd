@@ -163,6 +163,17 @@ func tp(footprint: Vector2) -> void:
 	await tick(3)
 
 
+## 레벨 정의의 gates(이야기가 여는 출구)·exits 의 중심 (좌표를 하드코딩하지 않는다: 아트팀이 지형을 바꿔도 따라간다)
+func gate_center(name: String) -> Vector2:
+	var r: Rect2 = lvl().def["gates"][name][0]
+	return r.get_center()
+
+
+func exit_center(i: int) -> Vector2:
+	var r: Rect2 = lvl().def["exits"][i][0]
+	return r.get_center()
+
+
 func tp_raw(p: Vector2) -> void:
 	player().position = p
 	await tick(3)
@@ -244,6 +255,18 @@ func _main() -> void:
 		"corrupt_save": await sc_corrupt_save()
 		"death": await sc_death()
 		"boss_retry": await sc_boss_retry()
+		# ---- 전투 전략(combat-strategy) 시나리오: tests/combat_strategy.sh 로 실행 (기본 chapter1 목록과 분리)
+		"cs_parry": await sc_cs_parry()
+		"cs_charge": await sc_cs_charge()
+		"cs_guard": await sc_cs_guard()
+		"cs_targeting": await sc_cs_targeting()
+		"cs_economy": await sc_cs_economy()
+		"cs_boss": await sc_cs_boss()
+		"cs_deaths": await sc_cs_deaths()
+		"cs_wave": await sc_cs_wave()
+		"cs_aura": await sc_cs_aura()
+		"cs_tutorial": await sc_cs_tutorial()
+		"cs_cover": await sc_cs_cover()
 		_:
 			await fail("알 수 없는 시나리오: " + scn)
 
@@ -275,7 +298,7 @@ func sc_chain() -> void:
 	await until(func(): return not player().locked, "마을 사람 대사 끝", 1500)
 
 	step("SC1-05 첫 전투 → 정화 (노래)")
-	await tp(Vector2(330, 105))
+	await tp(lvl().def["anchors"]["fight_player"])
 	await until(func(): return lvl().hud._guide == "attack", "전투 튜토리얼 안내(베기 버튼)", 300)
 	var yokai = lvl().get_node("Gaetgwi")
 	yokai.take_hit(9999, Vector2.ZERO)
@@ -317,7 +340,7 @@ func sc_chain() -> void:
 	step("SC1-11 밤 · 관아 사람의 호출")
 	await until(func(): return G.flag("summoned") == 1 and not player().locked, "관아 사람 호출 대사 끝", 3000)
 	iid = level_iid()
-	await tp(Vector2(636, 185))
+	await tp(gate_center("gwana"))
 	await until(func(): return level_ready("gwana", iid), "관아 도착(출구 이동)", 1500)
 
 	step("SC1-12 관아 의뢰 + 난영 쓰러짐")
@@ -328,19 +351,19 @@ func sc_chain() -> void:
 	await must(G.flag("nanyeong_fallen") == 1, "난영 쓰러짐 플래그")
 	await must(int(G.items["insam"]) >= 4, "관아 지급 인삼정기탕 +2 (2→4)")
 	iid = level_iid()
-	await tp(Vector2(3, 235))
+	await tp(lvl().def["anchors"]["exit"])
 	await until(func(): return level_ready("gyeongju", iid), "경주 복귀(관아 출구)", 1500)
 
 	step("SC1-13 경주 → 서쪽 폐가 (마당)")
 	await free_player()
 	iid = level_iid()
-	await tp(Vector2(3, 185))
+	await tp(gate_center("pyega"))
 	await until(func(): return level_ready("pyega1", iid), "폐가 마당 도착", 1500)
 	await clear_room()
 
 	step("SC1-14 폐가 다락")
 	iid = level_iid()
-	await tp(Vector2(320, 39))
+	await tp(exit_center(1))
 	await until(func(): return level_ready("pyega2", iid), "폐가 다락 도착", 1500)
 	var boss = lvl().get_node("Boss")
 	await must(boss.state == "wait", "역신은 사람 모습으로 앉아 있다(wait)")
@@ -349,7 +372,7 @@ func sc_chain() -> void:
 	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
 
 	step("SC1-15~17 최심부 · 역신 각성")
-	await tp(Vector2(545, 190))   # trigger inner
+	await tp(Vector2(562, 190))   # trigger inner
 	await until(func(): return boss.state == "idle", "역신 각성", 3000)
 	await until(func(): return not player().locked, "각성 후 조작 가능", 600)
 
@@ -395,7 +418,7 @@ func sc_chain() -> void:
 	step("SC1-22~23 편전 · 퇴마어사 임명")
 	await free_player()
 	iid2 = level_iid()
-	await tp(Vector2(256, 196))
+	await tp(Vector2(256, 228))
 	await until(func(): return G.flag("appointed") == 1, "임명 플래그", 3000)
 	await until(func(): return level_ready("gyeongju", iid2), "경주 '떠나는 날'", 3000)
 
@@ -520,32 +543,42 @@ func sc_boss_retry() -> void:
 	await clear_room()
 	await tp(Vector2(420, 190))
 	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
-	await tp(Vector2(545, 190))
+	await tp(Vector2(562, 190))
 	var boss = lvl().get_node("Boss")
 	await until(func(): return boss.state == "idle", "역신 각성", 3000)
 	await until(func(): return not player().locked, "조작 가능", 600)
 	# 보스방 문(add_barrier)이 실제로 막는가: 트리거 콜백 안에서 만들어져 엔진이 "Can't change this state while flushing queries"를 찍는다
-	await tp(Vector2(470, 192))
+	await tp(Vector2(520, 190))
 	var blocked: bool = player().test_move(player().global_transform, Vector2(40, 0))
 	expect(blocked, "보스방 봉쇄벽이 입구를 막는다 (결함이면 플레이어가 나갈 수 있음)")
+	# CS-12 (OQ-1 디렉터 확정): 보스방 사망 → 레벨 재로드 없이 보스방 입구에서 부활, 몹 재생성 없음, 보스 HP·페이즈 리셋
+	G.deaths = {}
 	for attempt in 2:
-		step("재도전 %d: 보스전 중 사망 → 입구 계단에서 재시작" % (attempt + 1))
+		step("재도전 %d: 보스전 중 사망 → 보스방 입구에서 부활(재로드 없음)" % (attempt + 1))
 		var iid := level_iid()
 		god = false
 		boss = lvl().get_node("Boss")
-		boss.take_hit(100, Vector2.ZERO)   # 일부 피해를 줘도 재도전하면 초기화되어야 한다
+		boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO) if attempt == 1 else boss.take_hit(100, Vector2.ZERO)
+		if attempt == 1:   # 2페이즈를 겪은 뒤 죽어도 처음부터(페이즈 1)
+			await until(func(): return boss.phase == 2 and boss.state != "wait", "2페이즈 대사 후", 1500)
+		boss.take_hit(30, Vector2.ZERO)   # 일부 피해
+		var ghoul = cs_spawn("ghoul", boss.position + Vector2(30, 0))   # 소환된 졸개가 남아 있어도 정리된다
+		var foes_before: int = get_nodes_in_group("enemy").filter(func(e): return e.get("kind") != null and e != boss).size()
+		await until(func(): return player().hurt_t <= 0.0, "피격 유예 해제", 300)
 		player().hurt(99999, Vector2.RIGHT)
-		await until(func(): return level_ready("pyega2", iid), "pyega2 재로드", 1500)
-		god = true
+		await must(player().hp == 0.0, "치명타로 쓰러졌다")
+		await until(func(): return player().hp == player().max_hp and player().state == "move", "플레이어 부활", 600)
+		await tick(3)
+		await must(level_iid() == iid, "레벨 재로드 없음(같은 장면)")
 		boss = lvl().get_node("Boss")
-		await must(boss.state == "wait" and boss.hp == BOSS_MAX, "역신이 사람 모습·만피로 재배치")
+		await must(boss.hp == BOSS_MAX and boss.phase == 1 and boss.state == "idle", "역신 HP 만피·1페이즈·전투 상태로 초기화 hp=%s ph=%s st=%s" % [boss.hp, boss.phase, boss.state])
+		await must(not is_instance_valid(ghoul) or ghoul.is_queued_for_deletion(), "소환된 졸개 제거")
+		await must(get_nodes_in_group("enemy").filter(func(e): return e.get("kind") != null and not e.is_queued_for_deletion()).is_empty(), "다락 몹이 되살아나지 않는다")
 		await must(G.flag("boss_done") == 0, "boss_done 미설정")
-		await must(player().hp == player().max_hp and not player().locked, "플레이어 체력 가득·조작 가능")
-		await must(player().position.distance_to(lvl().lift(lvl().def["spawns"]["start"])) < 2.0, "입구 스폰 위치")
-		await clear_room()
-		await tp(Vector2(545, 190))
-		await until(func(): return boss.state == "idle", "역신 재각성(트리거 재작동)", 3000)
-		await until(func(): return not player().locked, "재각성 후 조작 가능", 600)
+		await must(player().position.distance_to(lvl().lift(Vector2(535, 192))) < 2.0, "보스방 입구(봉쇄문 안쪽)에서 부활")
+		await must(not player().locked, "조작 가능")
+		await must(int(G.deaths.get("pyega2_boss", 0)) == attempt + 1 and int(G.deaths.get("pyega2", 0)) == 0, "사망이 pyega2_boss 키로 집계")
+		god = true
 	step("재도전 뒤에도 격파 경로가 열려 있다")
 	boss.take_hit(int(boss.hp - BOSS_MAX * 0.5) + 1, Vector2.ZERO)
 	await until(func(): return boss.phase == 2 and boss.state == "idle", "2페이즈 대사 후 전투 재개", 1500)
@@ -556,4 +589,886 @@ func sc_boss_retry() -> void:
 	await tick(2)
 	await sing_now()
 	await until(func(): return G.flag("boss_done") == 1, "격파 플래그", 600)
+	await done()
+
+
+# ================================================================ 전투 전략 (design/gdd/combat-strategy.md)
+## 타이밍 시나리오는 실시간(1배속)으로 돈다: 받아넘기기 창 0.15초 ≈ 9프레임이라 4배속이면 2프레임으로 뭉개진다.
+func cs_setup(lv_note := "") -> void:
+	Engine.time_scale = 1.0
+	await boot_level()
+	await free_player()
+	cs_purge()
+	G.skills = []
+	var p := player()
+	p.hp = p.max_hp
+	p.ki = p.max_ki
+	p.shinmyeong = 0.0
+	p.hurt_t = 0.0
+	p.gentle_hits = 0
+
+
+## 방의 요괴·쓰러진 것을 전부 치운다 (시나리오가 직접 소환한 것만 남기려고)
+func cs_purge() -> void:
+	for g in ["enemy", "downed"]:
+		for e in get_nodes_in_group(g):
+			if e.get("kind") != null or e.get("phase") != null:   # Enemy / PlagueGod (클래스를 직접 참조하면 오토로드 등록 전에 컴파일되어 실패)
+				e.remove_from_group("enemy")
+				e.remove_from_group("downed")
+				e.queue_free()
+
+
+func cs_spawn(kind: String, at: Vector2, state := ""):
+	var e = load("res://scripts/enemy.gd").new()
+	e.kind = kind
+	e.position = at
+	lvl().add_child(e)
+	if state != "":
+		e.state = state
+	return e
+
+
+func press(action: String, frames := 1) -> void:
+	Input.action_press(action)
+	await tick(frames)
+	Input.action_release(action)
+
+
+## 한 프레임씩 진행하며 조건이 될 때까지 (최대 max_frames)
+func wait_cond(cond: Callable, label: String, max_frames := 600) -> void:
+	await until(cond, label, max_frames)
+
+
+func cs_idle() -> void:
+	var p := player()
+	await until(func(): return p.state == "move" and p._roll_lock_t <= 0.0 and p._parry_cd <= 0.0 and p.hurt_t <= 0.0 and Engine.time_scale >= 0.99, "구르기 끝·잠금·쿨다운 해제", 600)
+
+
+func sc_cs_parry() -> void:
+	step("CS-01 준비 — 요괴 없는 폐가 마당")
+	await cs_setup()
+	var p := player()
+	await tp(p.spawn / 1.0 if false else lvl().def["spawns"]["start"])
+
+	step("스킬 없이: 구르기 시작 0.15초 안 근접 접촉 → 받아넘기기 (신명 +15·소리 +8·다음 타 ×2)")
+	p.ki = 50.0
+	var sin0: float = p.shinmyeong
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기 시작", 30)
+	await until(func(): return p.t >= 0.05, "구르기 0.05초", 60)
+	var hp0: float = p.hp
+	p.hurt(10, Vector2.LEFT, true)
+	await must(p.parry_bonus, "받아넘기기 발동(스킬 batanum 없이)")
+	await must(absf(p.shinmyeong - (sin0 + 15.0)) < 0.01, "신명 +15")
+	await must(absf(p.ki - 58.0) < 1.5, "소리 +8 (재생 오차 허용)")
+	await must(p.hp == hp0, "피해 없음")
+	await cs_idle()
+	p.parry_bonus = false
+
+	step("0.15초 이후(0.17초) 접촉 → 피해만 무시, 보상 없음")
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.17, "구르기 0.17초", 90)
+	hp0 = p.hp
+	p.hurt(10, Vector2.LEFT, true)
+	await must(not p.parry_bonus and p.shinmyeong == 0.0, "보상 없음(창 0.15 밖)")
+	await must(p.hp == hp0, "무적 중이라 피해도 없음")
+	await cs_idle()
+
+	step("원거리·장판·독기(melee=false)는 구르기 무적 중에도 받아넘기기가 뜨지 않는다")
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.04, "구르기 0.04초", 60)
+	p.hurt(5, Vector2.ZERO, false, "miasma")
+	p.hurt(8, Vector2.LEFT)
+	await must(not p.parry_bonus and p.shinmyeong == 0.0, "melee=false → 받아넘기기 없음")
+	await cs_idle()
+
+	step("스킬 batanum: 창이 0.22초, 성공 시 정면 80px 요괴가 밀쳐지고 예고가 끊긴다")
+	G.skills = ["batanum"]
+	p.shinmyeong = 0.0
+	p.facing = "right"
+	p.position = lvl().lift(lvl().def["spawns"]["start"])
+	var foe = cs_spawn("ghoul", p.position + Vector2(40, 0), "tell")
+	foe.st = 0.0
+	await tick(1)
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.20, "구르기 0.20초 (기본 창 밖·스킬 창 안)", 90)
+	p.hurt(10, Vector2.LEFT, true)
+	await must(p.parry_bonus, "되받아치기 창 0.22초 안에서 발동")
+	await tick(2)
+	await must(foe.state == "hurt", "정면 요괴의 예고가 끊겼다(state=hurt)")
+	await must(foe.hp == foe.cfg["hp"], "밀쳐내기는 피해 0")
+	G.skills = []
+	await cs_idle()
+	foe.queue_free()
+	p.parry_bonus = false
+
+	step("실제 들개 접촉 타격(enemy.gd strike 분기)이 melee=true 로 받아넘기기를 일으킨다")
+	p.position = lvl().lift(lvl().def["spawns"]["start"])
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기 시작", 30)
+	var dog = cs_spawn("dog", p.position + Vector2(14, 0))
+	await tick(1)
+	dog.state = "strike"
+	dog.st = 0.0
+	dog.lunge_dir = Vector2.LEFT
+	await until(func(): return p.parry_bonus or dog.state != "strike", "들개 타격 판정", 30)
+	await must(p.parry_bonus and absf(p.shinmyeong - 15.0) < 0.01, "들개 돌진 접촉 → 받아넘기기 (신명 +15)")
+	p.parry_bonus = false
+	await cs_idle()
+	dog.queue_free()
+
+	step("구르기 잠금: 연속 구르기의 두 번째는 잠금 0.25초 뒤에 시작된다")
+	var starts: Array[int] = []
+	var f0 := frame
+	await press("roll")
+	await until(func(): return p.state == "roll", "1번째 구르기", 30)
+	await until(func(): return p.state == "move", "1번째 구르기 끝", 60)
+	var end_f := frame
+	await press("roll")   # 잠금 시작 직후 입력(남은 0.25초 > 선입력 0.10초) → 버려진다
+	await tick(30)
+	await must(p.state == "move", "잠금 중 이른 입력은 버려진다(구르기 안 함)")
+	await cs_idle()
+
+	step("잠금 끝 0.10초 안의 입력은 선입력으로 저장돼 잠금 해제 즉시 실행")
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기", 30)
+	await until(func(): return p.state == "move", "구르기 끝", 60)
+	await until(func(): return p._roll_lock_t > 0.0 and p._roll_lock_t <= 0.08, "잠금 끝 0.08초 전", 60)
+	await press("roll")
+	await must(p._roll_queued, "선입력 저장")
+	await until(func(): return p.state == "roll", "잠금 해제 즉시 2번째 구르기 시작", 30)
+	await must(p._roll_lock_t == 0.0, "잠금이 풀린 시점")
+	await cs_idle()
+
+	step("학의 질주(hak): 구르기 중 두 번째 입력은 잠금과 무관하게 질주")
+	G.skills = ["hak"]
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t > 0.12, "구르기 0.12초", 60)
+	await press("roll")
+	await until(func(): return p._dash, "질주(_dash) 시작", 20)
+	G.skills = []
+	await cs_idle()
+	await done()
+
+
+func cs_dummy(kind: String, at: Vector2, hp_override := -1):
+	var e = cs_spawn(kind, at)
+	e.set_physics_process(false)   # 가만히 서 있는 표적 (take_hit 은 그대로 동작)
+	e.state = "idle"
+	if hp_override > 0:
+		e.hp = hp_override
+	return e
+
+
+func sc_cs_charge() -> void:
+	step("CS-02 준비")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+	p.facing = "right"
+
+	step("탭 경로 회귀: 짧게 누르면 지금처럼 즉시 1타, 충전 없음")
+	var d1 = cs_dummy("ghoul", p.position + Vector2(24, 0))
+	Input.action_press("attack")
+	await tick(2)
+	await must(p.state == "attack", "누르자마자 1타(state=attack)")
+	Input.action_release("attack")
+	await until(func(): return p.state == "move", "1타 종료", 60)
+	await must(d1.hp < d1.cfg["hp"], "1타가 적중했다")
+	await must(p._charge_c == 0.0 and not p._charge_hold, "충전 상태 없음")
+	await cs_idle()
+
+	step("느린 탭(0.3초 누름)은 충전으로 오인되지 않는다")
+	p.facing = "right"
+	Input.action_press("attack")
+	await tick(18)
+	Input.action_release("attack")
+	await tick(30)
+	await must(p.state != "charge" and p._charge_c == 0.0, "0.3초 누름 → 충전 없음")
+	await cs_idle()
+	d1.queue_free()
+
+	step("0.45초 이상 누르면 충전 상태: 이동 불가, 스틱으로 방향만 바꾼다")
+	p.facing = "right"
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전 진입", 90)
+	var pos1: Vector2 = p.position
+	Input.action_press("move_up")
+	await tick(10)
+	await must(p.state == "charge" and p.position.distance_to(pos1) < 0.01 and p.velocity == Vector2.ZERO, "충전 중 이동 불가(위치 고정)")
+	await must(p.facing == "up", "스틱으로 조준(방향 전환)")
+	Input.action_release("move_up")
+	Input.action_release("attack")   # c < 0.35 → 조용히 취소
+	await tick(3)
+	await must(p.state == "move" and p._charge_c == 0.0, "일찍 떼면 조용히 취소(후딜 없음)")
+	await cs_idle()
+
+	step("만충(c≥0.90) 강 베기: Lv.1 피해 45·장갑 무시·소리 소모 없음·넉백")
+	p.position = home
+	p.facing = "right"
+	p.ki = 60.0
+	var mama = cs_dummy("mama", p.position + Vector2(40, 0))
+	var mhp: int = mama.hp
+	await must(mhp == 70, "마마귀신 HP 70")
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.92, "만충 대기", 240)
+	var ki_before: float = p.ki
+	Input.action_release("attack")
+	await tick(2)
+	await must(p.state == "slash", "발동 후 후딜(state=slash)")
+	await must(mhp - mama.hp == 45, "Lv.1 만충 피해 45 (장갑 ×0.6 무시): " + str(mhp - mama.hp))
+	await must(p.ki >= ki_before, "소리 소모 없음")
+	await must(mama.knock.length() > 250.0, "넉백")
+	await cs_idle()
+	var sin_a: float = p.shinmyeong
+	await must(sin_a >= 5.0, "신명 +5/체: " + str(sin_a))
+
+	step("같은 마마귀신에 일반 타격(3타 마지막 18)은 장갑 ×0.6 → 11")
+	var h0: int = mama.hp
+	mama.take_hit(18, Vector2.RIGHT)
+	await must(h0 - mama.hp == 11, "일반 18 → 11")
+	mama.queue_free()
+
+	step("최소 충전(c≈0.35)은 Lv.1 피해 23 근처")
+	p.position = home
+	p.facing = "right"
+	var mama2 = cs_dummy("mama", p.position + Vector2(40, 0))
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.36, "최소 충전", 240)
+	Input.action_release("attack")
+	await tick(2)
+	var dm: int = 70 - mama2.hp
+	await must(dm >= 23 and dm <= 27, "최소~조금 더 충전 피해 23~27: " + str(dm))
+	await cs_idle()
+	mama2.queue_free()
+
+	step("쓰러지면 죽지 않고 downed 로 남는다 (정화는 노래로만)")
+	p.position = home
+	p.facing = "right"
+	var low = cs_dummy("ghoul", p.position + Vector2(30, 0), 10)
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.4, "충전", 240)
+	Input.action_release("attack")
+	await tick(2)
+	await must(low.state == "downed" and low.is_in_group("downed"), "강 베기로 HP 0 → downed(죽음 아님)")
+	await cs_idle()
+	low.queue_free()
+
+	step("충전 중 구르기: c<0.35 는 취소+구르기, c≥0.35 는 무시")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	await press("roll")
+	await tick(2)
+	await must(p.state == "roll", "c<0.35: 충전 취소 + 구르기 즉시")
+	Input.action_release("attack")
+	await cs_idle()
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.4, "충전 0.4", 240)
+	await press("roll")
+	await tick(3)
+	await must(p.state == "charge", "c≥0.35: 구르기 입력 무시")
+	Input.action_release("attack")
+	await cs_idle()
+
+	step("충전 중 피해 → 끊김 / 수호부로 막은 피격은 안 끊김")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge" and p._charge_c >= 0.2, "충전", 240)
+	p.shield = 1
+	p.shield_t = 10.0
+	p.hurt(10, Vector2.LEFT, true)
+	await tick(1)
+	await must(p.state == "charge" and p.shield == 0, "수호부가 막았다 → 충전 유지")
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 60)
+	var hp1: float = p.hp
+	p.hurt(10, Vector2.LEFT, true)
+	await tick(1)
+	await must(p.hp < hp1 and p.state != "charge" and p._charge_c == 0.0, "실제 피해 → 충전 끊김")
+	Input.action_release("attack")
+	await cs_idle()
+
+	step("충전 중 기절 / 끌림도 끊는다")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	p.pull(home + Vector2(30, 0), 0.5)
+	await tick(1)
+	await must(p.state != "charge", "끌림 → 충전 끊김")
+	Input.action_release("attack")
+	await cs_idle()
+	p.pull_t = 0.0
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	p.stun(0.3)
+	await tick(1)
+	await must(p.state != "charge" and p.stun_t > 0.0, "기절 → 충전 끊김")
+	Input.action_release("attack")
+	await until(func(): return p.stun_t <= 0.0, "기절 끝", 120)
+	await cs_idle()
+
+	step("2.0초가 되면 손가락이 멈춰도 자동 발동")
+	p.position = home
+	Input.action_press("attack")
+	await until(func(): return p.state == "slash", "자동 발동(state=slash)", 400)
+	Input.action_release("attack")
+	await cs_idle()
+
+	step("충전 중 신명 100이면 처용무를 쓸 수 있다")
+	p.position = home
+	G.set_flag("flute")
+	p.shinmyeong = 100.0
+	Input.action_press("attack")
+	await until(func(): return p.state == "charge", "충전", 240)
+	await press("dance")
+	await tick(2)
+	await must(p.ult_t > 0.0, "충전 중 처용무 발동")
+	Input.action_release("attack")
+	p.ult_t = 0.0
+	await cs_idle()
+
+	step("말 걸기에 쓰인 눌림은 공격도 충전도 일으키지 않는다")
+	p.position = home
+	var talked := [0]
+	p.interact = func():
+		talked[0] += 1
+		return true
+	Input.action_press("attack")
+	await tick(60)
+	await must(p.state == "move" and p._charge_c == 0.0 and not p._charge_hold, "길게 눌러도 차징 시작 안 함")
+	await must(talked[0] == 1, "상호작용은 1회")
+	Input.action_release("attack")
+	await done()
+
+
+func sc_cs_guard() -> void:
+	step("CS-03 준비")
+	await cs_setup()
+	var p := player()
+	await tp(lvl().def["spawns"]["start"])
+
+	step("수호부가 막은 공격의 기절·끌림·둔화도 함께 막는다 (D3), 환급 +10")
+	p.shield = 1
+	p.shield_t = 10.0
+	p.ki = 50.0
+	var hp0: float = p.hp
+	# 요괴 코드가 하는 순서 그대로: 피해 → 상태이상 (처녀귀신 울음 / 물귀신 발목 끌기 / 손각시 붉은 실)
+	p.hurt(4, Vector2.LEFT, false)
+	p.stun(1.2)
+	p.pull(p.position + Vector2(30, 0), 0.9)
+	p.slow(1.6)
+	await tick(1)
+	await must(p.hp == hp0 and p.shield == 0, "피해 0 · 수호부 소모")
+	await must(p.stun_t == 0.0 and p.pull_t == 0.0 and p.slow_t == 0.0, "기절·끌림·둔화 전부 없음")
+	await must(p.ki >= 59.0 and p.ki <= 62.0, "수호부 파괴 환급 소리 +10: " + str(p.ki))
+	await must(p._guard_t > 0.0, "_guard_t 가 걸렸다")
+
+	step("0.4초가 지나면 다시 걸린다 (차단은 한 번의 막기에 한정)")
+	await until(func(): return p._guard_t <= 0.0 and p.hurt_t <= 0.0, "차단·유예 해제", 120)
+	p.stun(0.2)
+	await must(p.stun_t > 0.0, "수호부 없이/시간이 지난 뒤에는 기절한다")
+	await until(func(): return p.stun_t <= 0.0, "기절 끝", 60)
+
+	step("수호부 없이 맞으면 피해와 상태이상이 그대로 들어온다")
+	p.hurt_t = 0.0
+	hp0 = p.hp
+	p.hurt(4, Vector2.LEFT, false)
+	await must(p.hp < hp0, "피해를 입었다")
+	p.slow(0.5)
+	await must(p.slow_t > 0.0, "둔화가 걸린다")
+	await cs_idle()
+	p.slow_t = 0.0
+
+	step("독기 틱(kind=miasma)은 수호부가 켜진 동안 0 피해·충전 유지 (10초 지속)")
+	p.hurt_t = 0.0
+	p.shield = 1
+	p.shield_t = 10.0
+	p.ki = 40.0
+	hp0 = p.hp
+	for i in 6:
+		p.hurt(5, Vector2.ZERO, false, "miasma")
+		await tick(2)
+	await must(p.hp == hp0 and p.shield == 1, "독기 6틱에도 피해 0·수호부 유지")
+	await must(p.hurt_t == 0.0 and p._guard_t == 0.0, "피격 유예·차단 타이머도 쓰지 않음")
+	await must(p.ki < 45.0, "환급 없음(직접 타격을 막은 것이 아님)")
+	p.shield_t = 0.1
+	await until(func(): return p.shield == 0, "10초 지속이 끝나면 사라진다", 60)
+	await must(p.ki < 45.0, "막지 못하고 사라진 수호부는 환급 없음")
+	p.hurt(5, Vector2.ZERO, false, "miasma")
+	await must(p.hp < hp0, "수호부가 없으면 독기에 맞는다")
+	await cs_idle()
+
+	step("suho2: 충전 2회, 환급은 마지막 충전이 소모될 때 1회")
+	p.hurt_t = 0.0
+	p.hp = p.max_hp
+	G.skills = ["suho2"]
+	p.shield = 2
+	p.shield_t = 10.0
+	p.ki = 40.0
+	p.hurt(8, Vector2.LEFT, false)
+	await tick(1)
+	await must(p.shield == 1 and p.ki < 45.0, "첫 충전 소모: 환급 없음")
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 60)
+	p.hurt(8, Vector2.LEFT, false)
+	await tick(1)
+	await must(p.shield == 0 and p.ki >= 49.0, "마지막 충전 소모: 환급 +10")
+	G.skills = []
+	await cs_idle()
+
+	step("구르기 무적 중에는 slow() 도 무시된다")
+	await press("roll")
+	await until(func(): return p.state == "roll", "구르기", 30)
+	p.slow(1.0)
+	p.stun(1.0)
+	await must(p.slow_t <= 0.0 and p.stun_t <= 0.0, "구르기 중 둔화·기절 없음 slow=%s stun=%s inv=%s st=%s" % [p.slow_t, p.stun_t, p.invuln, p.state])
+	await cs_idle()
+	await done()
+
+
+func sc_cs_targeting() -> void:
+	step("CS-04 준비")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+
+	step("후딜: 헛돌진한 들개 0.5초·갯귀 0.8초·마마귀신 1.2초, 후딜 중 피해 ×1.5")
+	for spec in [["dog", 0.5], ["sea", 0.8], ["mama", 1.2]]:
+		var e = cs_dummy(spec[0], home + Vector2(300, 0))
+		e.state = "strike"
+		e.st = e.cfg["strike"] + 0.01
+		e.set_physics_process(true)
+		await tick(1)
+		e.set_physics_process(false)
+		await must(e.state == "stagger" and absf(e.stagger_time - spec[1]) < 0.001, "%s 후딜 %.1f초" % [spec[0], spec[1]])
+		var h: int = e.hp
+		e.take_hit(10, Vector2.RIGHT)
+		await must(h - e.hp == 15, "%s 후딜 중 피해 10 → 15" % spec[0])
+		e.queue_free()
+
+	step("마마귀신 장갑 ×0.6: 3연타 18→11·화염 틱 5→3, 강 베기·처용무(charged)는 무시")
+	var m = cs_dummy("mama", home + Vector2(300, 0))
+	var mh: int = m.hp
+	m.take_hit(18, Vector2.RIGHT)
+	await must(mh - m.hp == 11, "18 → 11")
+	mh = m.hp
+	m.take_hit(5, Vector2.ZERO, false, true)
+	await must(mh - m.hp == 3, "화염 틱 5 → 3")
+	mh = m.hp
+	m.take_hit(30, Vector2.ZERO, false, true, true)
+	await must(mh - m.hp == 30, "charged(처용무) 장갑 무시")
+	m.queue_free()
+
+	step("결박부: 군집 중심에 깔려 졸개 3마리를 동시에 포획한다 (가까운 외톨이 대신)")
+	p.position = home
+	p.facing = "right"
+	var lone = cs_dummy("ghoul", home + Vector2(-50, 0))
+	var c1 = cs_dummy("ghoul", home + Vector2(95, -10))
+	var c2 = cs_dummy("ghoul", home + Vector2(100, 8))
+	var c3 = cs_dummy("ghoul", home + Vector2(88, 6))
+	G.tal_idx = 1
+	p.ki = 100.0
+	await must(p.current_talisman() == "bind", "결박부 선택")
+	p._talisman()
+	await tick(1)
+	var zone = null
+	for c in lvl().get_children():
+		if c.get("kind") == "bind" and c.get("radius") != null:
+			zone = c
+	await must(zone != null, "결박 장판 생성")
+	await tick(3)
+	await must(c1.bind_t > 0.0 and c2.bind_t > 0.0 and c3.bind_t > 0.0, "군집 3마리 모두 결박")
+	await must(lone.bind_t <= 0.0, "외톨이는 결박되지 않음")
+	zone.queue_free()
+
+	step("결박된 적 위의 화염 틱은 8, 아닌 적은 5 (S1)  /  결박된 적에 대한 베기 ×1.2")
+	for e in [lone, c1, c2, c3]:
+		e.queue_free()
+	await tick(2)
+	var fz = load("res://scripts/fx/talisman_zone.gd").new()
+	fz.kind = "fire"
+	fz.angle = 0.0
+	fz.position = home
+	var a = cs_dummy("ghoul", home + Vector2(30, 0))
+	var b = cs_dummy("ghoul", home + Vector2(30, 6))
+	a.bind_t = 5.0
+	lvl().add_child(fz)
+	await tick(2)
+	await must(a.cfg["hp"] - a.hp == 8, "결박된 적 화염 8: " + str(a.cfg["hp"] - a.hp))
+	await must(b.cfg["hp"] - b.hp == 5, "비결박 화염 5: " + str(b.cfg["hp"] - b.hp))
+	fz.queue_free()
+	b.queue_free()
+	a.position = home + Vector2(24, 0)
+	a.hp = a.cfg["hp"]
+	p.facing = "right"
+	await tick(1)
+	await press("attack")
+	await until(func(): return a.hp < a.cfg["hp"], "베기 적중", 60)
+	await must(a.cfg["hp"] - a.hp == 12, "결박된 적 베기 10 ×1.2 = 12: " + str(a.cfg["hp"] - a.hp))
+	G.skills = ["gyeolbak2"]
+	await must(absf(p._bind_mult(a) - 1.4) < 0.001, "gyeolbak2 ×1.4")
+	G.skills = []
+	await done()
+
+
+func sc_cs_economy() -> void:
+	step("CS-05 준비")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+
+	step("소리 재생 초당 4.0")
+	p.ki = 0.0
+	await tick(60)
+	await must(p.ki > 3.5 and p.ki < 4.5, "1초 재생 ≈ 4.0: " + str(p.ki))
+
+	step("피해를 입으면 신명 −12 (0 하한), 수호부가 막은 피격은 감점 없음")
+	p.shinmyeong = 50.0
+	p.hurt_t = 0.0
+	p.hurt(5, Vector2.LEFT)
+	await must(absf(p.shinmyeong - 38.0) < 0.01, "50 → 38")
+	p.hurt_t = 0.0
+	p.shinmyeong = 5.0
+	p.hurt(5, Vector2.LEFT)
+	await must(p.shinmyeong == 0.0, "0 하한")
+	p.hurt_t = 0.0
+	p.shinmyeong = 30.0
+	p.shield = 1
+	p.hurt(5, Vector2.LEFT)
+	await must(p.shinmyeong == 30.0, "수호부로 막으면 감점 없음")
+
+	step("정화 보상: normal 4마리 → 체력 +16·소리 +32 (Lv.3), elite → 체력 +12·소리 +20")
+	G.set_flag("hanpuri_" + G.level_id)   # 이 단계에선 한풀이 보너스를 끈다(아래 단계에서 따로 검증)
+	G.lv = 3
+	p.max_hp = G.max_hp()
+	p.hp = 40.0
+	p.ki = 0.0
+	p.hurt_t = 0.0
+	p.position = home
+	var foes := []
+	for i in 4:
+		foes.append(cs_dummy("ghoul", home + Vector2(12 + i * 4, 4 * i - 6)))
+	for e in foes:
+		e.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await sing_now()
+	await must(absf(p.hp - 56.0) < 0.6, "체력 +16: " + str(p.hp))
+	await must(p.ki > 31.5 and p.ki < 40.0, "소리 +32 (+재생): " + str(p.ki))
+	await cs_idle()
+	p.hp = 40.0
+	p.ki = 0.0
+	var el = cs_dummy("mama", home + Vector2(14, 0))
+	el.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await sing_now()
+	await must(absf(p.hp - 52.0) < 0.6, "elite 체력 +12: " + str(p.hp))
+	await must(p.ki > 19.5 and p.ki < 28.0, "elite 소리 +20: " + str(p.ki))
+
+	step("한풀이(구역 전원 정화, 최소 3) 성립 시 체력 +15%")
+	G.flags.erase("hanpuri_" + G.level_id)
+	G.lv = 3
+	G.deok = 0   # 레벨업(전회복)이 체력 대조를 흐리지 않게
+	p.max_hp = G.max_hp()
+	cs_purge()
+	await tick(2)
+	var lv_ := lvl()
+	lv_._purified_n = 0
+	p.hp = 20.0
+	var trio := []
+	for i in 3:
+		trio.append(cs_dummy("ghoul", home + Vector2(12 + i * 4, 4 * i - 6)))
+	for e in trio:
+		e.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await sing_now()
+	await must(G.flag("hanpuri_" + G.level_id) == 1, "한풀이 성립")
+	# 3마리 정화(4×3=12) + 한풀이 15% of 112 = 16.8
+	await must(absf(p.hp - (20.0 + 12.0 + 16.8)) < 1.0, "체력 +12 + 16.8: " + str(p.hp))
+	await done()
+
+
+## 보스방을 깨워 역신이 idle 인 상태로 만든다 (플레이어는 조작 가능, god=false)
+func cs_wake_boss():
+	Engine.time_scale = 1.0
+	await boot_level()
+	god = true
+	pump = true
+	await clear_room()
+	await tp(Vector2(420, 190))
+	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
+	await tp(Vector2(545, 190))
+	var boss = lvl().get_node("Boss")
+	await until(func(): return boss.state == "idle", "역신 각성", 3000)
+	await until(func(): return not player().locked, "조작 가능", 600)
+	pump = false
+	god = false
+	G.skills = []
+	return boss
+
+
+func sc_cs_boss() -> void:
+	step("CS-06 준비 — 보스방, 역신 각성")
+	var boss = await cs_wake_boss()
+	var p := player()
+	var home: Vector2 = p.position
+	boss.set_physics_process(false)   # 패턴이 멋대로 돌지 않게 상태를 직접 만든다
+	boss.state = "idle"
+
+	step("받는 피해 배율: 평시 ×1, 열림 ×1.5, 안개·졸개 시전 ×1.25")
+	for spec in [["idle", 50], ["open", 75], ["fog", 63], ["clones", 63]]:
+		boss.hp = 480.0
+		boss.state = spec[0]
+		boss.take_hit(50, Vector2.RIGHT)
+		await must(int(480.0 - boss.hp) == spec[1], "%s: 50 → %d (실제 %d)" % [spec[0], spec[1], int(480.0 - boss.hp)])
+	boss.hp = 480.0
+	boss.state = "idle"
+
+	step("패턴 순서는 그대로: 1페이즈 안개-기침-졸개-기침, 2페이즈 안개-기침-졸개-기침-안개-졸개")
+	var seq1 := []
+	boss.pat_i = 0
+	for i in 4:
+		boss._next_pattern()
+		seq1.append(boss.state)
+		boss._clear_tells()
+	await must(seq1 == ["fog", "cough", "clones", "cough"], "1페이즈: " + str(seq1))
+	boss.phase = 2
+	var seq2 := []
+	boss.pat_i = 0
+	for i in 6:
+		boss._next_pattern()
+		seq2.append(boss.state)
+		boss._clear_tells()
+	await must(seq2 == ["fog", "cough", "clones", "cough", "fog", "clones"], "2페이즈: " + str(seq2))
+	boss.phase = 1
+
+	step("기침 숨결 뒤 열림 1.2초: 이동·공격 없이 서 있고 피해 ×1.5")
+	boss.set_physics_process(true)
+	boss.position = p.position + Vector2(220, 0)   # 숨결이 닿지 않는 거리
+	boss.coughs = 0
+	boss._begin("cough")
+	boss._aim_cough()
+	await until(func(): return boss.state == "open", "기침 → 열림", 120)
+	await must(absf(boss.open_t - 1.2) < 0.001, "열림 1.2초")
+	var bp: Vector2 = boss.position
+	await tick(20)
+	await must(boss.state == "open" and boss.position.distance_to(bp) < 6.0, "열림 중 이동하지 않는다")
+	boss.hp = 480.0
+	boss.take_hit(50, Vector2.ZERO)
+	await must(int(480.0 - boss.hp) == 75, "열림 중 만충 강 베기 50 → 75")
+	await until(func(): return boss.state == "idle", "열림 종료 → idle", 120)
+
+	step("2페이즈 기침은 2연속, 두 번째 뒤에 0.9초 열림")
+	boss.phase = 2
+	boss.position = p.position + Vector2(220, 0)
+	boss.coughs = 0
+	boss._begin("cough")
+	boss._aim_cough()
+	var saw_again := [false]
+	await until(func():
+		if boss.state == "cough_again" or (boss.state == "cough" and boss.coughs == 1):
+			saw_again[0] = true
+		return boss.state == "open", "2연속 기침 → 열림", 240)
+	await must(saw_again[0] and boss.coughs == 2 and absf(boss.open_t - 0.9) < 0.001, "두 번째 숨결 뒤 0.9초 열림")
+	boss.phase = 1
+	await until(func(): return boss.state == "idle", "열림 종료", 120)
+
+	step("펄스 뒤 열림 1.0초")
+	boss.position = p.position + Vector2(30, 0)
+	boss._begin("pulse")
+	await until(func(): return boss.state == "open", "펄스 → 열림", 120)
+	await must(absf(boss.open_t - 1.0) < 0.001, "열림 1.0초")
+	await until(func(): return boss.state == "idle", "열림 종료", 120)
+	boss.position = p.position + Vector2(220, 0)
+
+	step("풀 충전 강 베기가 시전 중(안개/졸개)인 역신에 맞으면 시전 중단 + 열림 1.2초, 소환 취소")
+	for pat in ["clones", "fog"]:
+		boss.hp = 480.0
+		boss._begin(pat)
+		boss.take_hit(30, Vector2.RIGHT, true, false, true, 0.5)
+		await must(boss.state == pat, "충전 0.5(반충전)는 끊지 못한다: " + pat)
+		boss.take_hit(50, Vector2.RIGHT, true, false, true, 1.0)
+		await must(boss.state == "open" and absf(boss.open_t - 1.2) < 0.001, pat + " 시전 중단 → 열림")
+		await tick(80)
+		var ghouls := get_nodes_in_group("enemy").filter(func(e): return e.get("kind") == "ghoul")
+		await must(ghouls.is_empty(), pat + ": 졸개 소환이 취소됨")
+		await until(func(): return boss.state == "idle", "idle 복귀", 120)
+
+	step("받아넘기기: 기침 숨결·펄스 접촉이 구르기 초반(0.15초)에 닿으면 발동")
+	boss.position = p.position + Vector2(60, 0)
+	p.shinmyeong = 0.0
+	await press("roll")
+	await until(func(): return p.state == "roll" and p.t >= 0.03, "구르기", 30)
+	boss.aim = (p.global_position - boss.global_position).angle()
+	boss._breath()
+	await must(p.parry_bonus and absf(p.shinmyeong - 15.0) < 0.01, "숨결 접촉 → 받아넘기기")
+	p.parry_bonus = false
+	await cs_idle()
+	boss.position = p.position + Vector2(220, 0)
+
+	step("독기 안개 틱: 수호부가 켜진 동안 0 피해(충전 유지), 없으면 5")
+	p.hurt_t = 0.0
+	p.shield = 1
+	p.shield_t = 10.0
+	var hp0: float = p.hp
+	boss._poison(p.global_position)
+	await tick(75)
+	await must(p.hp == hp0 and p.shield == 1, "안개 위에서 수호부 유지·피해 0")
+	p.shield = 0
+	await tick(40)
+	await must(p.hp < hp0, "수호부가 없으면 안개 피해")
+	for f in get_nodes_in_group("fog"):
+		f.queue_free()
+	p.hp = p.max_hp
+	await tick(2)
+
+	step("2페이즈 전환: 대사 뒤 열림 1.2초(×1.5)·안개 제거·소리 +30")
+	boss.position = home + Vector2(120, -40)
+	boss._poison(home + Vector2(60, 0))
+	await tick(2)
+	await must(get_nodes_in_group("fog").size() == 1, "안개 장판 존재")
+	god = true
+	pump = true
+	p.ki = 10.0
+	boss.hp = 480.0
+	boss.state = "idle"
+	boss.take_hit(int(boss.hp - 480.0 * 0.5) + 1, Vector2.ZERO)
+	await must(boss.phase == 2, "2페이즈 진입")
+	await tick(2)
+	await must(get_nodes_in_group("fog").is_empty(), "안개 제거")
+	await until(func(): return boss.state == "open", "대사 뒤 전환 열림", 600)
+	await must(absf(boss.open_t - 1.2) < 0.001, "열림 1.2초")
+	await must(p.ki >= 39.0, "소리 +30: " + str(p.ki))
+	pump = false
+	await until(func(): return boss.state == "idle", "전환 열림 종료", 200)
+
+	step("무릎 꿇은 역신은 처용가로만 끝난다 (정화 철학)")
+	boss.take_hit(int(boss.hp) + 1, Vector2.ZERO)
+	await until(func(): return boss.state == "kneel", "무릎", 120)
+	await must(boss.is_in_group("downed"), "downed(죽음 아님)")
+	await done()
+
+
+func sc_cs_deaths() -> void:
+	step("CS-07 사망 3회 → 구역별 카운터 → 세이브 → 로드 후 유지")
+	await cs_setup()
+	var p := player()
+	G.deaths = {}
+	var spawn: Vector2 = p.spawn
+	for i in 3:
+		await until(func(): return p.hurt_t <= 0.0 and p.state == "move", "사망 가능 상태 %d" % (i + 1), 600)
+		p.hurt(99999, Vector2.RIGHT)
+		await until(func(): return p.hp == p.max_hp and p.position.distance_to(spawn) < 1.0, "리스폰 %d" % (i + 1), 600)
+	await must(int(G.deaths.get("pyega1", 0)) == 3, "pyega1 사망 3회: " + str(G.deaths))
+	G.save()
+	G.deaths = {}
+	await must(G.load_save() and int(G.deaths.get("pyega1", 0)) == 3, "세이브→로드 후 값 유지")
+	await done()
+
+
+func sc_cs_wave() -> void:
+	step("CS-15 S4 묶어 울리기: 결박된 적에게 파동부 피해 ×2·넉백 ×0.5, 시전 중단")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+	G.skills = ["padong"]
+	p.facing = "right"
+	G.tal_idx = 3
+	await must(p.current_talisman() == "wave", "파동부 선택")
+	var a = cs_dummy("ghoul", home + Vector2(40, 0))
+	var b = cs_dummy("ghoul", home + Vector2(40, 12))
+	a.bind_t = 5.0
+	a.state = "tell"
+	b.state = "tell"
+	p.ki = 100.0
+	p._talisman()
+	await tick(1)
+	await must(a.cfg["hp"] - a.hp == 12, "결박된 적 6×2 = 12: " + str(a.cfg["hp"] - a.hp))
+	await must(b.cfg["hp"] - b.hp == 6, "일반 적 6: " + str(b.cfg["hp"] - b.hp))
+	await must(a.knock.length() < b.knock.length() * 0.6, "결박된 적 넉백 ×0.5")
+	await must(a.state == "hurt" and b.state == "hurt", "예고 중단")
+	G.skills = []
+	await done()
+
+
+func sc_cs_aura() -> void:
+	step("CS-11 보스 예고 색 오라: 패턴 직전 0.5초, 안개 녹/기침 적/졸개 보라")
+	var boss = await cs_wake_boss()
+	boss.position = player().position + Vector2(300, 0)
+	for spec in [[0, "fog"], [1, "cough"], [2, "clones"], [3, "cough"]]:
+		boss._begin("idle")
+		boss.pat_i = spec[0]
+		await must(boss.next_pattern_name() == spec[1], "다음 패턴 = " + spec[1])
+		boss.st = 0.2
+		await tick(2)
+		await must(boss.aura.color == boss.AURA_IDLE, "패턴 0.5초 전엔 평시 색")
+		boss.st = 1.0
+		await tick(1)
+		await must(boss.aura.color == boss.AURA_COLOR[spec[1]] and boss.aura.energy > 0.8, spec[1] + " 오라 색")
+	await done()
+
+
+func sc_cs_tutorial() -> void:
+	step("CS-09 받아넘기기 튜토리얼: 갯귀 첫 예고 = 구르기 점등, 두 번째 예고 = 다시 구르기 점등(글 없음)")
+	Engine.time_scale = 1.0
+	await boot_level()
+	G.skills = []
+	var yk = lvl().get_node("Gaetgwi")
+	var seen := [0]
+	yk.telegraph.connect(func(): seen[0] += 1)
+	await until(func(): return seen[0] >= 1, "첫 예고", 1500)
+	await tick(2)
+	await must(lvl().hud._guide == "roll", "첫 예고: 구르기 버튼 점등")
+	await press("roll")   # 플레이어가 구른다 → 안내가 풀린다
+	await until(func(): return lvl().hud._guide != "roll", "안내 해제", 600)
+	await until(func(): return seen[0] >= 2, "두 번째 예고", 2500)
+	await tick(2)
+	await must(lvl().hud._guide == "roll", "두 번째 예고: 구르기 버튼 점등(받아넘기기 안내)")
+	await must(Engine.time_scale < 1.0, "예고 동안 시간이 느려진다")
+	await must(player().gentle_hits >= 0, "갯귀 gentle_hits 유지")
+	await press("roll")
+	await until(func(): return lvl().hud._guide != "roll", "안내 해제", 600)
+	await done()
+
+
+func sc_cs_cover() -> void:
+	step("CS-10 엄폐: 투사체는 소품·지형 충돌체에 막히고, 열린 곳에서는 맞는다")
+	await cs_setup()
+	var p := player()
+	var home: Vector2 = lvl().lift(lvl().def["spawns"]["start"])
+	await tp(lvl().def["spawns"]["start"])
+	var PR = load("res://scripts/fx/projectile.gd")
+	# 열린 곳: 처용을 향해 쏘면 맞는다
+	var open_hp: float = p.hp
+	var a = PR.make("", Vector2i(1, 1), 1)
+	a.vel = Vector2(-120, 0)
+	a.dmg = 8
+	a.position = home + Vector2(45, 0)
+	lvl().add_child(a)
+	await until(func(): return not is_instance_valid(a), "투사체 소멸", 120)
+	await must(p.hp < open_hp, "엄폐 없음 → 맞는다")
+	# 엄폐: 사이에 벽
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 120)
+	var wall := StaticBody2D.new()
+	var cs := CollisionShape2D.new()
+	var sh := RectangleShape2D.new()
+	sh.size = Vector2(8, 40)
+	cs.shape = sh
+	wall.add_child(cs)
+	wall.position = home + Vector2(24, 0)
+	lvl().add_child(wall)
+	await tick(2)
+	var hp1: float = p.hp
+	var b = PR.make("", Vector2i(1, 1), 1)
+	b.vel = Vector2(-120, 0)
+	b.dmg = 8
+	b.position = home + Vector2(45, 0)
+	lvl().add_child(b)
+	await until(func(): return not is_instance_valid(b), "투사체 소멸", 120)
+	await must(p.hp == hp1, "벽 뒤에 있으면 맞지 않는다(엄폐)")
 	await done()

@@ -112,7 +112,7 @@ func _pick_flute(level: Node) -> void:
 	Game.say_toast("대나무 피리를 주웠다.")
 	await level.get_tree().create_timer(1.6).timeout
 	# the creature comes up into the village; the fishers scatter
-	var yokai: Enemy = level.spawn_enemy("sea", Vector2(334, 90))
+	var yokai: Enemy = level.spawn_enemy("sea", level.def["anchors"]["yokai"])
 	yokai.name = "Gaetgwi"
 	_arm_fight(level, yokai)   # B03: purifying him before the trigger is stepped on must still end the scene
 	for id in ["fisherA", "fisherB", "fisherC"]:
@@ -131,17 +131,17 @@ func _pick_flute(level: Node) -> void:
 	tw.tween_property(cam, "offset", Vector2.ZERO, 0.7).set_trans(Tween.TRANS_SINE)
 	await tw.finished
 	p.locked = false
-	level.add_trigger(Rect2(180, 60, 300, 90), "fight")
+	level.add_trigger(level.def["anchors"]["fight"], "fight")
 
 
 func _test_fight(level: Node) -> void:
 	Game.set_flag("flute")
 	level.remove_interact("flute")
-	level.spawn_enemy("sea", Vector2(334, 90)).name = "Gaetgwi"
+	level.spawn_enemy("sea", level.def["anchors"]["yokai"]).name = "Gaetgwi"
 	for id in ["fisherA", "fisherB", "fisherC"]:
 		level.npc(id).set_present(true)
 		level.npc(id).talkable = false
-	level.get_node("Player").position = level.lift(Vector2(334, 150))
+	level.get_node("Player").position = level.lift(level.def["anchors"]["fight_player"])
 	await level.get_tree().process_frame
 	if "--beach-early-purify" in OS.get_cmdline_user_args():   # B03 test hook: the chain must be armed before any trigger is stepped on
 		var y: Enemy = level.get_node("Gaetgwi")
@@ -165,7 +165,10 @@ func _fight(level: Node) -> void:
 	yokai.hit_taken.connect(func():
 		if level.hud._guide == "attack":
 			level.hud.guide(""), CONNECT_ONE_SHOT)
-	yokai.telegraph.connect(func(): _teach_roll(level), CONNECT_ONE_SHOT)
+	yokai.telegraph.connect(func():
+		await _teach_roll(level)
+		if is_instance_valid(yokai):   # CS-09: 두 번째 예고에서 "맞기 직전에 구르면 받아넘긴다"를 버튼 점등만으로 보여 준다
+			yokai.telegraph.connect(func(): _teach_parry(level, yokai), CONNECT_ONE_SHOT), CONNECT_ONE_SHOT)
 	yokai.collapsed.connect(func(): level.hud.guide("song"))
 
 
@@ -184,6 +187,19 @@ func _teach_roll(level: Node) -> void:
 	Engine.time_scale = 0.3
 	var until := Time.get_ticks_msec() + 2500
 	while Time.get_ticks_msec() < until and p.state != "roll":
+		await level.get_tree().process_frame
+	Engine.time_scale = 1.0
+	if level.hud._guide == "roll":
+		level.hud.guide("")
+
+
+## CS-09: 두 번째 예고 — 구르기 버튼만 빛나고 시간이 느려진다. 글 없음. (갯귀 gentle_hits 3 은 그대로: 틀려도 벌이 없다)
+func _teach_parry(level: Node, yokai: Node) -> void:
+	var p: Node2D = level.get_node("Player")
+	level.hud.guide("roll")
+	var until := Time.get_ticks_msec() + 3500
+	while Time.get_ticks_msec() < until and is_instance_valid(yokai) and p.state != "roll" and yokai.state in ["tell", "strike"]:
+		Engine.time_scale = 0.5 if yokai.state == "tell" else 1.0
 		await level.get_tree().process_frame
 	Engine.time_scale = 1.0
 	if level.hud._guide == "roll":
@@ -243,7 +259,7 @@ func _gyeongju_enter(level: Node) -> void:
 		if not Game.flag("nanyeong_fallen") or Game.flag("rescued"):
 			var nan: Npc = level.npc("nanyeong")   # 이제 처용의 아내: 집 앞에 있다
 			nan.set_present(true)
-			nan.position = level.lift(Vector2(196, 166))
+			nan.position = level.lift(level.def["anchors"]["home_nanyeong"])
 		if Game.flag("rescued") and not Game.flag("nanyeong_woke"):
 			_nanyeong_wakes(level)
 		elif not Game.flag("summoned"):
@@ -251,7 +267,7 @@ func _gyeongju_enter(level: Node) -> void:
 		else:
 			_open_road_to_gwana(level)
 		if Game.flag("briefed") and not Game.flag("rescued"):
-			level._exit([Rect2(0, 150, 6, 70), "pyega1", "start"])
+			level._exit(level.def["gates"]["pyega"])
 
 
 ## SC1-08: 약방 앞. 난영 첫 등장.
@@ -385,7 +401,7 @@ func _night_summons(level: Node) -> void:
 	])
 	p.locked = true
 	Game.set_flag("summoned")
-	await off.walk_to(level.lift(Vector2(630, 186)), 70.0)
+	await off.walk_to(level.lift(level.def["anchors"]["gwana_gate"]), 70.0)
 	off.set_present(false)
 	p.locked = false
 	_open_road_to_gwana(level)
@@ -393,7 +409,7 @@ func _night_summons(level: Node) -> void:
 
 func _open_road_to_gwana(level: Node) -> void:
 	if Levels.DATA.has("gwana"):
-		level._exit([Rect2(632, 150, 8, 70), "gwana", "start"])
+		level._exit(level.def["gates"]["gwana"])
 
 
 # ================================================================ 1장 1-4 역병 조사와 폐가 (SC1-12~15)
@@ -450,7 +466,7 @@ func _pyega2_enter(level: Node) -> void:
 	soul.modulate = Color(0.6, 0.78, 1.4, 0.7)
 	var boss := PlagueGod.new()
 	boss.name = "Boss"
-	boss.position = level.lift(Vector2(650, 150))
+	boss.position = level.lift(level.def["anchors"]["boss"])
 	level.add_child(boss)
 	boss.disguise()
 
@@ -462,12 +478,12 @@ func _inner_room(level: Node) -> void:
 		return
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
-	level.add_barrier.call_deferred(Rect2(492, 156, 22, 72))   # called from a physics callback
+	level.add_barrier.call_deferred(level.def["anchors"]["door"])   # called from a physics callback
 	# the door seals the room for 처용 and 역신 alone: anything that followed him in is thrown back out
 	for e in level.get_tree().get_nodes_in_group("enemy") + level.get_tree().get_nodes_in_group("downed"):
-		if e == boss or e is Npc or not (e is Node2D) or e.global_position.x < 492:
+		if e == boss or e is Npc or not (e is Node2D) or e.global_position.x < level.def["anchors"]["door_x"]:
 			continue
-		var out: Vector2 = level.lift(Vector2(468, 192)) + Vector2(0, randf_range(-24, 24))
+		var out: Vector2 = level.lift(level.def["anchors"]["kicked"]) + Vector2(0, randf_range(-24, 24))
 		e.global_position = out
 	var cam: Camera2D = p.get_node("Camera")
 	var tw := cam.create_tween()
@@ -489,14 +505,28 @@ func _inner_room(level: Node) -> void:
 	if "--boss-weak" in OS.get_cmdline_user_args():  # test hook: verify the ending sequence
 		boss.hp = 20.0
 	level.hud.show_boss(boss, "역신(疫神)")
-	# falling here means trying the room again from the stair (the door is sealed behind him)
-	p.died.connect(func(): Game.change_level("pyega2", "start"), CONNECT_ONE_SHOT)
+	Game.death_zone = "pyega2_boss"   # CS-07: 역신전 사망은 폐가2 와 따로 센다
+	# CS-12(OQ-1, 디렉터 확정): 쓰러지면 보스방 입구에서 다시 일어선다. 몹은 되살아나지 않고 역신 HP·페이즈만 초기화된다.
+	p.spawn = level.lift(Vector2(535, 192))
+	boss.home_pos = boss.position
+	p.died.connect(_boss_player_died.bind(level, boss))
 	if "--boss-kneel" in OS.get_cmdline_user_args():  # test hook: skip straight to SC1-19
 		await level.get_tree().create_timer(1.0).timeout
 		boss.take_hit(9999, Vector2.ZERO)
-	boss.phase_two.connect(_boss_phase_two.bind(level, boss), CONNECT_ONE_SHOT)
+	boss.phase_two.connect(_boss_phase_two.bind(level, boss))   # 재도전마다 다시 2페이즈를 겪으므로 ONE_SHOT 아님
 	boss.knelt.connect(_boss_knelt.bind(level), CONNECT_ONE_SHOT)
 	boss.defeated.connect(_boss_defeated.bind(level), CONNECT_ONE_SHOT)
+
+
+## CS-12: 보스전 사망 → 역신은 잠시 멈추고, 처용이 입구에서 일어서면 HP·페이즈·졸개를 초기화한다
+func _boss_player_died(level: Node, boss: PlagueGod) -> void:
+	if not is_instance_valid(boss) or boss.state in ["kneel", "dead"]:
+		return
+	boss.stand_down()
+	var p: Node = level.get_node("Player")
+	await p.respawned
+	if is_instance_valid(boss) and boss.state == "wait":
+		boss.reset_fight()
 
 
 ## SC1-18
@@ -504,7 +534,7 @@ func _boss_phase_two(level: Node, boss: PlagueGod) -> void:
 	boss.state = "wait"
 	await level.talk([{"name": "역신", "text": "이럴 수가…! 노래가… 탁기를 걷어내다니!"}])
 	if boss.state == "wait":   # one blow may cross phase two and the knee together: leave a kneeling god alone
-		boss._begin("idle")
+		boss.phase_shift()   # CS-06: 전환 열림 1.2초(×1.5) · 안개 제거 · 소리 +30 뒤 전투 재개
 
 
 ## SC1-19: 무릎 꿇은 역신의 유언
@@ -521,6 +551,7 @@ func _boss_defeated(level: Node) -> void:
 	for c in pl.died.get_connections():
 		pl.died.disconnect(c["callable"])
 	Game.set_flag("boss_done")
+	Game.death_zone = ""
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	await level.get_tree().create_timer(2.6).timeout
@@ -563,7 +594,7 @@ func _nanyeong_wakes(level: Node) -> void:
 # ================================================================ 1장 1-6 임명과 작별 (SC1-21~25)
 func _gyeongju_after(level: Node) -> void:
 	var nan: Npc = level.npc("nanyeong")
-	nan.position = level.lift(Vector2(196, 166))   # 이제 처용의 집에 산다
+	nan.position = level.lift(level.def["anchors"]["home_nanyeong"])   # 이제 처용의 집에 산다
 	level.npc("child").set_present(true)
 	if Game.flag("chapter1_done"):
 		# SB-28: the ending was already seen. Continuing a finished save lands in free roam, not in the farewell again.
@@ -673,23 +704,23 @@ func objective(level: Node):
 	var f := func(k): return Game.flag(k)
 	match Game.level_id:
 		"beach":
-			if not f.call("flute"): return Vector2(184, 270)
-			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return Vector2(334, 110)
+			if not f.call("flute"): return Vector2(205, 427)
+			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return level.def["anchors"]["yokai"]
 		"gyeongju":
 			if f.call("appointed"): return null
 			if f.call("rumor"): return null if f.call("king_call") else Vector2(96, 130)
-			if not f.call("met_nanyeong"): return Vector2(456, 214)
-			if not f.call("sang_child"): return Vector2(330, 350)
-			if not f.call("night"): return Vector2(96, 130)
-			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 185)
-			if f.call("summoned") and not f.call("briefed"): return Vector2(636, 185)
+			if not f.call("met_nanyeong"): return Vector2(236, 309)
+			if not f.call("sang_child"): return Vector2(240, 376)
+			if not f.call("night"): return Vector2(130, 237)
+			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 379)
+			if f.call("summoned") and not f.call("briefed"): return Vector2(562, 27)
 		"gwana":
-			return Vector2(320, 196) if not f.call("briefed") else Vector2(4, 235)
+			return Vector2(395, 140) if not f.call("briefed") else Vector2(100, 410)
 		"pyega1":
-			return Vector2(320, 40)
+			return Vector2(146, 197)
 		"pyega2":
 			var b = level.get_node_or_null("Boss")
-			if b and b.state == "wait": return Vector2(560, 200)
+			if b and b.state == "wait": return level.def["anchors"]["boss_goal"]
 		"palace":
-			return Vector2(256, 196)
+			return Vector2(256, 228)
 	return null
