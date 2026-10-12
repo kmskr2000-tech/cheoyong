@@ -94,9 +94,9 @@ func _ready() -> void:
 		if a.begins_with("--sin="):
 			shinmyeong = float(a.get_slice("=", 1))
 		if a == "--test-hurt":   # 스프라이트 확인용: 0.6초 뒤 맞는다(피해 0)
-			get_tree().create_timer(0.6).timeout.connect(func(): gentle_hits = 1; hurt(5, Vector2.LEFT))
+			_test_after_unlock(func(): gentle_hits = 1; hurt(5, Vector2.LEFT))
 		if a == "--test-die":    # 스프라이트 확인용: 0.6초 뒤 쓰러진다
-			get_tree().create_timer(0.6).timeout.connect(func(): _die())
+			_test_after_unlock(func(): _die())
 	Game.leveled.connect(_on_leveled)
 	Game.skills_changed.connect(func():  # 심해의 인내 raises the ceiling at once
 		var gain := Game.max_hp() - max_hp
@@ -149,6 +149,14 @@ func _ready() -> void:
 	slash.z_index = 40 # effects draw over the y-sorted world
 	slash.z_as_relative = false
 	add_child(slash)
+
+
+## 스프라이트 확인용 훅: 오프닝 잠금이 풀리고 0.6초 뒤에 실행
+func _test_after_unlock(fn: Callable) -> void:
+	while locked or not is_inside_tree():
+		await get_tree().process_frame
+	await get_tree().create_timer(0.6).timeout
+	fn.call()
 
 
 func _add_anim(frames: SpriteFrames, tex: Texture2D, anim: String, idx: Array) -> void:

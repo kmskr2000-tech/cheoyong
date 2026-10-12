@@ -1,0 +1,1 @@
+- 주인공 처용 (cheoyong.png, 87프레임 64x64) — 출처: 사용자 Drive 「신처용가-게임에셋/주인공」 AI 도트 시트 8장(walk·run·8dir·attack·attack8·hurt·die), art/import_hero.py 로 배경 제거·시트별 정수에 가까운 일괄 축소·32색 팔레트 통일·1px 외곽선 정규화 (2026-10-12). 원본은 repo 밖 assets-drive/hero/. 상업 이용 약관 확인은 출시 전 사용자 몫.
