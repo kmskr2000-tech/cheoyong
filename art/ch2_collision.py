@@ -58,11 +58,40 @@ mp('jiri', ground='jiri',
        rect(218, 76, 298, 144),                                  # 제상(돌 탁자)
        [(156, 4), (156, 62), (262, 62), (262, 4)],                # 산신각 본채(계단 위)
        rect(640, 128, 748, 258),                                 # 돌탑 기단
-       rect(626, 150, 646, 168),
    ])
 
-# ------------------------------------------------------------------ 마커 (footprint) — 제안값
-MARKERS = {'hwagae': [], 'jiri': []}
+# ------------------------------------------------------------------ 마커 (footprint) — 제안값 (README 와 동일)
+# (kind, label, fx, fy, color) ; kind: spawn npc int prop enemy rect(출입구·트리거 중심) light
+SP, NP, IT, PR, EN, RC = 'spawn', 'npc', 'int', 'prop', 'enemy', 'rect'
+Y_, G_, C_, B_, O_, M_ = (255, 255, 60), (80, 255, 120), (80, 255, 255), (90, 160, 255), (255, 150, 40), (255, 60, 255)
+MARKERS = {
+    'hwagae': [
+        (SP, 'start', 300, 340, Y_), (SP, 'fromPath', 706, 14, Y_), (SP, 'fromBoss', 360, 320, Y_),
+        (RC, 'gate_E', 706, 9, M_), (RC, 'exit_SW(3장)', 270, 354, M_), (RC, 'raid', 365, 325, M_),
+        (NP, 'sangin', 330, 330, G_), (NP, 'jumo', 190, 262, G_), (NP, 'victim', 290, 335, G_), (NP, 'elder', 580, 120, G_),
+        (NP, 'dok_jangsu', 420, 300, G_), (NP, 'sansin', 680, 45, G_),
+        (IT, 'board', 430, 230, C_), (IT, 'juma', 200, 262, C_), (IT, 'dok_shop', 400, 300, C_),
+        (PR, 'stall', 300, 296, B_), (PR, 'stall', 345, 296, B_), (PR, 'stall', 390, 290, B_), (PR, 'stall', 500, 190, B_),
+        (PR, 'tent', 270, 352, B_), (PR, 'tent', 420, 347, B_), (PR, 'burnt', 320, 318, B_), (PR, 'burnt', 395, 318, B_),
+    ],
+    'jiri': [
+        (SP, 'fromHwagae', 24, 205, Y_), (SP, 'fromVillage', 655, 6, Y_), (SP, 'fromDen', 1090, 80, Y_),
+        (RC, 'exit_W', 3, 205, M_), (RC, 'exit_N', 657, 10, M_), (RC, 'exit_E', 1117, 77, M_),
+        (NP, 'sansin', 250, 175, G_), (IT, 'shrine', 258, 158, C_),
+        (EN, 'sangun1', 355, 165, O_), (EN, 'fire1', 580, 215, O_), (EN, 'jangseung_taki', 665, 95, O_),
+        (EN, 'sangun2', 765, 260, O_), (EN, 'sangun3', 940, 100, O_), (EN, 'fire2', 960, 260, O_),
+        (PR, 'rockwallN', 556, 152, B_), (PR, 'rockwallN', 604, 152, B_), (PR, 'rockwallS', 556, 310, B_), (PR, 'rockwallS', 604, 310, B_),
+        (PR, 'cairn', 430, 240, B_),
+    ],
+}
+# 도달성 검사 대상: (맵, 시작 마커, [도달해야 할 마커...])
+REACH = {
+    'hwagae': ('start', ['fromPath', 'fromBoss', 'gate_E', 'exit_SW(3장)', 'raid', 'sangin', 'jumo', 'victim', 'elder', 'dok_jangsu',
+                         'sansin', 'board', 'juma', 'dok_shop']),
+    'jiri': ('fromHwagae', ['fromVillage', 'fromDen', 'exit_W', 'exit_N', 'exit_E', 'sansin', 'shrine', 'sangun1', 'sangun2', 'sangun3', 'fire1', 'fire2',
+                            'jangseung_taki']),
+}
+NOT_WALK = {'jiri': {'rockwallN', 'rockwallS', 'cairn'}, 'hwagae': {'stall', 'tent', 'burnt'}}
 
 
 def _markers(name):
@@ -80,7 +109,54 @@ def build(names):
         ca.build(n)
 
 
+def check(names):
+    """collision json(실제 충돌) 을 플레이어 발판 10x6 으로 부풀려 연결 성분을 구하고, 마커가 한 덩어리에 들어가는지 본다."""
+    from scipy import ndimage as ndi
+    lines = []
+    for n in names:
+        meta = json.load(open(ca.LV / f'{n}.json'))
+        W = meta['size'][0]
+        Hh = meta['size'][1] + ca.OFFSET
+        blocked = np.zeros((Hh, W), bool)
+        for x, y, w, h in meta['collision']:
+            blocked[max(0, y + ca.OFFSET):y + ca.OFFSET + h, max(0, x):x + w] = True
+        blocked[Hh - 26:, :] = True                               # 레벨 가장자리 벽(그림 맨 아래 tier 여백)
+        blocked[:, :1] = False
+        def free_of(b):
+            return ~ndi.binary_dilation(b, structure=np.ones((6, 10), bool), origin=0)
+        free = free_of(blocked)
+        lab, _ = ndi.label(free)
+        def pt(m):
+            return int(round(m[2])), int(round(ca.K * m[3] + ca.OFFSET - ca.TIER * ca.T))
+        ms = {m[1]: m for m in MARKERS[n]}
+        start, targets = REACH[n]
+        sx, sy = pt(ms[start]); sl = lab[sy, sx]
+        lines.append(f'## {n}  (start {start} px=({sx},{sy}) label={sl})')
+        for t in targets:
+            x, y = pt(ms[t]); ok = sl != 0 and lab[min(y, Hh - 1), min(x, W - 1)] == sl
+            lines.append(f'- {t:14s} fp=({ms[t][2]},{ms[t][3]}) px=({x},{y}) 도달 {"OK" if ok else "FAIL"}')
+        for m in MARKERS[n]:
+            if m[1] in NOT_WALK[n] or m[0] in (PR,):
+                continue
+        if n == 'jiri':                                           # 길목 봉쇄 시험: x540~620 를 막으면 동서가 끊겨야 한다
+            b2 = blocked.copy(); b2[:, 540:621] = True
+            lab2, _ = ndi.label(free_of(b2))
+            a = lab2[sy, sx]; x, y = pt(ms['fromDen']); b = lab2[y, x]
+            lines.append(f'- 길목(x540~620) 봉쇄 시 서↔동 {"끊김(OK)" if a != b else "이어짐(FAIL)"}')
+            # 길목 폭: x=580 열에서 열린 구간 길이(px→footprint)
+            col = free_of(blocked)[:, 580]
+            ys_ = np.where(~blocked[:, 580])[0]
+            seg = [(g[0], g[-1]) for g in np.split(ys_, np.where(np.diff(ys_) > 1)[0] + 1) if len(g)]
+            lines.append(f'- x=580 열린 구간(px): {seg}  → footprint 폭 ≈ {[round((e - s0 + 1) / ca.K) for s0, e in seg]}')
+    out = '\n'.join(lines)
+    (QA / 'reach_check.txt').write_text(out + '\n')
+    print(out)
+    return 'FAIL' not in out
+
+
 if __name__ == '__main__':
+    if '--check' in sys.argv:
+        sys.exit(0 if check([a for a in sys.argv[1:] if a in ca.MAPS] or ['hwagae', 'jiri']) else 1)
     names = [a for a in sys.argv[1:] if not a.startswith('--')] or ['hwagae', 'jiri']
     names = [n for n in names if n in ca.MAPS]
     QA.mkdir(parents=True, exist_ok=True)

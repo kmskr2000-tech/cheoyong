@@ -106,6 +106,7 @@ def jiri_source():
     haze = ndi.gaussian_filter(((b_ > g_ + 4) & (b_ > r_ + 22)).astype(np.float32), 6)[..., None]
     moss = fo * np.array([0.62, 0.80, 0.70], np.float32)
     fo = fo * (1 - haze) + moss * haze
+    fo = np.clip((fo - 58) * 1.35 + 66, 0, 255)         # 어두운 숲이 뭉개지지 않게 명암 대비를 살린다
     paste(cv, fo, 1920 - ov, 0, feather(fo.shape[1], fo.shape[0], 'l', ov))
     # 서쪽 입구: 왼쪽 끝이 어두운 덤불이라, 돌길(그림 x125~185)을 소스 해상도로 복제해 x0까지 이어 붙인다
     x0, x1, y0, y1 = round(125 * S), round(185 * S), round(160 * S), round(212 * S)
