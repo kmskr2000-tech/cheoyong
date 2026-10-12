@@ -192,6 +192,8 @@
 - [결정] 22:41 전 팀 — 새 팀 임의 신설 금지(사장님 지시): 팀은 기획팀·프로그래밍팀·아트팀·QA팀·감사팀 5개뿐. 새 팀이 필요하면 사장님께 말한다. 신규 작업은 기존 5개 팀 중 맞는 팀 이름으로 배정(agent-rules.md 규칙 11).
 - [검토] 22:41 프로그래밍팀-통합배포 — 저장 완료. PR #41~#44 머지 완료(design/gdd-review·story-audit·ch2-detail, prog/perf-m1). main 검증(smoke·save_check·combat_strategy)은 백그라운드 진행 중(결과 ~/s8.log), 통과 후 배포 가능. 새 PR·배포는 시작 안 함(사용량 제한 임박 저장 지시).
 
+- [검토] 22:43 프로그래밍팀-저사양폴백 — 저장 완료(prog/lowend-fallback 8b1db7d). 미완: quality.gd(자동 화질 폴백)·level.gd 하단(시야 밖 라이트 컬링·등급별 적용)·post.gdshader(bloom 분기) 구현만 있음. tests/quality_fallback.sh 는 작성만 하고 미실행, smoke·combat_strategy·save_check·art_walk·hud_layout 이번 변경으로 미실행, production/qa/lowend-fallback.md 없음. 기본 등급 픽셀 동일성 미확인(같은 코드를 두 번 찍어도 6만~11만 픽셀 차이: 플리커·파티클이 시간 의존). 판정: 검증 전이라 승인·머지 불가. 재개 시 할 일: 플리커·파티클 정지한 결정적 비교 또는 라이트 상태 수치 비교로 '기본 등급 화면 불변' 증명, quality_fallback.sh 실행, 기존 회귀 5종 통과, lowend-fallback.md 작성.
+
 ### 에셋 업그레이드 (Drive '신처용가-게임에셋')
 - [지시] 아트팀 4개(주인공, 지형, 요괴, NPC·아이템) — Drive 에셋을 참고해 개선·적용. 그대로 임포트하지 말고 프레임 정리, 크기·팔레트 통일, 배경 제거로 업그레이드. 우선순위는 요괴 25종 → 주인공 → NPC. 첫 지시가 "임포트·교체"라 개선 요구가 빠졌던 것은 총괄 누락이었고 정정 지시로 보완함.
 - [검토] 다운로드 문제 — 작은 파일은 base64가 응답에만 나오고 파일로 저장되지 않아 NPC·아이템 에이전트가 두 번 막힘. 해법을 검증해 전달함: (1) 20만 자 초과 대형 시트는 tool-results 파일로 자동 저장, (2) 작은 파일은 transcript에서 기계 추출(`assets-drive/tools/extract_inline.py`, PIL 검증), (3) 요괴팀이 찾은 `hatch_gws_cli drive files get ... -o` 직접 다운로드가 가장 쉬움.
