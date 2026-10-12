@@ -482,6 +482,12 @@ func has_save() -> bool:
 	return not d.is_empty() or _read_failed   # unreadable-but-present counts as "a save exists"
 
 
+## a flag as stored on disk, without loading the save (title screen uses it for the "1장 완료" mark)
+func peek_flag(k: String) -> bool:
+	var f = _read_save().get("flags", {})
+	return typeof(f) == TYPE_DICTIONARY and int(f.get(k, 0)) != 0
+
+
 func load_save() -> bool:
 	var data := _read_save()
 	if data.is_empty():

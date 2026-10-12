@@ -124,6 +124,8 @@ const DATA := {
 			["fisherC", "npc_dolsoe", 470, 104, "어부", "hidden"],
 			["suryeong", "npc_suryeong", 630, 100, "수령", "hidden"],
 		],
+		# B02: the baked cliff line has a gap exactly at the stair (x 320-352): sealed so the stair is a dead end, not a way off the map
+		"walls": [Rect2(320, 46, 32, 8)],
 		"interact": [["flute", 184, 270, "대나무 피리", "glint"]],
 		"crabs": [Vector2(240, 252), Vector2(290, 230), Vector2(420, 266), Vector2(140, 222), Vector2(520, 256)],
 		"enemies": [],
@@ -165,7 +167,7 @@ const DATA := {
 			["child", "npc_child", 330, 350, "아이", "hidden"],
 			["official", "npc_official", 630, 186, "관아 사람", "hidden"],
 		],
-		"interact": [["board", 300, 156, "의뢰 게시판"], ["home", 96, 124, "처용의 집"]],
+		"interact": [["board", 300, 160, "의뢰 게시판"], ["home", 96, 124, "처용의 집"]],
 		"enemies": [],
 		"exits": [],
 		"wisps": Vector2(470, 290),
