@@ -150,6 +150,7 @@ class Vox:
         out[ink] = INK + [255]
         rows = np.where(out[:, :, 3].max(axis=1) > 0)[0]
         r0, r1 = rows.min(), rows.max() + 1
+        self.last_r0 = int(r0)     # 트림으로 잘린 윗줄 수(지형에 직접 굽는 용도: art/ch2m2_walls.py)
         Image.fromarray(out[r0:r1]).save(OUT / f'{name}.png')
         Image.fromarray(nimg[r0:r1]).save(OUT / f'{name}_n.png')
         if gimg[:, :, 3].any():
