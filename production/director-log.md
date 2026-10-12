@@ -319,3 +319,4 @@
 - [지시] 05:57 — 에이전트 배정: Agent "프로그래밍팀-챕터2구현" finished · 19m 39s
 - [지시] 05:57 — 에이전트 배정: Agent "프로그래밍팀-챕터2구현" finished · 19m 52s
 - [지시] 05:57 — 에이전트 배정: Agent "프로그래밍팀-챕터2구현" was stopped by Claude
+- [검토] 06:03 프로그래밍팀-통합배포 — prog/ch2-m1 PR #49 머지(main 9541867), 머지 후 main 검증 통과(smoke 9/9·save 44·art_walk 8/8·chapter1 FAIL 0·combat_strategy 11/11·quality_fallback). 배포 안 함, 라이브 20261013030331 유지(챕터1 폰 확인용). 다음 배포는 챕터1 폰 확인 결과 또는 챕터2 진입 검증(prog/ch2-enter) 후 판단.
