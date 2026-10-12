@@ -20,7 +20,7 @@ const ROUTES := {
 	"jiri_path": [Vector2(200, 205), Vector2(300, 190), Vector2(440, 195), Vector2(470, 235), Vector2(580, 215), Vector2(625, 150), Vector2(640, 100), Vector2(665, 80), Vector2(765, 235), Vector2(940, 100), Vector2(960, 250), Vector2(10, 205)],
 	# 2장 M2 (폴백 지형 village/pyega1/gwana/pyega2 — 걸을 수 있는 자리에 맞춘 좌표, 마지막 지점이 출구 안쪽)
 	"old_village": [Vector2(650, 345), Vector2(722, 335), Vector2(736, 176), Vector2(728, 60), Vector2(752, 36)],
-	"den1": [Vector2(30, 181), Vector2(225, 175), Vector2(225, 90), Vector2(420, 56), Vector2(500, 185), Vector2(772, 200)],
+	"den1": [Vector2(30, 181), Vector2(222, 181), Vector2(225, 90), Vector2(420, 56), Vector2(500, 185), Vector2(772, 200)],
 	"den2": [Vector2(24, 200), Vector2(215, 190), Vector2(320, 230), Vector2(430, 200), Vector2(452, 200)],
 	"den3": [Vector2(40, 200), Vector2(320, 235), Vector2(320, 330), Vector2(460, 200)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
@@ -32,7 +32,7 @@ const LIVE := {
 	"jiri_path:fromVillage": [Vector2(727, 112)],   # SC2-15 장승 트리거 중심까지 (북쪽 출구에서 걸어서)
 	"jiri_path:fromDen": [],
 	"old_village:start": [],
-	"den1:start": [Vector2(80, 180)],   # sight 트리거 중심까지 (SC2-04 연출 전 어그로 금지)
+	"den1:start": [Vector2(59, 181)],   # sight 트리거 중심까지 (SC2-04 연출 전 어그로 금지)
 	"den1:fromDen2": [],
 	"den2:start": [],
 	"den2:fromDen3": [],

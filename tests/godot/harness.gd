@@ -1710,7 +1710,7 @@ func sc_ch2_m2() -> void:
 	await free_player()
 
 	step("SC2-05: 외눈박이 감투 → 용패 (잔영 3회 한정)")
-	var a_pos: Vector2 = lvl().lift(Vector2(250, 415))
+	var a_pos: Vector2 = lvl().lift(Vector2(222, 181))   # den1 oneeye_A (새 지형 좌표)
 	god = true
 	player().position = a_pos + Vector2(-60, 0)
 	await until(func(): return G.flag("yongpae_trace_n") >= 1, "외눈박이 첫 감투 (SC2-05 문구·잔영)", 1800)
@@ -1719,7 +1719,7 @@ func sc_ch2_m2() -> void:
 	god = false
 	await tick(5)
 	step("깊은 곳(deep) 트리거 → 처용 독백")
-	await tp(Vector2(554, 384))
+	await tp(Vector2(740, 200))   # deep 트리거 중심 (C 덩굴 방 안쪽)
 	await until(func(): return G.flag("den_deep") == 1, "deep 트리거", 600)
 	await tick(8)
 	await free_player()
@@ -1758,14 +1758,14 @@ func sc_ch2_m2() -> void:
 	god = false
 	G.save()
 
-	step("두억시니의 방 (SC2-06·07): 입구에서 위로 걸어 gate 트리거, 체크포인트 den3")
+	step("두억시니의 방 (SC2-06·07): 입구에서 오른쪽으로 걸어 gate 트리거, 체크포인트 den3")
 	await goto_exit(1, "den3")
 	await must(G.checkpoint == "den2", "연출 전 체크포인트는 den2")
 	await must(G.flag("boss2_intro_seen") == 0, "boss2_intro_seen = 0")
 	await free_player()
-	Input.action_press("move_up")
+	Input.action_press("move_right")
 	await until(func(): return G.flag("boss2_intro_seen") == 1, "SC2-06 gate (걸어서)", 900)
-	Input.action_release("move_up")
+	Input.action_release("move_right")
 	await until(func(): return G.checkpoint == "den3", "체크포인트 den3", 60)
 	await until(func(): return not player().locked, "SC2-06·07 끝", 2500)
 	await must(G.checkpoint_spawn() == ["den3", "start"], "이어하기·사망 리스폰 = den3 start")
@@ -1775,9 +1775,9 @@ func sc_ch2_m2() -> void:
 	var iid2 := level_iid()
 	await boot_level()
 	await free_player()
-	Input.action_press("move_up")
-	await until(func(): return player().position.y < lvl().lift(Vector2(0, 330)).y, "gate 통과", 900)
-	Input.action_release("move_up")
+	Input.action_press("move_right")
+	await until(func(): return player().position.x > lvl().lift(Vector2(130, 0)).x, "gate 통과", 900)
+	Input.action_release("move_right")
 	await tick(30)
 	await must(lvl()._talking == 0, "재도전: 대사창 없음 (SC2-06~07 스킵)")
 	await until(func(): return not player().locked, "1초 뒤 풀림", 600)
