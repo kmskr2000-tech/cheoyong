@@ -1,9 +1,10 @@
 # 정화 시스템 (Purification)
 
-> **Status**: In Review
+> **Status**: Approved (2026-10-12 검토 — `REVIEW-2026-10-12.md`)
 > **Author**: game-designer (reverse-document: 코드에서 역산)
 > **Last Updated**: 2026-10-12
-> **Last Verified**: 2026-10-12 — `src/scripts/enemy.gd`, `player.gd`, `level.gd`, `game.gd`, `bestiary.gd`, `boss.gd`(쓰러짐·정화 부분)를 커밋 `d6435c9` 기준으로 대조
+> **Last Verified**: 2026-10-12 — `src/scripts/enemy.gd`, `player.gd`, `level.gd`, `game.gd`, `bestiary.gd`, `boss.gd`(쓰러짐·정화 부분)를 커밋 `d6435c9` 기준으로 대조. 2026-10-12 검토에서 `08294f2` 기준으로 수치 재대조(변경 없음 확인: `DOWN_TIME`, `SONG_TIME`, `SONG_RANGE`, `TIERS`, `need`, 한풀이, 도감 이정표; 보스 `_defeat`는 장신구 획득을 `Game.has_tear()`/`TEAR_NAME`으로 바꿈 — 동작 동일)
+> **미결 불일치 규칙**: 아래 [불일치](#불일치-의도-vs-구현) P1~P10은 사용자 결정 전까지 **상위 문서(story-bible > growth-system > 기획안)가 우선**하며, 이 문서는 현재 구현을 기록할 뿐 상위 문서를 덮어쓰지 않는다.
 > **Implements Pillar**: 1 정화, 처치가 아니다 / 2 노래가 무기다 (`design/gdd/game-concept.md`)
 > **Rigor**: standard (`project.yaml` modes.rigor) — 필수 섹션 Overview·Player Fantasy·Detailed Rules·Dependencies·Tuning Knobs·Acceptance Criteria + 수치 규칙이 있으므로 Formulas. Edge Cases는 선택이지만 코드에서 읽은 것을 남겼다.
 
