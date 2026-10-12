@@ -13,7 +13,7 @@ const ROUTES := {
 	"gyeongju": [Vector2(270, 300), Vector2(405, 180), Vector2(430, 170), Vector2(562, 30), Vector2(140, 245), Vector2(192, 360), Vector2(6, 379)],
 	"gwana": [Vector2(395, 165), Vector2(300, 240), Vector2(470, 100), Vector2(100, 410)],
 	"pyega1": [Vector2(190, 330), Vector2(520, 380), Vector2(100, 400), Vector2(146, 200), Vector2(8, 387)],
-	"pyega2": [Vector2(350, 200), Vector2(500, 213), Vector2(600, 213), Vector2(690, 240), Vector2(282, 405)],
+	"pyega2": [Vector2(350, 200), Vector2(500, 213), Vector2(535, 192), Vector2(600, 213), Vector2(690, 240), Vector2(282, 405)],
 	"palace": [Vector2(258, 300), Vector2(256, 228), Vector2(256, 240), Vector2(258, 376)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
