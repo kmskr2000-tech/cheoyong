@@ -10,6 +10,8 @@ const CELL := 4
 const FOOT := Vector2(10, 6)
 # 맵별 반드시 갈 수 있어야 하는 footprint 지점 (levels.gd 와 같은 좌표계). 마지막 지점까지는 실제로 걸어간다.
 const ROUTES := {
+	"gyeongju": [Vector2(270, 300), Vector2(405, 180), Vector2(430, 170), Vector2(562, 30), Vector2(140, 245), Vector2(192, 360), Vector2(6, 379)],
+	"gwana": [Vector2(395, 165), Vector2(300, 240), Vector2(470, 100), Vector2(100, 410)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
 var G: Node

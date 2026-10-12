@@ -664,7 +664,7 @@ func objective(level: Node):
 			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 379)
 			if f.call("summoned") and not f.call("briefed"): return Vector2(562, 27)
 		"gwana":
-			return Vector2(320, 196) if not f.call("briefed") else Vector2(4, 235)
+			return Vector2(395, 140) if not f.call("briefed") else Vector2(100, 410)
 		"pyega1":
 			return Vector2(320, 40)
 		"pyega2":
