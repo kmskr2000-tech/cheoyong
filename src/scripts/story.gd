@@ -734,7 +734,7 @@ func objective(level: Node):
 			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return level.def["anchors"]["yokai"]
 		"gyeongju":
 			if f.call("appointed"): return null
-			if f.call("rumor"): return null if f.call("king_call") else Vector2(96, 130)
+			if f.call("rumor"): return null if f.call("king_call") else Vector2(130, 237)   # 집 interact "home" (levels.gd). 옛 (96,130) 은 허공 — 목표마커 P0 핫픽스
 			if not f.call("met_nanyeong"): return Vector2(236, 309)
 			if not f.call("sang_child"): return Vector2(240, 376)
 			if not f.call("night"): return Vector2(130, 237)
