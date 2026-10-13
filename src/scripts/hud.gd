@@ -280,7 +280,7 @@ func _open_bag() -> void:
 	while true:
 		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
 		var i: int = await dialog.choose({"name": "행낭", "text": status},
-			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "닫기"])
+			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "안내 설정", "회상", "닫기"])
 		if i == 0:
 			if await _bag_items(dialog):
 				break
@@ -291,11 +291,32 @@ func _open_bag() -> void:
 		elif i == 3:
 			await _bag_kept(dialog)
 		elif i == 4:
+			await _bag_guide_settings(dialog)
+		elif i == 5:
 			await _recall()
 			break
 		else:
 			break
 	get_tree().paused = false
+
+
+const OBJ_MODE_NAMES := {"always": "항상", "brief": "잠깐", "off": "끔"}
+
+
+## 안내 설정 (design/gdd/objective-marker.md §3.6): 목표 문구 항상/잠깐/끔 · 길잡이 빛 켜짐/끔. user://settings.json 에 저장(세이브와 분리)
+func _bag_guide_settings(dialog: DialogBox) -> void:
+	while true:
+		var light_on = Game.setting("obj_light")
+		light_on = true if light_on == null else bool(light_on)
+		var i: int = await dialog.choose({"name": "안내 설정", "text": "목표 문구는 화면 위, 길잡이 빛은 용패에서 흐른다."},
+			["목표 문구: %s" % OBJ_MODE_NAMES[objective_mode()], "길잡이 빛: %s" % ("켜짐" if light_on else "끔"), "돌아가기"])
+		if i == 0:
+			var order := ["always", "brief", "off"]
+			Game.set_setting("obj_text", order[(order.find(objective_mode()) + 1) % order.size()])
+		elif i == 1:
+			Game.set_setting("obj_light", not light_on)
+		else:
+			break
 
 
 ## 회상: the intro 「떠나는 자」 again, played over the paused level; the level is left exactly as it was
@@ -542,7 +563,6 @@ func _make_objective_label(parent: Node) -> void:
 	_obj_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06))
 	_obj_label.add_theme_constant_override("outline_size", 4)
 	_obj_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_obj_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_obj_label.clip_text = true
 	_obj_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_obj_label.position = OBJ_RECT.position

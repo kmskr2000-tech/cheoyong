@@ -288,6 +288,8 @@ func _gyeongju_enter(level: Node) -> void:
 			_open_road_to_gwana(level)
 		if Game.flag("briefed") and not Game.flag("rescued"):
 			level._exit(level.def["gates"]["pyega"])
+			if Game.spawn_name == "fromGwana":   # 관아에서 막 돌아왔다: 서쪽 길이 열렸음을 한 줄로 알린다 (§3.7)
+				_announce_once("pyega_open", "서쪽 길이 열렸다.")
 
 
 ## SC1-08: 약방 앞. 난영 첫 등장.
@@ -424,12 +426,25 @@ func _night_summons(level: Node) -> void:
 	await off.walk_to(level.lift(level.def["anchors"]["gwana_gate"]), 70.0)
 	off.set_present(false)
 	p.locked = false
-	_open_road_to_gwana(level)
+	_open_road_to_gwana(level, true)
 
 
-func _open_road_to_gwana(level: Node) -> void:
+func _open_road_to_gwana(level: Node, announce := false) -> void:
 	if Levels.DATA.has("gwana"):
 		level._exit(level.def["gates"]["gwana"])
+		if announce:
+			_announce_once("gwana_open", "관아로 가는 길이 열렸다.")
+
+
+## 길이 열렸다는 토스트 — 세션당 한 번 (세이브에 새 키를 만들지 않는다)
+var _announced := {}
+
+
+func _announce_once(key: String, text: String) -> void:
+	if _announced.has(key):
+		return
+	_announced[key] = true
+	Game.say_toast(text, Color(0.8, 0.95, 1.0))
 
 
 # ================================================================ 1장 1-4 역병 조사와 폐가 (SC1-12~15)

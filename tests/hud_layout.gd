@@ -85,6 +85,34 @@ func _initialize() -> void:
 				lok = false
 				_ck("h7 좌측 상단 겹침 %s/%s" % [lk[i], lk[j]], false, "%s %s" % [left[lk[i]], left[lk[j]]])
 	_ck("h7 좌측 상단 HUD 요소끼리 안 겹침", lok)
+	# 5c) 목표 문구 띠(design/gdd/objective-marker.md §3.6): 터치 버튼 7개(h0)는 그대로, 문구는 Label 하나 — 띠가 다른 HUD 와 겹치지 않는다
+	var obj: Label = hud._obj_label
+	var orect: Rect2 = hud.OBJ_RECT   # Label.size 는 폰트 최소 높이(23)로 부풀 수 있어 글줄이 앉는 띠(OBJ_RECT)로 판정한다
+	_ck("h8a 목표 문구 Label 이 OBJ_RECT 자리·폭", obj.position == orect.position and obj.size.x == orect.size.x, "%s %s" % [obj.position, obj.size])
+	var o_ok := true
+	for n in names:
+		if orect.intersects(circles[n][2]):
+			o_ok = false
+			_ck("h8 문구 띠 ↔ 버튼 그림 겹침 %s" % n, false, "%s %s" % [orect, circles[n][2]])
+	_ck("h8 문구 띠가 버튼 7개 그림과 안 겹침", o_ok)
+	for k in left.keys():
+		if orect.intersects(left[k]):
+			o_ok = false
+			_ck("h8 문구 띠 ↔ 좌측 상단 %s 겹침" % k, false, str(left[k]))
+	_ck("h8 문구 띠가 좌측 상단 상태 영역과 안 겹침(여유 %.0fpx)" % (orect.position.x - 126.0), orect.position.x >= 126.0 + 6.0)
+	_ck("h8 문구 띠가 메뉴 버튼과 안 겹침(여유 %.0fpx)" % ((menu as Rect2).position.x - orect.end.x), not orect.intersects(menu) and (menu as Rect2).position.x - orect.end.x >= SAFE)
+	_ck("h8 문구 띠가 부적 이름표와 안 겹침", not orect.intersects(tlr))
+	_ck("h8 문구 띠가 토스트 줄(y54~74)과 안 겹침", not orect.intersects(Rect2(0, 54, 480, 20)))
+	_ck("h8 문구 띠가 대화창(20,188,440,74)과 안 겹침", not orect.intersects(Rect2(20, 188, 440, 74)))
+	# 보스 체력바(y14~42)는 겹치므로 문구를 숨긴다(규칙 R-숨김, tests/objective_hud.gd T5) — 숨김 규칙이 있는지만 본다
+	_ck("h8 보스 체력바와 겹치는 높이라 숨김 규칙에 의존(체력바 y14 < 띠 끝 %.0f)" % orect.end.y, orect.end.y > 14.0)
+	# h9: 가장자리 여백 — 좌우는 SAFE, 위는 메뉴 버튼과 같은 상단 여유
+	_ck("h9 문구 띠 가장자리 여백", orect.position.x >= SAFE and orect.end.x <= 480.0 - SAFE and orect.position.y >= 3.0, str(orect))
+	# h10: 18자 최악 문구 폭이 띠 안에 들어간다 (넓은 한글 글리프 18자 + 앞장식)
+	var ofont: Font = obj.get_theme_font("font")
+	var osz := obj.get_theme_font_size("font_size")
+	var worst_w: float = ofont.get_string_size(hud.OBJ_PREFIX + "가".repeat(18), HORIZONTAL_ALIGNMENT_LEFT, -1, osz).x
+	_ck("h10 18자 최악 문구 폭 %.0fpx <= 띠 폭 %.0fpx" % [worst_w, orect.size.x], worst_w <= orect.size.x)
 	# 6) 타이틀: 메뉴 글씨 줄들과 허구 고지 문구가 안 겹치고 가장자리 여유가 있다
 	var title = load("res://scripts/title.gd").new()
 	root.add_child(title)
