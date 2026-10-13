@@ -2652,6 +2652,7 @@ func sc_ch2_m5() -> void:
 	await must(G.flag("q_a_n") == 1 and G.flag("q_a") == 1, "산군 1체: 1/2 (q_a_n=%d)" % G.flag("q_a_n"))
 	await m5_purify("sangun")
 	await must(G.flag("q_a_n") == 2 and G.flag("q_a") == 2, "산군 2체: 목표 달성 q_a=2")
+	await must(save_flags().get("q_a", 0) == 2 and save_flags().get("q_a_n", 0) == 2, "M6: 목표 달성 즉시 세이브(q_a=2·2/2 디스크 반영)")
 	await m5_purify("sangun")
 	await must(G.flag("q_a_n") == 2 and G.flag("q_a") == 2, "달성 뒤 더 정화해도 2/2 유지")
 
@@ -2667,6 +2668,7 @@ func sc_ch2_m5() -> void:
 	await must(G.flag("q_c_n") == 2, "산군은 의뢰 C 에 세지 않는다")
 	await m5_purify("dokkaebi_fire")
 	await must(G.flag("q_c") == 2 and G.flag("q_c_n") == 3, "3/3: 목표 달성 q_c=2")
+	await must(save_flags().get("q_c", 0) == 2 and save_flags().get("q_c_n", 0) == 3, "M6: 의뢰 C 목표 달성 즉시 세이브")
 
 	step("SC2-23 보고: 장사치(A) 엽전 40냥 · 덕망 70, 이어서 SC2-24 처용 독백(한 번만)")
 	await m5_boot("hwagae", M5_FLAGS)
@@ -2724,6 +2726,53 @@ func sc_ch2_m5() -> void:
 	await m4_pick(2)
 	await until(func(): return not player().locked, "닫힘", 600)
 	await must(fl.get("q_a", 0) == 3 and fl.get("q_c", 0) == 3, "플래그 보존")
+
+	step("M6: 산신각 전에 의뢰를 보고했다면 SC2-24 독백은 보류 → 산신각(SC2-16)에서 한 번만, 이어하기 안전")
+	var base6 := ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided", "ch2_old_man"]
+	await m5_boot("hwagae", base6)
+	G.flags["q_a"] = 2
+	G.flags["q_a_n"] = 2
+	god = true
+	await tick(5)
+	await tp_to_npc("sangin")
+	await interact("sangin")
+	pump = true
+	await until(func(): return G.flag("q_a") == 3, "산신각 전 의뢰 A 보고", 1500)
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "보고 대사 끝", 1500)
+	pump = false
+	await must(G.flag("shrine_seen") == 0 and G.flag("night_curtain") == 0, "산신각 전 보고: 독백 보류(night_curtain=0)")
+	G.save()
+	await m5_boot("jiri_path", base6 + ["q_a_pre"])   # 이어하기 모사: 보류 상태 세이브에서 다시 시작
+	G.flags["q_a"] = 3
+	G.flags["q_c"] = 3
+	god = true
+	var mono_n := [0]
+	lvl().dialog.finished.connect(func(): mono_n[0] += 1)
+	await tp_to_interact("shrine")
+	await interact("shrine")
+	pump = true
+	await until(func(): return G.flag("night_curtain") == 1 and mono_n[0] >= 2, "산신각 SC2-16 + 보류 독백 출력", 2500)
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "산신각 대사 끝", 1500)
+	pump = false
+	await must(G.flag("shrine_seen") == 1 and mono_n[0] == 2, "산신각 대사 1회 + 독백 1회 (dialog 종료 %d회)" % mono_n[0])
+	await must(save_flags().get("night_curtain", 0) == 1, "독백 직후 세이브(이어하기에서 재출력 없음)")
+	await tp_to_interact("shrine")
+	await interact("shrine")
+	pump = true
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "산신각 재방문 대사 끝", 1500)
+	pump = false
+	await must(mono_n[0] == 3, "재방문은 평소 대사 1회뿐 — 독백 중복 없음 (dialog 종료 %d회)" % mono_n[0])
+	await m5_boot("jiri_path", base6 + ["shrine_seen", "night_curtain", "q_a_pre"])   # 이어하기: 이미 낸 독백은 다시 나오지 않는다
+	G.flags["q_a"] = 3
+	god = true
+	mono_n[0] = 0
+	lvl().dialog.finished.connect(func(): mono_n[0] += 1)
+	await tp_to_interact("shrine")
+	await interact("shrine")
+	pump = true
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "이어하기 후 산신각 대사 끝", 1500)
+	pump = false
+	await must(mono_n[0] == 1, "이어하기 후에도 독백 재출력 없음 (%d)" % mono_n[0])
 
 	step("노인을 만나기 전(ch2_old_man 없음): 게시판은 의뢰를 열지 않는다")
 	await m5_boot("hwagae", ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided"])

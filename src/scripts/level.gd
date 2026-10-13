@@ -751,6 +751,8 @@ var flicker: Array[PointLight2D] = []
 var _ash: CPUParticles2D
 var _shafts_layer: CanvasLayer
 var _post_mat: ShaderMaterial
+var _morning := false   # 이튿날 아침 화개 (_atmosphere 에서 설정)
+const MORNING_BLOOM := 0.25
 var _cull_t := 0.0
 var _cull_n := 0
 var fade_props: Array = []   # [body, sprite, local rect] — tall props turn see-through when the hero is behind
@@ -948,13 +950,13 @@ func _atmosphere() -> void:
 	cm.color = def.get("ambient", Color(0.34, 0.37, 0.52) if dusk else night_col)
 	var morning: bool = def.get("time", "night") == "dusk" and Game.level_id == "hwagae" and Game.flag("boss2_done") == 1 and Game.ch2_enabled()   # 두억시니를 거둔 뒤 이튿날 아침의 화개 저자 (챕터2 M4): 따뜻하고 밝은 아침 빛
 	if morning:
-		cm.color = Color(0.80, 0.77, 0.74)
+		cm.color = Color(1.2, 1.1, 0.95)   # 환경광: 밤 푸른빛 대신 따뜻하고 밝은 아침 (M6: 0.80,0.77,0.74 에서 상향)
 	add_child(cm)
 	# the moon: a cold key light from the upper left that rakes across every normal map and casts
 	# long diagonal shadows from houses and trees
 	var moon := DirectionalLight2D.new()
 	moon.color = Color(1.0, 0.9, 0.74) if morning else Color(0.6, 0.74, 1.0) # cold moon (아침엔 따뜻한 햇빛)
-	moon.energy = 0.55 if morning else 0.75
+	moon.energy = 0.7 if morning else 0.75
 	moon.height = 0.45
 	moon.rotation = deg_to_rad(35)
 	add_child(moon)
@@ -1002,6 +1004,9 @@ func _atmosphere() -> void:
 	fm.set_shader_parameter("world_size", Vector2(w, h))
 	fm.set_shader_parameter("tint", Color(0.36, 0.46, 0.66))
 	fm.set_shader_parameter("sick", Color(0.42, 0.3, 0.7))
+	if morning:
+		fm.set_shader_parameter("tint", Color(0.9, 0.82, 0.7))   # 찬 안개 → 따뜻한 아침 안개
+		fm.set_shader_parameter("density", 0.3)
 	fog.material = fm
 	add_child(fog)
 	# ash / spores drifting down across the view
@@ -1039,6 +1044,8 @@ func _atmosphere() -> void:
 	shafts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sm := ShaderMaterial.new()
 	sm.shader = load("res://shaders/shafts.gdshader")
+	if morning:
+		sm.set_shader_parameter("tint", Vector3(1.0, 0.86, 0.6))   # 달빛 → 아침 햇살
 	shafts.material = sm
 	shafts_layer.add_child(shafts)
 	_shafts_layer = shafts_layer
@@ -1052,6 +1059,18 @@ func _atmosphere() -> void:
 	pm.shader = load("res://shaders/post.gdshader")
 	post.material = pm
 	_post_mat = pm
+	if morning:   # 이튿날 아침의 화개 저자 (M6 연출 보강): 해질녘처럼 보이지 않게 등롱·횃불 점광원을 꺼 가깝게 약화하고 후처리 색조를 따뜻하게. 밤 상태는 이 분기를 타지 않아 그대로.
+		for l in flicker:
+			l.set_meta("base", float(l.get_meta("base")) * 0.12)   # 낮 빛 속의 등롱은 희미한 온기만 남긴다
+		pm.set_shader_parameter("shadow_tint", Vector3(0.2, 0.15, 0.11))
+		pm.set_shader_parameter("high_tint", Vector3(1.0, 0.93, 0.8))
+		pm.set_shader_parameter("grade", 0.1)
+		pm.set_shader_parameter("depth_fade", 0.08)
+		pm.set_shader_parameter("haze", Vector3(0.78, 0.66, 0.5))
+		pm.set_shader_parameter("haze_amount", 0.12)
+		pm.set_shader_parameter("vignette", 0.4)
+		_morning = true
+		pm.set_shader_parameter("bloom", MORNING_BLOOM)   # 등롱 번짐 약화 (낮에는 불빛 후광이 약하다)
 	post_layer.add_child(post)
 	add_child(post_layer)
 
@@ -1081,7 +1100,7 @@ func _on_quality(t: int, _old: int) -> void:
 	# 순서: 라이트 상한 → 후처리 블룸 → 노멀맵 라이트 → 파티클 밀도 → 그림자 (+ 하 등급에선 빛줄기 끔)
 	_cull_lights()
 	if _post_mat != null:
-		_post_mat.set_shader_parameter("bloom", 0.9 if t >= 2 else 0.0)
+		_post_mat.set_shader_parameter("bloom", (MORNING_BLOOM if _morning else 0.9) if t >= 2 else 0.0)
 	_set_normal_maps(t >= 1)
 	if _ash != null:
 		if _ash_full == 0:
