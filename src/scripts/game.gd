@@ -200,7 +200,7 @@ func song_speed(dokkaebi_near: bool) -> float:
 	return 1.0 + (OBANG_SONG_BONUS if tal == "obang" else 0.0) + (GAMTU_SONG_BONUS if dokkaebi_near and has_gamtu() else 0.0)
 
 
-## 2장 도깨비 상점(화개 저자, SC2-12 이후). 약방 SHOP 과 따로 센다 — 장터 에누리로 조금 싸다. 학 피리(180푼)는 피리 단계 시스템이 생긴 뒤에 연다(price 0 = 아직 못 판다).
+## 2장 도깨비 상점(화개 저자, SC2-12 이후). 약방 SHOP 과 따로 센다 — 장터 값은 조금 싸다. 학 피리(180푼)는 피리 단계 시스템이 생긴 뒤에 연다(price 0 = 아직 못 판다).
 const DOK_SHOP := [
 	{"id": "insam", "name": "인삼정기탕", "desc": "기력(체력) 60 회복", "price": 25},
 	{"id": "gugija", "name": "구기자환", "desc": "소리(기력) 50 회복", "price": 20},
@@ -294,12 +294,13 @@ func _dogam_milestones() -> void:
 		say_toast("도감 완성 — 칭호 「요괴의 벗」", Color(1.0, 0.85, 0.45))
 
 
-func give_tal(id: String) -> void:
+func give_tal(id: String, equip := true) -> void:
 	Audio.sfx("pickup", -4.0, 0.0)
 	if not id in tals:
 		tals.append(id)
-	tal = id
-	say_toast("%s을 얻었다 — %s" % [TALS[id]["name"], TALS[id]["desc"]], Color(1.0, 0.7, 0.55))
+	if equip:
+		tal = id
+	say_toast("%s을 얻었다 — %s" % [TALS[id]["name"], TALS[id]["desc"]] if equip else "%s을 얻었다 — %s (지닌 것에서 탈을 바꿀 수 있다)" % [TALS[id]["name"], TALS[id]["desc"]], Color(1.0, 0.7, 0.55))
 	progress_changed.emit()
 
 

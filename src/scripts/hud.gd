@@ -463,7 +463,7 @@ func _bag_kept(dialog: DialogBox) -> void:
 	if not Game.accessories.is_empty():
 		var acc := []
 		for a in Game.accessories:
-			acc.append(a + (" (%s)" % Game.tear_desc() if a == Game.TEAR_NAME else " (%s)" % Game.gamtu_short() if a == Game.GAMTU_NAME else ""))   # 2장 감투: 효과 문구(M3 후속) — 한 줄에 담는다(재료·칭호 줄이 밀려 잘리지 않게)
+			acc.append(a + ((" (%s)" % Game.tear_desc() if not Game.has_gamtu() else "") if a == Game.TEAR_NAME else " (%s)" % ("정화 +10%" if Game.has_tear() else Game.gamtu_short()) if a == Game.GAMTU_NAME else ""))   # 2장 감투: 효과 문구(M3 후속) — 한 줄에 담는다(재료·칭호 줄이 밀려 잘리지 않게)
 		lines.append("장신구: " + ", ".join(acc))
 	var m := []
 	for k in Game.mats:

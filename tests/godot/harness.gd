@@ -2348,7 +2348,7 @@ func sc_ch2_m4() -> void:
 	step("SC2-11·12: 도깨비 장수의 답례(오방탈) → 상점 개장 · 산신령 이주 → SC2-13 2절 자막 → SC2-14 → 2장 끝")
 	pump = true
 	await until(func(): return G.flag("obang_given") == 1, "오방탈 지급 (SC2-11)", 2500)
-	await must("obang" in G.tals and G.tal == "obang" and "cheoyong" in G.tals, "오방탈 지급·착용, 처용탈은 지닌 채")
+	await must("obang" in G.tals and G.tal == "cheoyong" and "cheoyong" in G.tals, "오방탈은 지급만 된다 — 처용탈 착용 유지")
 	await until(func(): return G.flag("dok_open") == 1, "도깨비 상점 개장 (SC2-12)", 1500)
 	await tick(2)
 	await must(lvl().npc("sansin").visible, "산신령이 저자로 내려온다 (정보상)")
@@ -2362,7 +2362,8 @@ func sc_ch2_m4() -> void:
 	await tick(60)
 	await must(lvl()._obj.get("target") == null, "2장 끝: 길잡이 목표 없음")
 
-	step("정화 속도: 오방탈 +20%, 감투 +10%(도깨비 계열이 닿을 때만) — 배율과 실제 노래 시간")
+	step("정화 속도 (오방탈은 지닌 것에서 바꿔 착용): 오방탈 +20%, 감투 +10%(도깨비 계열이 닿을 때만) — 배율과 실제 노래 시간")
+	G.tal = "obang"
 	await must(is_equal_approx(G.song_speed(false), 1.2) and is_equal_approx(G.song_speed(true), 1.3), "오방탈 1.2 / 오방탈+감투(도깨비) 1.3")
 	G.tal = "cheoyong"
 	await must(is_equal_approx(G.song_speed(true), 1.1) and is_equal_approx(G.song_speed(false), 1.0), "처용탈: 감투만 도깨비 상대 1.1, 아니면 1.0")
@@ -2444,10 +2445,11 @@ func sc_ch2_m4() -> void:
 
 	step("행낭 '지닌 것': 감투 효과 문구 + 탈 바꾸기(오방탈 ↔ 처용탈)")
 	var hud = lvl().hud
+	G.accessories = [G.TEAR_NAME, G.GAMTU_NAME]   # 1장 보스 「역신의 눈물」+2장 감투를 둘 다 지닌 현실 조합
 	hud._bag_kept(lvl().dialog)
 	await until(func(): return m4_menu_open(), "지닌 것 열림", 300)
 	var body: String = lvl().dialog._body.text
-	await must("감투" in body and "정화 +10%" in body and "+0.5초" in body and body.split("\n").size() <= 5, "감투 효과가 한 줄에 보이고 지닌 것이 5줄(탈·장신구·재료·칭호) 이내")
+	await must("감투" in body and "정화 +10%" in body and lvl().dialog._body.get_line_count() <= 4, "감투 효과가 보이고 줄바꿈 포함 4줄(탈·장신구·재료·칭호) 이내 (%d줄)" % lvl().dialog._body.get_line_count())
 	if DisplayServer.get_name() != "headless":   # RENDER=xvfb 로 돌리면 480×270 화면을 남긴다 (레이아웃 눈 확인용)
 		await tick(10)
 		root.get_texture().get_image().save_png(OS.get_environment("M4_SHOT_DIR") + "/bag_%s.png" % ("full" if G.mats.size() > 0 else "min"))

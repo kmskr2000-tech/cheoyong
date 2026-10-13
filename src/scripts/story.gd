@@ -1243,7 +1243,7 @@ func _hwagae_morning(level: Node) -> void:
 			{"name": "도깨비 장수", "text": "은혜는 갚는다. 우리 장터에서 물건을 팔게 해주게."},   # SC2-11
 			{"name": "도깨비 장수", "text": "이건 답례일세. 오방의 빛깔을 새긴 탈이지."},
 		])
-		Game.give_tal("obang")   # 오방탈: 정화 속도 +20% (바로 쓴다 — 지닌 것 에서 처용탈과 바꿀 수 있다)
+		Game.give_tal("obang", false)   # 오방탈: 정화 속도 +20%. 지급만 한다(처용탈 유지) — 지닌 것 에서 탈을 바꾼다
 		Game.set_flag("obang_given")
 		Game.save()
 	if not Game.flag("dok_open"):
@@ -1304,15 +1304,15 @@ func _dok_shop(level: Node) -> void:
 	if not Game.flag("dok_open"):
 		await level.talk([{"name": "도깨비 장수", "text": "…"}])
 		return
-	await level.talk([{"name": "도깨비 장수", "text": "에누리는 없고, 덤은 있지. 무엇을 드릴까?"}])
+	await level.talk([{"name": "도깨비 장수", "text": "장터 값은 약방보다 후하게 쳐 주지. 무엇을 드릴까?"}])
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	while true:
 		var opts := []
 		for it in Game.DOK_SHOP:
-			opts.append("%s  %d푼" % [it["name"], it["price"]] if it["price"] > 0 else "%s  (준비 중)" % it["name"])
+			opts.append("%s  %d냥" % [it["name"], it["price"]] if it["price"] > 0 else "%s  (준비 중)" % it["name"])
 		opts.append("그만두겠소")
-		var i: int = await level.dialog.choose({"name": "도깨비 장수", "text": "엽전 %d푼이 있구려." % Game.money}, opts)
+		var i: int = await level.dialog.choose({"name": "도깨비 장수", "text": "엽전 %d냥이 있구려." % Game.money}, opts)
 		if i >= Game.DOK_SHOP.size():
 			break
 		var it: Dictionary = Game.DOK_SHOP[i]
