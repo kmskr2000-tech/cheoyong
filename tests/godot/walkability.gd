@@ -19,10 +19,10 @@ const ROUTES := {
 	"hwagae": [Vector2(312, 342), Vector2(360, 320), Vector2(205, 275), Vector2(430, 255), Vector2(560, 135), Vector2(655, 60), Vector2(706, 14)],
 	"jiri_path": [Vector2(200, 205), Vector2(300, 190), Vector2(440, 195), Vector2(470, 235), Vector2(580, 215), Vector2(625, 150), Vector2(640, 100), Vector2(665, 80), Vector2(765, 235), Vector2(940, 100), Vector2(960, 250), Vector2(10, 205)],
 	# 2장 M2 (폴백 지형 village/pyega1/gwana/pyega2 — 걸을 수 있는 자리에 맞춘 좌표, 마지막 지점이 출구 안쪽)
-	"old_village": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 380), Vector2(320, 262), Vector2(430, 168), Vector2(480, 125), Vector2(535, 70), Vector2(14, 380)],
-	"den1": [Vector2(100, 410), Vector2(250, 415), Vector2(235, 318), Vector2(225, 262), Vector2(146, 222), Vector2(312, 332), Vector2(395, 432), Vector2(556, 386), Vector2(582, 384)],
-	"den2": [Vector2(150, 350), Vector2(240, 282), Vector2(272, 228), Vector2(330, 200), Vector2(390, 160), Vector2(490, 64), Vector2(490, 44), Vector2(100, 405)],
-	"den3": [Vector2(284, 330), Vector2(284, 308), Vector2(400, 190), Vector2(480, 150), Vector2(700, 200), Vector2(284, 416)],
+	"old_village": [Vector2(650, 345), Vector2(722, 335), Vector2(736, 176), Vector2(728, 60), Vector2(752, 36)],
+	"den1": [Vector2(30, 181), Vector2(222, 181), Vector2(225, 90), Vector2(420, 56), Vector2(500, 185), Vector2(772, 200)],
+	"den2": [Vector2(24, 200), Vector2(215, 190), Vector2(320, 230), Vector2(430, 200), Vector2(452, 200)],
+	"den3": [Vector2(40, 200), Vector2(320, 235), Vector2(320, 330), Vector2(460, 200)],
 	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
 }
 # --live: 요괴를 살려 둔 채 '실제 보행 경로'로 연출 지점·상호작용 지점까지 걸어가며 어그로(state != idle)가 한 번도 없는지 본다 (god/tp 로 가려지는 문제 방지).
@@ -31,12 +31,12 @@ const LIVE := {
 	"jiri_path:fromHwagae": [Vector2(240, 195)],
 	"jiri_path:fromVillage": [Vector2(727, 112)],   # SC2-15 장승 트리거 중심까지 (북쪽 출구에서 걸어서)
 	"jiri_path:fromDen": [],
-	"old_village:start": [Vector2(140, 354), Vector2(126, 250), Vector2(96, 378)],
-	"den1:start": [Vector2(80, 418)],
-	"den1:fromDen2": [Vector2(554, 384)],
+	"old_village:start": [],
+	"den1:start": [Vector2(59, 181)],   # sight 트리거 중심까지 (SC2-04 연출 전 어그로 금지)
+	"den1:fromDen2": [],
 	"den2:start": [],
 	"den2:fromDen3": [],
-	"den3:start": [Vector2(284, 310)],
+	"den3:start": [],
 }
 var live := false
 var G: Node

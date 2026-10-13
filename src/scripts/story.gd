@@ -756,16 +756,16 @@ func objective(level: Node):
 		"jiri_path":
 			return Vector2(1100, 100)   # 동쪽 소굴 (M2). 북쪽 마을은 산신령이 일러 준 선택 구간
 		"old_village":
-			if not f.call("girl_heard"): return Vector2(150, 336)
+			if not f.call("girl_heard"): return Vector2(748, 160)
 			if f.call("q_b") < 2: return level.def["anchors"]["doll"]
 			if f.call("q_b") < 3: return level.def["anchors"]["grave"]
 			return level.def["anchors"]["exit"]
 		"den1":
 			return level.def["anchors"]["exit"]
 		"den2":
-			return level.def["anchors"]["exit"] if f.call("den2_gate_cleared") else Vector2(272, 228)
+			return level.def["anchors"]["exit"] if f.call("den2_gate_cleared") else Vector2(320, 200)
 		"den3":
-			return Vector2(284, 300) if not f.call("boss2_intro_seen") else level.def["anchors"]["hall"]
+			return Vector2(90, 200) if not f.call("boss2_intro_seen") else level.def["anchors"]["hall"]
 	return null
 
 

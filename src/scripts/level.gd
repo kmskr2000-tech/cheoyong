@@ -5,7 +5,7 @@ const CT := preload("res://scripts/combat_tuning.gd")
 ## Story beats hook in through Story (story.gd).
 
 ## occluder half-width / height for props that cast lantern shadows
-const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6), "board": Vector2(18, 8), "rockwall": Vector2(32, 20), "tent": Vector2(26, 12), "burnt_stall": Vector2(26, 8), "sansingak": Vector2(40, 18)}
+const OCCLUDE := {"pillar": Vector2(7, 5), "irworobong": Vector2(50, 4), "chotdae": Vector2(4, 3), "tal": Vector2(3, 3), "hall": Vector2(80, 24), "jars": Vector2(16, 6), "beam": Vector2(24, 6), "altar": Vector2(20, 6), "boat": Vector2(28, 8), "netrack": Vector2(30, 3), "house": Vector2(50, 28), "pine": Vector2(5, 6), "seonang": Vector2(8, 6), "jangseung_m": Vector2(5, 4), "jangseung_f": Vector2(5, 4), "lantern": Vector2(8, 6), "dodam": Vector2(32, 6), "board": Vector2(18, 8), "hut_ruin": Vector2(40, 16), "hut_ruin_b": Vector2(40, 16), "old_tools": Vector2(14, 5), "old_tools_mortar": Vector2(10, 4), "old_tools_broom": Vector2(3, 2), "old_tools_pot": Vector2(11, 4), "old_tools_sandals": Vector2(8, 3), "dok_torch": Vector2(4, 3), "mortar_altar": Vector2(30, 12), "doll": Vector2(3, 3), "rockwall": Vector2(32, 20), "tent": Vector2(26, 12), "burnt_stall": Vector2(26, 8), "sansingak": Vector2(40, 18)}
 
 var light_tex: Texture2D
 
