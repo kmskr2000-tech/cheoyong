@@ -450,3 +450,4 @@
 - [지시] 12:47 — 에이전트 배정: Agent "아트팀-처용밝기조정" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
 - [지시] 12:52 — 에이전트 배정: Agent "감사팀 walk-anim 순회" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
 - [지시] 12:52 — 에이전트 배정: Agent "프로그래밍팀-통합배포" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
+- [지시] 12:57 — 에이전트 배정: Agent "감사팀 intro-polish 순회" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
