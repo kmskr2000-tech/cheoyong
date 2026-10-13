@@ -482,3 +482,4 @@
 - [지시] 16:17 — 에이전트 배정: Agent "감사팀 폰피드백 일괄 순회" finished · 58m 29s
 - [지시] 16:17 — 에이전트 배정: Agent "프로그래밍팀 통합배포 머지(overlap·objective)" finished · 6m 48s
 - [지시] 16:17 — 에이전트 배정: 에셋 겹침과 목표 마커 머지가 main에 들어갔습니다. 배포는 하지 않았고 rebase도 쓰지 않았습니다. 17시 보고까지 남은 것은 asset/hero-glow와 prog/view-stage1의 감사·머지, 그리고 main 일괄 회귀입니다.
+- [지시] 16:22 — 에이전트 배정: Background agent "감사팀 hero-glow·view-stage1 순회" didn't finish before the previous session ended
