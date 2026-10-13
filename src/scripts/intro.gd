@@ -201,7 +201,6 @@ func _motes(parent: Node, rect: Vector2, at: Vector2, color: Color, amount := 30
 
 ## slow push-in on the whole shot (tied to the shot node: it dies with it, and never changes the timing)
 func _push(sec: float, to := 1.05, drift := Vector2.ZERO) -> void:
-	_shot.pivot_offset = Vector2.ZERO
 	var c := Vector2(240, 135)
 	var tw := _shot.create_tween().set_parallel()
 	tw.tween_property(_shot, "scale", Vector2.ONE * to, sec).set_trans(Tween.TRANS_SINE)
@@ -263,9 +262,9 @@ func _shot_hall() -> void:
 	b2.frame = 3   # the brothers turn in toward the bed
 	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 226), Rect2(64, 0, 64, 64))  # back view (up_idle)
 	for pg in [Vector2(164, 117), Vector2(316, 117)]:
-		_glow(pg, Color(0.45, 0.75, 0.85, 0.55), 70.0, 0.35)     # the great pearls on their pedestals
+		_glow(pg, Color(0.45, 0.75, 0.85, 0.36), 60.0, 0.35)     # the great pearls on their pedestals
 	for pg in [Vector2(160, 33), Vector2(320, 33), Vector2(176, 40), Vector2(300, 40)]:
-		_glow(pg, Color(0.4, 0.7, 0.85, 0.5), 40.0, 0.4)
+		_glow(pg, Color(0.4, 0.7, 0.85, 0.38), 36.0, 0.4)
 	_glow(Vector2(240, 120), Color(1.0, 0.7, 0.35, 0.28), 120.0, 0.25)   # lamplight over the sick-bed
 	_motes(_shot, Vector2(240, 10), Vector2(240, 270), Color(0.6, 0.85, 1.0, 0.5), 34, -1.0, 9.0)   # bubbles rising through the hall
 	_motes(_shot, Vector2(30, 6), Vector2(240, 108), Color(0.62, 0.3, 0.82, 0.6), 12, -1.0, 6.0)    # 탁기 curling off the king's bed
