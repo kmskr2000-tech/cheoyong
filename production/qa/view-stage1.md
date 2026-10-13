@@ -18,10 +18,11 @@
 | `tests/art_walk.sh` 12맵 | PASS 12/12 |
 | `tests/combat_strategy.sh` | PASS 11/11 |
 | `tests/chapter1_playthrough.sh` | PASS 6/6 (chain·save_mid·continue_mid·corrupt_save·death·boss_retry) |
-| `tests/save_check.sh` | SAVE_CHECK_PLACEHOLDER |
-| `tests/smoke_godot.sh` | SMOKE_PLACEHOLDER |
+| `tests/save_check.sh` | PASS 42/42 |
+| `tests/smoke_godot.sh` | PASS 13/13 장면 (rc=0, boss 포함 재실행 통과; ERR_CANT_OPEN 13줄은 장면당 1줄의 정보성 로그, SCRIPT ERROR 0) |
+| `tests/ch2_aggro.sh` | PASS (전 스폰 최소 요괴 거리 > 어그로 130) |
 
-smoke 의 boss(400프레임)는 부하 12~15 상황에서 180초 제한에 걸려 1회 rc=124 가 났다. 같은 장면을 제한 없이 돌리면 변경 트리 285초·베이스라인(d991497) 305초로 둘 다 정상 종료(SCRIPT ERROR 0)라 부하 탓이다(재실행 결과는 위 표).
+smoke 의 boss(400프레임)는 부하 12~15 상황에서 180초 제한에 걸려 1회 rc=124 가 났다. 같은 장면을 제한 없이 돌리면 변경 트리 285초·베이스라인(d991497) 305초로 둘 다 정상 종료(SCRIPT ERROR 0)라 부하 탓이다(재실행에서 boss 포함 13/13 통과, 위 표).
 
 ## 12맵 캡처 확인 (이미지를 직접 열어 확인)
 `production/qa/view-stage1/capture.sh` 로 아이폰 2556x1179(뷰포트 585x270, 배율 4.0)·갤럭시 2400x1080(600x270, 배율 4.0) 창을 흉내내 맵마다 스폰/좌상단/우하단(갤럭시는 우하단)을 촬영. 원본 `raw/`, 모음 `iphone_sheet1.png`·`iphone_sheet2.png`·`galaxy_sheet.png`.
