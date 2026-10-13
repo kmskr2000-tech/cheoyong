@@ -2415,6 +2415,8 @@ func sc_ch2_m4() -> void:
 	G.tal = "obang"
 	G.accessories = [G.GAMTU_NAME]
 	G.money = 30
+	G.mats = {"도깨비 털": 3, "탁한 종기": 2}
+	G.titles = ["도깨비골의 노래꾼"]
 	G.items["insam"] = 2
 	await tp_to_npc("dok_jangsu")
 	await interact("dok_jangsu")
@@ -2445,7 +2447,10 @@ func sc_ch2_m4() -> void:
 	hud._bag_kept(lvl().dialog)
 	await until(func(): return m4_menu_open(), "지닌 것 열림", 300)
 	var body: String = lvl().dialog._body.text
-	await must("감투" in body and "정화 속도 +10%" in body and "+0.5초" in body, "감투 효과 두 줄이 보인다")
+	await must("감투" in body and "정화 +10%" in body and "+0.5초" in body and body.split("\n").size() <= 5, "감투 효과가 한 줄에 보이고 지닌 것이 5줄(탈·장신구·재료·칭호) 이내")
+	if DisplayServer.get_name() != "headless":   # RENDER=xvfb 로 돌리면 480×270 화면을 남긴다 (레이아웃 눈 확인용)
+		await tick(10)
+		root.get_texture().get_image().save_png(OS.get_environment("M4_SHOT_DIR") + "/bag_%s.png" % ("full" if G.mats.size() > 0 else "min"))
 	await must("오방탈" in body and "정화 속도 +20%" in body, "탈 줄: 오방탈 (정화 속도 +20%)")
 	await m4_pick(0)   # 탈 바꾸기
 	await must(G.tal == "cheoyong", "탈 바꾸기: 처용탈로")
@@ -2483,7 +2488,27 @@ func sc_ch2_m4() -> void:
 	await must(lvl().npc("dok_jangsu").visible and lvl().npc("sansin").visible, "NPC 상주")
 	await must(G.flag("chapter2_done") == 1, "chapter2_done 유지")
 
+	step("SC2-12 산신령 이주: 상점이 열린 뒤 산길의 산신각에는 산신령이 없다 (열리기 전엔 있다)")
+	G.new_game()
+	G.flags["ch2_unlocked"] = 1
+	for f in M4_FLAGS:
+		G.flags[f] = 1
+	G.flags["shrine_seen"] = 1
+	G.checkpoint = "jiri_path"
+	G.level_id = "jiri_path"
+	G.spawn_name = "fromHwagae"
+	await boot_level()
+	await tick(5)
+	await must(lvl().npc("sansin").visible, "dok_open 전: 산신령은 산신각에 있다")
+	G.flags["dok_open"] = 1
+	G.level_id = "jiri_path"
+	await boot_level()
+	await tick(5)
+	await must(not lvl().npc("sansin").visible and lvl().npc("sansin").collision_layer == 0, "dok_open 후: 산신령은 산에 없다 (저자로 이주)")
+
 	step("M3 후속: 두억시니전 개시 직후 480폭 화면에서 보스가 잘리지 않는다 (보스 개시 위치 460→416; 카메라는 맵 왼쪽 끝 limit 에 막혀 밀 수 없다)")
+	current_scene.queue_free()   # 옛 레벨이 새 level_id 로 목표를 계산하지 않게 먼저 내린다
+	await tick(3)
 	G.new_game()
 	G.flags["ch2_unlocked"] = 1
 	for f in D3_FLAGS:

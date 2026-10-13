@@ -937,9 +937,11 @@ func _ch2_interact(level: Node, id: String) -> void:
 			await level.talk([{"text": "…"}])
 
 
-func _jiri_enter(_level: Node) -> void:   # 장승 트리거(SC2-15)는 레벨 정의가 매번 건다; _jangseung_first 가 한 번만 말한다
+func _jiri_enter(level: Node) -> void:   # 장승 트리거(SC2-15)는 레벨 정의가 매번 건다; _jangseung_first 가 한 번만 말한다
 	Game.set_flag("flute")
 	Game.checkpoint = "jiri_path"
+	if Game.flag("dok_open") and Game.ch2_enabled():
+		level.npc("sansin").set_present(false)   # SC2-12: 산신령은 저자로 이주했다 (산신각 상호작용 지점은 그대로)
 
 
 ## SC2-15: 길목 직후 장승 첫 접촉

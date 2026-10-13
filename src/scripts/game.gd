@@ -186,6 +186,11 @@ func gamtu_desc() -> String:
 	return "은신한 적이 드러나 있는 시간 +%.1f초 · 도깨비 계열 정화 속도 +%d%%" % [GAMTU_REVEAL_BONUS, roundi(GAMTU_SONG_BONUS * 100.0)]
 
 
+## 행낭 한 줄용 짧은 문구
+func gamtu_short() -> String:
+	return "노출 +%.1f초·도깨비 정화 +%d%%" % [GAMTU_REVEAL_BONUS, roundi(GAMTU_SONG_BONUS * 100.0)]
+
+
 ## 정화 속도(처용가 시간 ÷ 배율): 오방탈 +20%, 감투는 노래가 닿는 쓰러진 적 중 도깨비 계열이 있을 때 +10% (챕터2 M4). 둘 다 2장 전에는 얻을 수 없다.
 const OBANG_SONG_BONUS := 0.2
 const GAMTU_SONG_BONUS := 0.1
