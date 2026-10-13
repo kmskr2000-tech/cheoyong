@@ -25,6 +25,7 @@ func _ready() -> void:
 	bg.texture = load("res://assets/intro/title_bg.png")
 	bg.centered = false
 	add_child(bg)
+	_moon_glow()
 	_motes()
 	var layer := CanvasLayer.new()
 	add_child(layer)
@@ -91,6 +92,31 @@ func _ready() -> void:
 	for c in layer.get_children():
 		c.modulate.a = 0.0
 		create_tween().tween_property(c, "modulate:a", 1.0, 1.6)
+
+
+## moon bloom and a slow breathing of the moon-path glints — the title's one moving light
+func _moon_glow() -> void:
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	var s := Sprite2D.new()
+	s.texture = tex
+	s.position = Vector2(340, 52)
+	s.scale = Vector2.ONE * 150.0 / 64.0
+	s.modulate = Color(0.55, 0.65, 0.9, 0.42)
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	s.material = add
+	add_child(s)
+	var tw := s.create_tween().set_loops()
+	tw.tween_property(s, "modulate:a", 0.3, 2.6).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(s, "modulate:a", 0.42, 2.6).set_trans(Tween.TRANS_SINE)
 
 
 func _motes() -> void:
