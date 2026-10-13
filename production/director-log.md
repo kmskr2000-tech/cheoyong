@@ -447,3 +447,4 @@
 - [지시] 12:42 — 에이전트 배정: 감사팀-인트로검증의 최종 보고는 아직 오지 않았습니다. 또 자체 백그라운드 작업을 기다린다는 중간 알림입니다. 보고가 오기 전에는 asset/intro-polish의 통과 여부를 알 수 없어서 머지하지 않았고, 새
 - [지시] 12:42 — 에이전트 배정: Agent "감사팀 objective-marker 순회" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
 - [지시] 12:42 — 에이전트 배정: Agent "프로그래밍팀 시점 1단계 구현" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
+- [지시] 12:47 — 에이전트 배정: Agent "아트팀-처용밝기조정" failed: Agent terminated early due to an API error: You've hit your session limit · resets 3:10pm (Asia/Seoul) (error type rate_limit, HTTP 429, request id
