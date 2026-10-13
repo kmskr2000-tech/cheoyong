@@ -457,3 +457,4 @@
 - [지시] 15:22 — 에이전트 배정: 15:21 기준 직전 점검과 같습니다. 에이전트 3개가 9분째 가동 중이고, 푸시 헤드도 그대로입니다. 감사팀의 적발이나 중단 권고도 없습니다(audit/log 마지막 커밋은 09:04).
 - [완료보고] 15:2x 프로그래밍팀-시점1단계마무리 — prog/view-stage1 2a403a2: 가로 확장(585/600/640)+카메라 보강, hud_layout 4폭·view_range 504/504·art_walk 12/12·combat 11/11·chapter1 6/6·save 42·smoke 13/13 PASS(자체). palace 폭 상한 512 레터박스는 의도. 위험: 폰 실기 fps·px 미측정, 어그로 세로 여유는 2단계. objective-marker와 머지 충돌 4곳(level.gd _physics_process·tests/hud_layout.gd 텍스트 / hud.gd OBJ_RECT·level.gd GUIDE_VIEW 의미) — 통합배포가 해소(OBJ_RECT=View.pad() 중앙, GUIDE_VIEW=Vector2(View.size.x*0.5,135)). 일괄검증 후 view-stage1 감사 순회 추가.
 - [완료보고] 15:3x 아트팀-처용밝기마무리 — asset/hero-glow 714e533: 몸 전용 광원 하한 보정(febeab3) 후 13맵 재측정 경주 0.43·화개 0.44(목표 0.25+ 충족), 백사장 0.16, 주변 밝기 광원끈 수준. smoke 13/13·art_walk 12·save 42·combat·chapter1 rc=0 PASS(자체). 감사팀-시점밝기검증(순회16 hero-glow·17 view-stage1) 착수.
+- [지시] 15:27 — 에이전트 배정: 감사팀 hero-glow·view-stage1 순회
