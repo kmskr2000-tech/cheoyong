@@ -18,7 +18,8 @@ var _force_window := Vector2i.ZERO   # 테스트용: 창 크기 흉내
 
 
 func _ready() -> void:
-	get_window().size_changed.connect(apply)
+	if is_inside_tree():
+		get_tree().root.size_changed.connect(apply)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--winsize="):   # 캡처·테스트: 기기 창 크기를 흉내(예: 2556x1179)
 			var w := a.get_slice("=", 1).split("x")
@@ -67,7 +68,9 @@ func target_size(window_px: Vector2i) -> Vector2i:
 
 
 func apply() -> void:
-	var win := get_window()
+	if not is_inside_tree():
+		return
+	var win := get_tree().root
 	var px: Vector2i = _force_window if _force_window != Vector2i.ZERO else win.size
 	var t := target_size(px)
 	if win.content_scale_size != t:
