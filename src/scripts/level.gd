@@ -396,7 +396,7 @@ func _make_guide() -> void:
 		for x in 5:
 			var d := Vector2(x - 2, y - 2).length()
 			if d < 2.6:
-				img.set_pixel(x, y, Color(0.8, 0.95, 1.0, 1.0 if d < 1.2 else 0.45))
+				img.set_pixel(x, y, Color(1.0, 1.0, 1.0, 1.0) if d < 1.2 else Color(0.62, 0.88, 1.0, 0.85))   # 폰 야외에서도 보이도록 중심은 흰색·테두리도 진하게
 	var tex := ImageTexture.create_from_image(img)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
