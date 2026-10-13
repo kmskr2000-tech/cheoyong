@@ -492,3 +492,4 @@
 - [지시] 16:37 — 에이전트 배정: 처용 밝기 보정(asset/hero-glow)이 main에 머지됐습니다(80896e3). 충돌은 없었고, 배포는 하지 않았으며 라이브 20261013030331은 유지합니다.
 - [승인] 16:4x prog/view-stage1 2a403a2 — 감사팀 순회17 통과(차단 없음, 경미 3: 천지울림 판정 480x270 고정이라 585/600 폭 좌우 끝 요괴 미적중·보스 600폭 컷신 온기 틴트 x<480 1회 목격(재현 안 됨, 폰 실기 확인)·'480 동일'은 정지 상태 한정). 회귀 8종 직접 재실행 PASS. 통합배포6에 머지+충돌 2파일 해소(level.gd·tests/hud_layout.gd)+GUIDE_VIEW/OBJ_RECT/h8a 보정+머지 후 main 일괄 회귀 지시(배포 금지). 후속 과제: 천지울림 판정 사각형 View 기반화.
 - [지시] 16:42 — 에이전트 배정: 프로그래밍팀 통합배포 머지(view-stage1
+- [머지] 16:5x prog/view-stage1 — main 반영 3fe5145(충돌 2파일 해소: level.gd _update_camera+if _beacon, GUIDE_VIEW_Y=135·가로 View.size.x*0.5, hud.gd OBJ_RECT View.pad() 중앙, tests/hud_layout.gd 4폭 루프), QA 문서 2d725fb, main HEAD 5f005e6. 머지 후 main 일괄 회귀 11종 전부 PASS(smoke13·save42·combat11·art12·ch1 6·ch2_aggro9·view504·hud_layout130·objective_hud20·targets190·via DONE). 폰 피드백 6개 전부 main 머지 완료 → 묶음 배포 지시(프로그래밍팀-배포담당). 아침 보고서→17시 중간 보고 형태로 갱신.
