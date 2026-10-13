@@ -20,6 +20,7 @@ var _last_us := 0
 var _finishing := false
 ## --view=<안>: 시점·카메라 설계 프로토타입(design/gdd/view-camera.md). 기본값(플래그 없음)은 현행 480x270 그대로다.
 ##   a 현행 480x270 / a2 현행+카메라 룩어헤드 / b576 576x324 / b640 640x360 / c75 480x270 + 카메라 zoom 0.75(스프라이트 축소)
+##   bkh 480x270 기준 + 가로만 기기 비율로 확장(content_scale_aspect=KEEP_HEIGHT, --winsize=WxH 로 기기 창 크기를 흉내)
 var view_mode := "a"
 var view_size := Vector2(480, 270)   # 논리 해상도 (HUD가 우하단 버튼을 이만큼 밀어 앵커링한다)
 var view_zoom := 1.0
@@ -50,7 +51,13 @@ func _ready() -> void:
 	if view_mode != "a":
 		var sz := Vector2i(view_size)
 		get_window().content_scale_size = sz
-		print("VIEW ", view_mode, " logical=", sz, " zoom=", view_zoom)
+		if view_mode == "bkh":
+			get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP_HEIGHT
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--winsize="):
+				var w := a.get_slice("=", 1).split("x")
+				get_window().size = Vector2i(int(w[0]), int(w[1]))
+		print("VIEW ", view_mode, " logical=", sz, " zoom=", view_zoom, " window=", get_window().size)
 	if out == "" and view_mode != "a2":
 		set_process(false)
 	else:
@@ -67,6 +74,7 @@ func _set_view(v: String) -> void:
 		"b576": view_size = Vector2(576, 324)
 		"b640": view_size = Vector2(640, 360)
 		"c75": view_zoom = 0.75
+		"bkh": view_size = Vector2(480, 270)
 
 
 ## a2: 이동 방향으로 카메라를 미리 내민다(룩어헤드). 캡처에서는 --hold=move_right 와 함께 쓴다.
