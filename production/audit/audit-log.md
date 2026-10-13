@@ -259,3 +259,10 @@
   2. **[CONCERNS-경미] 불필요한 바이너리 `src/night_after.png`(480x270 스크린샷 254KB) 가 src/ 루트에 커밋됨.** 개발 중 캡처가 섞인 것으로 보임. `export_presets.cfg` 제외 필터가 `web/*,assets/levels/spare_*` 뿐이라 **pck 에 포함**되어 웹 번들 +254KB, 로컬에선 `.import` 생성. 권고: 머지 전 `git rm src/night_after.png`(수정·삭제는 감사 범위 밖이라 안 함).
   3. [참고] `MORNING_BLOOM=0.25` 가 상수 하나로 후처리·폴백에서 공유되어 일관됨. 등롱 base ×0.12 는 `_atmosphere` 1회 적용이라 재진입(씬 재생성) 때마다 원값에서 다시 시작해 누적 감쇠 없음.
 - 미해결(사람 확인): 폰 실기에서 아침 체감·창호 불빛 잔존, night_after.png 제거 여부. 수정·머지·배포 없음(저장소 무변경, 기준선 worktree dev/wt-aud-m6base 는 감사용). 로그·캡처: ~/rpg-logs/audit23/ (all.out, cap/cmp_*.png, cap/nf/).
+
+## 순회 24 intro-polish2 (2026-10-13, 1회성) — asset/intro-polish2 c84005e (worktree dev/wt-aud-intro2, 기준선 dev/wt-aud-intro2-base = merge-base c59f78a)
+**판정: PASS** (경미 CONCERNS 2건은 비차단)
+- (a) diff: 브랜치 단독 변경은 src/scripts/intro.gd(+59/-7, 샷1 `_fauna`·글로우, 샷2-3 king 스프라이트·`_breathe`·`_shafts`·용패 시작점)와 src/assets/intro 5개(king·fish·jelly 신규, hall·sea_far 갱신) + art/*.py·QA 캡처뿐. 챕터1 게임플레이·세이브·combat_tuning 파일 변경 0, class_name 추가 0, intro_seen/skip(pause)/타이밍 코드 불변. 모든 추가 트윈은 `_shot` 노드 바인딩이라 컷과 함께 소멸. 에셋 델타 합계 약 +12KB(번들 영향 무시 가능), .import 는 gitignore 대로 미추적(import 후 정상 로드).
+- (b) 회귀: smoke_godot 13/13 PASS(로그 끝 ERR_CANT_OPEN 13줄은 기존 리소스 로드 로그로 FAIL 아님 — 기준선 비교는 생략), save_check 42 checks PASS, art_walk 12맵 PASS, chapter1_playthrough 6세트(chain 135 checks 등) PASS. 인트로 진입 테스트 = smoke intro PASS + --intro 3600프레임 캡처 SCRIPT ERROR/Parse Error 0.
+- (c) 육안(--fixed-fps 60, --every=15, --seq=confirm 탭): 전/후 암전 프레임이 동일(420·1275·1590·2025·2040) → 인트로 길이·타이밍 불변 확인. 샷1: 전=뿌연 단일 덩어리 → 후=3층 본전·탑·종루·회랑·창불, 후광 앞 실루엣, 해파리/물고기 읽힘(개선 뚜렷). 샷2-3: 전=회전 스프라이트가 뭉개진 덩어리 → 후=침상 윗면에 누운 용왕(머리 왼쪽 베개·뿔·수염·이불·팔), 회전 아티팩트 없음, 침상·헤드보드와 정합, 화로 빛·빛줄기 추가. 용패 컷(--seq 로 대사 넘김): 시작 좌표(200+49,82+18)가 스프라이트 HAND(47,17)=용왕 손(파란 소매 끝 살색)과 일치, 손에서 출발해 처용 쪽으로 이동 확인. 숨결 트윈: 가슴 ±1px 이내(바닥선 고정), 육안으로 거슬리지 않음.
+- CONCERNS(비차단): ① 숨결이 소수 스케일·위치(NEAREST)라 행 복제 미세 일렁임 가능 — 프레임 샘플에선 눈에 띄지 않음. ② 해파리 크기 `randf()` 전역 RNG 사용(결정론 테스트에 영향은 없었으나 시드 의존 테스트가 인트로를 거치면 소모량 변화). 
