@@ -36,6 +36,10 @@ RAMPS = {
     'dais':    ramp('#06080e', '#0e121c', '#181e2c', '#242c3e', '#323c52', '#465068'),
     'bed':     ramp('#0e0a12', '#1c1424', '#2c2038', '#3e304e', '#544466', '#6e5c80'),
     'drape':   ramp('#061416', '#0c2224', '#143436', '#1e4a4a', '#2a6260'),
+    'coral':   ramp('#14060c', '#2a0e16', '#4a1a22', '#74302c', '#a0503a', '#c87a4c'),
+    'coral2':  ramp('#04100e', '#0a2420', '#123c36', '#1e5a4e', '#34806c', '#5aa890'),
+    'carpet':  ramp('#0c0614', '#180a26', '#2a1238', '#401c50', '#5a2a66', '#7a4082'),
+    'stone':   ramp('#05080e', '#0c121c', '#161e2c', '#222c3e', '#323e54', '#46546c'),
     'pearl':   ramp('#1e2c38', '#344e5e', '#527684', '#7a9ea6', '#a6c6c8', '#cce4e0'),
 }
 FOG = hx('#071426')
@@ -76,6 +80,7 @@ def _plane(o, d, axis, v, sign):
 
 
 PILLARS = [(sx * 3.3, z) for z in (4.8, 7.6, 10.4, 13.2) for sx in (-1, 1)] + [(sx * 5.6, z) for z in (5.0, 9.0, 13.0) for sx in (-1, 1)]
+CORALS = [(sx * 4.4, z, int(z * 3)) for z in (6.2, 9.0, 12.0) for sx in (-1, 1)] + [(sx * 6.4, z, int(z * 5)) for z in (7.0, 11.0) for sx in (-1, 1)]
 LANTERNS = [(sx * 2.1, 3.9, z) for z in (5.0, 8.0, 11.0) for sx in (-1, 1)]
 
 
@@ -116,6 +121,25 @@ def scene(o, d, depth=0):
     for sx in (-1, 1):   # drapes gathered at the canopy posts
         lo, hi = (sx * 1.7 - 0.22, 1.0, 10.25), (sx * 1.7 + 0.22, 3.35, 10.55)
         take(_box(o, d, lo, hi), 'drape', lambda p, lo=lo, hi=hi: _box_normal(p, lo, hi))
+    for (cx, cz, k) in CORALS:      # coral clusters between the pillars: branching trunks with round crowns
+        for j in range(4):
+            bx, bz = cx + math.cos(j * 1.9 + k) * 0.28, cz + math.sin(j * 1.9 + k) * 0.28
+            h = 0.9 + 0.5 * ((j * 7 + k) % 3)
+            nm = 'coral' if (k + j) % 2 == 0 else 'coral2'
+            take(_cyl(o, d, bx, bz, 0.07, 0, h), nm, lambda p, bx=bx, bz=bz: np.stack([p[:, 0] - bx, np.zeros(len(p)), p[:, 2] - bz], -1) / 0.07)
+            c = np.array([bx, h + 0.05, bz])
+            take(_sph(o, d, c, 0.2 + 0.04 * j), nm, lambda p, c=c, r=0.2 + 0.04 * j: (p - c) / r)
+    for sx in (-1, 1):             # pearl on a stone pedestal beside the dais
+        lo, hi = (sx * 2.7 - 0.35, 0.0, 7.5), (sx * 2.7 + 0.35, 0.9, 8.2)
+        take(_box(o, d, lo, hi), 'stone', lambda p, lo=lo, hi=hi: _box_normal(p, lo, hi))
+        c = np.array([sx * 2.7, 1.3, 7.85])
+        take(_sph(o, d, c, 0.42), 'pearl', lambda p, c=c: (p - c) / 0.42)
+    for (sx, z) in ((-1.1, 6.0), (1.1, 6.0), (-1.1, 9.4), (1.1, 9.4)):   # strings of pearls hanging from the beams
+        for j in range(6):
+            c = np.array([sx, 5.9 - j * 0.28, z])
+            take(_sph(o, d, c, 0.09), 'pearl', lambda p, c=c: (p - c) / 0.09)
+    for (cx, cz) in PILLARS:       # bracket sets under the eaves
+        take(_cyl(o, d, cx, cz, 0.44, 5.35, 5.8), 'dan_r', lambda p, cx=cx, cz=cz: np.stack([p[:, 0] - cx, np.zeros(len(p)), p[:, 2] - cz], -1) / 0.44)
     for (lx, ly, lz) in LANTERNS:
         take(_sph(o, d, np.array([lx, ly, lz]), 0.18), 'pearl', lambda p, c=np.array([lx, ly, lz]): (p - c) / 0.18)
     return best, mat, nrm
@@ -149,9 +173,23 @@ def shade(mat, p, nrm, d):
     f = m == 'floor'
     if f.any():
         caust = _noise(x[f] * 2.2, z[f] * 2.2, 1.0) * _noise(x[f] * 3.1 + 4, z[f] * 2.7, 2.0)
-        tile = ((np.floor(x[f] / 1.2) + np.floor(z[f] / 1.2)) % 2) * 0.35
+        # seigaiha: staggered rings of overlapping scales (용궁 비늘 바닥)
+        sc_ = 0.9
+        row = np.floor(z[f] / (sc_ * 0.5))
+        xo = x[f] / sc_ + (row % 2) * 0.5
+        fx = np.mod(xo, 1.0) - 0.5
+        fz = np.mod(z[f] / (sc_ * 0.5), 1.0)
+        rr = np.sqrt(fx ** 2 + (fz * 0.5) ** 2) * 2.0
+        ring = (np.abs(np.mod(rr * 3.0, 1.0) - 0.5) < 0.12) * 0.55
+        tile = ring + (rr < 0.55) * 0.25
         tone[f] = 1.4 + tile + caust * 1.6 + glow[f] * 0.9 - z[f] * 0.05
-    for name, base, k in (('pillar', 2.0, 3.0), ('dais', 1.4, 2.4), ('bed', 1.6, 2.8), ('drape', 1.2, 2.4), ('gold', 1.6, 3.2)):
+        run = np.abs(x[f]) < 1.15   # the carpet runner to the dais, gold-edged
+        edge = run & (np.abs(np.abs(x[f]) - 1.0) < 0.07)
+        tone[f] = np.where(run, 1.6 + glow[f] * 1.0 + caust * 0.8 + ((np.mod(z[f], 0.9) < 0.1) * 0.8), tone[f])
+        mm = m[f]; mm[run] = 'carpet'; mm[edge] = 'gold'; m[f] = mm
+        tone[np.where(f)[0][edge]] = 3.2
+    f = m == 'floor'
+    for name, base, k in (('pillar', 2.0, 3.0), ('coral', 1.4, 3.4), ('coral2', 1.4, 3.4), ('stone', 1.4, 2.6), ('dan_r', 1.4, 2.4), ('dais', 1.4, 2.4), ('bed', 1.6, 2.8), ('drape', 1.2, 2.4), ('gold', 1.6, 3.2)):
         s = m == name
         tone[s] = base + lam[s] * k + glow[s] * 0.9
     s = m == 'pillar'
@@ -181,6 +219,9 @@ def shade(mat, p, nrm, d):
         grid = (np.abs(np.mod(z[la], 0.5) - 0.25) < 0.04) | (np.abs(np.mod(y[la], 0.5) - 0.25) < 0.04)
         win = (np.mod(z[la], 3.0) > 0.6) & (y[la] > 1.0) & (y[la] < 4.8)
         tone[la] = np.where(win & ~grid, 3.4 + _noise(z[la], y[la], 5.0) * 2.0, 0.8 + glow[la] * 0.5)
+        for fz_, fy_ in ((4.0, 2.4), (8.5, 3.6), (11.5, 2.0), (14.5, 3.9)):   # fish gliding past the windows
+            fsh = ((z[la] - fz_) / 0.9) ** 2 + ((y[la] - fy_) / 0.22) ** 2 < 1
+            tone[la] = np.where(fsh & win, 0.8, tone[la])
         mm = m[la]; mm[~win] = 'wall'; m[la] = mm
     pe = m == 'pearl'
     tone[pe] = 2.8 + lam[pe] * 1.6
@@ -212,7 +253,7 @@ def render():
         rt, rm, rn = scene(p[f] + rd * 1e-3, rd)
         rp = p[f] + rd * np.where(np.isfinite(rt), rt, 30)[:, None]
         rtone, rm = shade(rm, rp, rn, rd)
-        refl = np.isin(rm, ['pillar', 'gold', 'pearl', 'bed', 'dais'])
+        refl = np.isin(rm, ['pillar', 'gold', 'pearl', 'bed', 'dais', 'coral', 'coral2'])
         tone_f = tone[f]
         tone_f[refl] = tone_f[refl] * 0.65 + rtone[refl] * 0.35
         tone[f] = tone_f
@@ -234,5 +275,13 @@ def render():
         shafts += np.exp(-(lx ** 2) / (60 + k * 30)) * np.clip(1.2 - yy / 220, 0, 1)
     rgb = rgb * (1 - fog[:, None] * 0.75) + FOG * fog[:, None] * 0.75
     rgb += np.array([40, 70, 90]) * (shafts * 0.28)[:, None]
+    c0 = np.array([0.0, 1.6, 11.0])    # warm lamplight over the sick-bed (the one warm note in the cold hall)
+    dd2 = ((p - c0) ** 2).sum(-1)
+    rgb += np.array([70, 40, 12]) * np.exp(-dd2 / 12.0)[:, None] * 0.95
+    rng = np.random.default_rng(21)    # drifting motes baked as single bright pixels, brighter when nearer
+    for _ in range(170):
+        mx, my = rng.integers(0, W), rng.integers(0, H)
+        k = rng.random()
+        rgb.reshape(H, W, 3)[my, mx] = np.maximum(rgb.reshape(H, W, 3)[my, mx], np.array([90, 150, 170]) * (0.5 + k * 0.5))
     q = np.floor(rgb / 6) * 6   # keep the palette tight after fog
     return np.clip(q, 0, 255).reshape(H, W, 3)

@@ -6,6 +6,7 @@ var out := ""
 var frames := 60
 var hold := ""
 var at := ""
+var every := 0   # --every=N: 캡처 파일명 접미사 _0001.png 로 N프레임마다 중간 프레임도 저장(연출 검토용)
 var seq := {} # frame -> action tapped on that frame
 var frame_i := 0
 ## --perf: 프레임 시간·드로우콜·메모리 표본 수집 (헤드리스 한계: 소프트웨어 렌더라 절대 fps가 아니라 전후 비교용)
@@ -37,6 +38,7 @@ func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--capture="): out = a.get_slice("=", 1)
 		elif a.begins_with("--frames="): frames = int(a.get_slice("=", 1))
+		elif a.begins_with("--every="): every = int(a.get_slice("=", 1))
 		elif a == "--perf": perf = true
 		elif a.begins_with("--burst="): burst = a.get_slice("=", 1)
 		elif a.begins_with("--hold="): hold = a.get_slice("=", 1)
@@ -137,6 +139,8 @@ func _process(_delta: float) -> void:
 			get_viewport().get_texture().get_image().save_png(out.get_basename() + "_%02d.png" % _burst_n)
 			if pl0: print("BURST ", _burst_n, " f=", frame_i, " pos=", pl0.position, " anim=", pl0.sprite.animation, " frame=", pl0.sprite.frame, " flip=", pl0.sprite.flip_h)
 			_burst_n += 1
+	if every > 0 and frame_i % every == 0 and DisplayServer.get_name() != "headless":
+		get_viewport().get_texture().get_image().save_png(out.get_basename() + "_%04d.png" % frame_i)
 	frames -= 1
 	if frames > 0 or _finishing:
 		return
