@@ -33,6 +33,12 @@ def panel(key, label, scene, scale_out=0.34, aggro=False):
         up_w, up_h = im.width * s, im.height * s
         ox, oy = (DEV[0] - up_w) // 2, (DEV[1] - up_h) // 2
         cx, cy = ox + up_w // 2, oy + up_h // 2 + 16 * s * z
+        import re
+        lg = os.path.join(RAW, '%s_%s.log' % (scene, key))
+        if os.path.exists(lg):   # 맵 가장자리에서는 카메라가 처용을 중심에 못 둔다 → 실제 화면 좌표(HERO_SCREEN) 사용
+            m = re.search(r'HERO_SCREEN \(([-\d.]+), ([-\d.]+)\)', open(lg, errors='ignore').read())
+            if m:
+                cx, cy = ox + float(m.group(1)) * s, oy + float(m.group(2)) * s
         r = 130 * s * z
         d0 = ImageDraw.Draw(dev)
         d0.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(255, 60, 60), width=10)
@@ -72,8 +78,14 @@ def hero_crop(scene, size=72, zoom=6):
         if not os.path.exists(p) or k == 'bkh':
             continue
         im = Image.open(p).convert('RGB')
-        cx, cy = im.width // 2, im.height // 2 + 16   # 카메라는 발밑에서 16px 위
-        box = (cx - size // 2, cy - size // 2 - 8, cx + size // 2, cy + size // 2 - 8)
+        cx, cy = im.width // 2, im.height // 2 + 16   # 카메라는 발밑에서 16px 위 (맵 가장자리에서는 어긋남 → 로그의 HERO_SCREEN 우선)
+        lg = os.path.join(RAW, '%s_%s.log' % (scene, k))
+        if os.path.exists(lg):
+            import re
+            m = re.search(r'HERO_SCREEN \(([-\d.]+), ([-\d.]+)\)', open(lg, errors='ignore').read())
+            if m:
+                cx, cy = int(float(m.group(1))), int(float(m.group(2)))
+        box = (cx - size // 2, cy - size // 2 - 18, cx + size // 2, cy + size // 2 - 18)
         c = im.crop(box).resize((size * zoom, size * zoom), Image.NEAREST)
         t = Image.new('RGB', (c.width, c.height + 34), (18, 18, 26))
         t.paste(c, (0, 0))
