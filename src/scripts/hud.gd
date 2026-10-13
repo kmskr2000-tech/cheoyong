@@ -531,7 +531,7 @@ func _on_stats(hp: float, max_hp: float, ki: float, max_ki: float) -> void:
 ## 시점/카메라 설계가 뷰포트를 바꾸면 아래 상수(레이아웃)만 고친다 — 코드 안에 480/270 을 새로 박지 않는다.
 const OBJ_RECT := Rect2(136, 3, 308, 14)        # 좌상단 상태(~x126)·메뉴(x450~)·보스 체력바(y14~)·토스트(y54~)를 피하는 유일한 가로 띠
 const OBJ_PREFIX := "◇ "
-const OBJ_ALPHA := 0.75                         # 상시 알파
+const OBJ_ALPHA := 0.9                          # 상시 알파
 const OBJ_FLASH := 1.5                          # 새 목표 때 알파 1.0 + 밝은 번쩍임 유지
 const OBJ_FADE := 0.25                          # 아웃/인
 const OBJ_FALLBACK_IDLE := 20.0                 # SC1-01 무음 폴백: 조작 가능 무입력 N초 → 폴백 문구
@@ -558,7 +558,7 @@ var _obj_force_gate = null     # 테스트 훅: true/false 로 표시 확정 조
 func _make_objective_label(parent: Node) -> void:
 	_obj_label = Label.new()
 	_obj_label.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
-	_obj_label.add_theme_font_size_override("font_size", 12)
+	_obj_label.add_theme_font_size_override("font_size", 14)
 	_obj_label.add_theme_color_override("font_color", OBJ_COLOR)
 	_obj_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06))
 	_obj_label.add_theme_constant_override("outline_size", 4)
