@@ -907,14 +907,20 @@ func _ch2_interact(level: Node, id: String) -> void:
 		return
 	match id:
 		"sangin":
+			if Game.flag("q_a") == 2:
+				await _quest_report(level, "a")   # SC2-23
+				return
 			await level.talk([{"name": "장사치", "text": "동쪽 산길로 갔을 게요. 조심하시오." if Game.flag("raided")
 				else "도깨비들이 장터를 털어 간다오! 방망이로 사람을 날려버린다오!"}])
 		"jumo":
 			await level.talk([{"name": "주모", "text": "해 지면 문을 걸어 잠그시오. 요즘 밤엔 방망이 소리가 들려오."}])
 		"victim":
+			if Game.flag("q_c") == 2:
+				await _quest_report(level, "c")   # SC2-23
+				return
 			await level.talk([{"name": "털린 짐꾼", "text": "짐을 통째로 빼앗겼소. …눈이 시커멓더이다."}])
 		"board":
-			await level.talk([{"text": "방(榜): 도깨비 사태로 길손은 해 지기 전 저자에 들라. — 의뢰는 준비 중"}])
+			await _quest_board(level)
 		"elder":
 			if not Game.flag("ch2_old_man"):
 				await level.talk([{"name": "노인", "text": "역병 때 사람들이 물건을 버리고 도망갔지. 그 물건들에 혼이 깃든 게야."}])   # SC2-03
@@ -1113,6 +1119,7 @@ func _den2_enter(level: Node) -> void:
 
 ## 정화 훅 (level.on_purified 에서): 장산범 정화 → 곳간 동문 · 마을에서 정화하면 의뢰 B 의 무전투 보너스 소멸
 func purified(level: Node, kind: String) -> void:
+	_quest_purified(kind)
 	if Game.level_id == "den2" and kind == "jangsanbeom" and not Game.flag("den2_gate_cleared"):
 		Game.set_flag("den2_gate_cleared")
 		var door = level.get_meta("door", null)
@@ -1326,3 +1333,87 @@ func _dok_shop(level: Node) -> void:
 			Game.say_toast("%s — %s" % [it["name"], it["desc"]])
 		p.locked = true
 	p.locked = false
+
+
+# ================================================================ 2장 「도깨비골」 마일스톤 5 — 의뢰 A·C 정식 처리 (design/levels/ch2-dokkaebigol.md §9, SC2-23·24)
+## 상태 플래그(정수): 0 미수주 · 1 수주 · 2 목표 달성(보고 전) · 3 보고·보상 완료. 정화 수는 count 플래그. 의뢰 B 는 위쪽 기존 처리 그대로(q_b).
+## 새 class_name 을 만들지 않으려고 Story 안에 둔다. 보상은 엽전+덕망(설계서 표 그대로, 정기 없음).
+const QUESTS := {
+	"a": {"flag": "q_a", "count": "q_a_n", "need": 2, "level": "jiri_path", "kinds": ["sangun"], "name": "길목의 범",
+		"goal": "산길의 산군 두 마리를 정화한다", "money": 40, "deok": 70, "who": "장사치"},
+	"c": {"flag": "q_c", "count": "q_c_n", "need": 3, "level": "den1", "kinds": ["dokkaebi_oneeye", "dokkaebi_fire"], "name": "장터 털이범",
+		"goal": "소굴 외곽의 도깨비 세 마리를 정화한다", "money": 60, "deok": 90, "who": "털린 짐꾼"},
+}
+
+
+## 정화 훅: 수주한 의뢰의 목표 요괴를 해당 맵에서 정화하면 센다. 수가 차면 2(보고 대기).
+func _quest_purified(kind: String) -> void:
+	if not Game.ch2_enabled():
+		return
+	for q in QUESTS.values():
+		if Game.flag(q["flag"]) != 1 or Game.level_id != q["level"] or not kind in q["kinds"]:
+			continue
+		var n: int = mini(Game.flag(q["count"]) + 1, q["need"])
+		Game.set_flag(q["count"], n)
+		if n >= q["need"]:
+			Game.set_flag(q["flag"], 2)
+			Game.say_toast("의뢰 「%s」 목표 달성 — 화개 저자에서 %s에게 알리자." % [q["name"], q["who"]], Color(0.75, 0.9, 1.0))
+		else:
+			Game.say_toast("의뢰 「%s」 %d/%d" % [q["name"], n, q["need"]], Color(0.75, 0.9, 1.0))
+
+
+func _quest_status(q: Dictionary) -> String:
+	match Game.flag(q["flag"]):
+		0: return "수주 가능"
+		1: return "진행 %d/%d" % [Game.flag(q["count"]), q["need"]]
+		2: return "보고 대기"
+	return "완료"
+
+
+## 화개 게시판 (SC2-03 노인을 만난 뒤부터). 의뢰 A·C 를 받고 진행을 본다. 의뢰 B 는 산신각에서만 받는다.
+func _quest_board(level: Node) -> void:
+	if not Game.flag("ch2_old_man"):
+		await level.talk([{"text": "방(榜): 도깨비 사태로 길손은 해 지기 전 저자에 들라. — 관아"}])
+		return
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	while true:
+		var opts := []
+		for id in ["a", "c"]:
+			opts.append("「%s」 — %s" % [QUESTS[id]["name"], _quest_status(QUESTS[id])])
+		opts.append("물러난다")
+		var i: int = await level.dialog.choose({"text": "방(榜): 도깨비 사태로 길손은 해 지기 전 저자에 들라. 의뢰를 구하는 이는 아래를 보라."}, opts)
+		if i >= 2:
+			break
+		var q: Dictionary = QUESTS[["a", "c"][i]]
+		match Game.flag(q["flag"]):
+			0:
+				Game.set_flag(q["flag"], 1)
+				Game.set_flag(q["count"], 0)
+				Game.say_toast("의뢰 「%s」 — %s. 보상 %d냥." % [q["name"], q["goal"], q["money"]], Color(0.75, 0.9, 1.0))
+				Game.save()
+			1:
+				await level.talk([{"text": "「%s」 — %s. (%d/%d)" % [q["name"], q["goal"], Game.flag(q["count"]), q["need"]]}])
+			2:
+				await level.talk([{"text": "「%s」 — 목표를 마쳤다. %s에게 알리자." % [q["name"], q["who"]]}])
+			_:
+				await level.talk([{"text": "「%s」 — 이미 마친 의뢰다." % q["name"]}])
+		p.locked = true
+	p.locked = false
+
+
+## SC2-23: 의뢰 보고. 보상은 엽전 + 덕망. 첫 보고 뒤에 한 번 SC2-24(처용의 독백).
+func _quest_report(level: Node, id: String) -> void:
+	var q: Dictionary = QUESTS[id]
+	if id == "a":
+		await level.talk([{"name": "장사치", "text": "범이 길을 비켜 줬다니, 고맙소. 푼은 약속대로 드리리다."}])
+	else:
+		await level.talk([{"name": "털린 짐꾼", "text": "도깨비불은 이제 안 보이오?"}])
+	Game.set_flag(q["flag"], 3)
+	Game.money += int(q["money"])
+	Game.say_toast("의뢰 완료 — %s · 엽전 %d냥" % [q["name"], q["money"]], Color(0.75, 0.9, 1.0))
+	Game.add_deok(int(q["deok"]))
+	if not Game.flag("night_curtain") and Game.flag("shrine_seen"):
+		Game.set_flag("night_curtain")
+		await level.talk([{"name": "처용", "text": "…아버지의 당부는 노래로 이루라는 뜻이었다. 버려진 것도 노래하게 해야 한다."}])   # SC2-24
+	Game.save()
