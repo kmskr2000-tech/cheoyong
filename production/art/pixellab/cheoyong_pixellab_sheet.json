@@ -1,0 +1,70 @@
+{
+ "cell": [
+  64,
+  64
+ ],
+ "columns": 4,
+ "source": "Pixellab free tier (generate-image-pixflux + animate-with-text), 64x64 native, side view, facing east; *_west rows are horizontal flips",
+ "actions": {
+  "idle_east": {
+   "row": 0,
+   "frames": 4,
+   "frame_size": [
+    64,
+    64
+   ],
+   "fps": 6,
+   "loop": true
+  },
+  "walk_east": {
+   "row": 1,
+   "frames": 4,
+   "frame_size": [
+    64,
+    64
+   ],
+   "fps": 8,
+   "loop": true
+  },
+  "attack_east": {
+   "row": 2,
+   "frames": 4,
+   "frame_size": [
+    64,
+    64
+   ],
+   "fps": 10,
+   "loop": false
+  },
+  "hit_east": {
+   "row": 3,
+   "frames": 4,
+   "frame_size": [
+    64,
+    64
+   ],
+   "fps": 12,
+   "loop": false
+  },
+  "idle_west": {
+   "row": 4,
+   "frames": 4,
+   "frame_size": [
+    64,
+    64
+   ],
+   "fps": 6,
+   "loop": true
+  },
+  "walk_west": {
+   "row": 5,
+   "frames": 4,
+   "frame_size": [
+    64,
+    64
+   ],
+   "fps": 8,
+   "loop": true
+  }
+ }
+}
