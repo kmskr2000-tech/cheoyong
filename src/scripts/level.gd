@@ -19,6 +19,7 @@ var interact_points: Array = [] # [{pos, id, label}]
 
 
 func _ready() -> void:
+	View.set_fixed(false)
 	def = Levels.DATA[Game.level_id]
 	meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/levels/%s.json" % def["ground"]))
 	light_tex = _radial(256)
@@ -42,6 +43,7 @@ func _ready() -> void:
 	cam.limit_top = int(-tier * 2)
 	cam.limit_right = int(size[0])
 	cam.limit_bottom = int(size[1] - tier)
+	View.set_cap(size[0])   # 맵 폭보다 넓게 보이면 맵 밖 빈 공간이 보인다 → 뷰 폭 상한(palace 512 등)
 	cam.reset_smoothing()
 	if def.has("wisps"):
 		for i in 4:
@@ -376,7 +378,7 @@ const GUIDE_HANDOFF := TALK_RANGE + 6.0     # H: 이 안이면 빛 조각·빛�
 const GUIDE_MOTES := 3
 const GUIDE_PERIOD := 1.6
 const GUIDE_FAR := 240.0                    # 이 거리 이상이면 크고(1.4) 밝게(0.95)
-const GUIDE_VIEW := Vector2(240, 135)       # 빛기둥 시야 절반 크기. 뷰포트가 바뀌면 여기만 고친다 (시점/카메라 설계 대비)
+const GUIDE_VIEW_Y := 135.0                   # 빛기둥 시야 절반 높이(높이는 270 고정). 절반 폭은 View.size.x * 0.5 (가로 확장 대응)
 const BEACON_PERIOD := 1.4
 const OBJ_EVAL_EVERY := 0.25
 var _motes: Array = []
@@ -517,7 +519,7 @@ func _update_guide(d: float) -> void:
 	# 빛기둥: 대상이 카메라 시야 안일 때만, 문구와 같은 숨김 규칙(튜토리얼 점등·보스 체력바·대화…)을 따른다
 	var cam: Camera2D = p.get_node_or_null("Camera")
 	var center: Vector2 = cam.get_screen_center_position() if cam else p.global_position
-	var in_view := absf(goal.x - center.x) < GUIDE_VIEW.x and absf(goal.y - center.y) < GUIDE_VIEW.y
+	var in_view := absf(goal.x - center.x) < View.size.x * 0.5 and absf(goal.y - center.y) < GUIDE_VIEW_Y
 	var show_beacon: bool = in_view and hud != null and hud.objective_gate() and Hud.objective_mode() != "off"   # 설정 "끔" 이면 문구도 빛기둥도 없다 (§5-16)
 	_beacon_fade = move_toward(_beacon_fade, 1.0 if show_beacon else 0.0, d / 0.25)
 	if _beacon_fade <= 0.01:
@@ -823,7 +825,81 @@ func _blob(parent: Node2D, half_w: float) -> void:
 	parent.move_child(s, 0)
 
 
+# ---------------------------------------------------------------- 카메라 보강 (design/gdd/view-camera.md §5.1·§11 노브)
+## 처용 자식 Camera2D 의 position 만 움직인다(offset 은 연출 트윈 전용이라 건드리지 않는다).
+## 데드존: 처용이 포커스에서 ±16px 안이면 카메라 정지 / 룩어헤드: 입력 방향으로 (64,40) / 전투 프레이밍: 추격 중인 가장 가까운 요괴 쪽 최대 24px.
+## 맵 밖 빈 공간은 Camera2D limit 가 막는다(보강 후에도 limit 안에서만 움직인다).
+const CAM_BASE := Vector2(0, -16)
+const CAM_DEADZONE := 16.0
+const CAM_LOOK := Vector2(64, 40)
+const CAM_LOOK_RATE := 0.06      # 60fps 기준 프레임당 보간 비율
+const CAM_RELEASE_RATE := 0.14   # 입력을 놓으면 0.5초 안에 오프셋 2px 이하로 돌아온다
+const CAM_FRAME_MAX := 24.0
+const CAM_FRAME_RANGE := 280.0
+const CAM_SNAP_DIST := 80.0      # 한 프레임에 이만큼 움직이면 순간이동(리스폰·출입·테스트 --at): 부드럽게 따라가지 않고 즉시 맞춘다
+const CAM_AGGRO := ["chase", "tell", "strike", "hurt", "stagger"]
+var _cam_focus := Vector2.ZERO
+var _cam_look := Vector2.ZERO
+var _cam_still := 0.0
+var _cam_init := false
+
+
+func _update_camera(d: float) -> void:
+	var p := $Player as Node2D
+	var cam := $Player/Camera as Camera2D
+	var target := p.global_position
+	if not _cam_init or target.distance_to(_cam_focus) > CAM_SNAP_DIST:
+		_cam_init = true
+		_cam_focus = target
+		_cam_look = Vector2.ZERO
+		cam.position = CAM_BASE
+		cam.reset_smoothing()
+		return
+	var locked: bool = $Player.locked
+	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var want := dir * CAM_LOOK
+	if not locked:
+		want += _frame_offset(p)
+	# 데드존: 포커스가 처용을 ±16px 이내로 따라간다. 멈춰 서 있으면 천천히 가운데로 돌아온다.
+	var diff := target - _cam_focus
+	_cam_focus += diff - diff.clamp(Vector2(-CAM_DEADZONE, -CAM_DEADZONE), Vector2(CAM_DEADZONE, CAM_DEADZONE))
+	_cam_still = _cam_still + d if dir.length() < 0.1 else 0.0
+	if _cam_still > 0.4:
+		_cam_focus = _cam_focus.lerp(target, 1.0 - pow(1.0 - 0.06, d * 60.0))
+	var rate := CAM_RELEASE_RATE if want == Vector2.ZERO else CAM_LOOK_RATE
+	_cam_look = _cam_look.lerp(want, 1.0 - pow(1.0 - rate, d * 60.0))
+	if _cam_look.length() < 0.05 and want == Vector2.ZERO:
+		_cam_look = Vector2.ZERO
+	cam.position = CAM_BASE + (_cam_focus - target) + _cam_look
+
+
+## 추격·공격 중인 가장 가까운 요괴 방향으로 최대 CAM_FRAME_MAX px
+func _frame_offset(p: Node2D) -> Vector2:
+	var best := Vector2.ZERO
+	var bd := CAM_FRAME_RANGE
+	for e in get_tree().get_nodes_in_group("enemy"):
+		if not is_instance_valid(e) or e.is_queued_for_deletion():
+			continue
+		var st = e.get("state")
+		var live: bool = st in CAM_AGGRO or (e is PlagueGod and not st in ["idle", "wait", "kneel", "dead", "downed"])
+		if not live:
+			continue
+		var to: Vector2 = e.global_position - p.global_position
+		if to.length() < bd:
+			bd = to.length()
+			best = to
+	if best == Vector2.ZERO:
+		return Vector2.ZERO
+	return best.normalized() * minf(CAM_FRAME_MAX, bd * 0.2)
+
+
+func _on_view_changed(vs: Vector2) -> void:
+	if _ash:
+		_ash.emission_rect_extents.x = vs.x * 0.5 + 40.0   # 넓어진 뷰 전체에 먼지가 흐르게
+
+
 func _process(d: float) -> void:
+	_update_camera(d)
 	if _beacon:
 		_update_guide(d)
 		_wet_feet(d)
@@ -932,7 +1008,7 @@ func _atmosphere() -> void:
 	ash.lifetime = 7.0
 	ash.preprocess = 7.0
 	ash.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	ash.emission_rect_extents = Vector2(280, 20)
+	ash.emission_rect_extents = Vector2(View.size.x * 0.5 + 40.0, 20)
 	ash.position = Vector2(0, 150)
 	ash.direction = Vector2(0.15, -1)
 	ash.spread = 20.0
@@ -950,6 +1026,7 @@ func _atmosphere() -> void:
 	ash.material = am
 	ash.local_coords = false
 	_ash = ash
+	View.changed.connect(_on_view_changed)
 	$Player/Camera.add_child(ash)
 	# light shafts through the haze, then the HD-2D finishing pass (DoF, bloom, grade, haze, vignette)
 	var shafts_layer := CanvasLayer.new()

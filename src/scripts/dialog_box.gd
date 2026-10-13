@@ -26,13 +26,19 @@ var _knot: TextureRect
 var _knot_frames: Array[AtlasTexture] = []
 
 
+func _on_view(_s: Vector2) -> void:
+	_root.position.x = View.pad()
+
+
 func _ready() -> void:
 	layer = 20
 	process_mode = Node.PROCESS_MODE_ALWAYS  # the 행낭 menu runs while the game is paused
 	var font := _pixel_font("res://assets/fonts/Galmuri11.ttf")
 	var bold := _pixel_font("res://assets/fonts/Galmuri11-Bold.ttf")
 	_root = Control.new()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.size = Vector2(View.BASE)   # 480x270 기준 상자를 가로로 넓어진 뷰의 가운데에 둔다
+	_root.position.x = View.pad()
+	View.changed.connect(_on_view)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.visible = false
 	add_child(_root)

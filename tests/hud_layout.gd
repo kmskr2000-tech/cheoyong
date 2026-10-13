@@ -8,20 +8,26 @@ func _ck(name: String, ok: bool, extra := "") -> void:
 	print(("PASS " if ok else "FAIL ") + name + (" :: " + extra if extra != "" else ""))
 	if not ok: fails += 1
 
-func _initialize() -> void:
+## 가로 확장(view-camera A+): 480/585/600/640 폭 모두에서 같은 검사를 한다. 우측 요소는 오른쪽 가장자리에 붙어야 한다.
+func _hud_checks(vw: float) -> void:
+	var V := root.get_node("View")
+	var tag := "[%d] " % int(vw)
+	V.force_window(Vector2i(int(vw) * 4, 1080))
+	await process_frame
+	_ck(tag + "v0 뷰 폭 %d" % int(vw), is_equal_approx(V.size.x, vw) and V.size.y == 270.0, str(V.size))
 	var hud = load("res://scripts/hud.gd").new()
 	root.add_child(hud)
 	await process_frame
 	var btns: Dictionary = hud._buttons
-	_ck("h0 터치 버튼 7개", btns.size() == 7, str(btns.size()))
+	_ck(tag + "h0 터치 버튼 7개", btns.size() == 7, str(btns.size()))
 	var names: Array = btns.keys()
 	# 1) 터치 반경(원) 쌍별 겹침 없음 + 화면 안
 	var circles := {}
 	for n in names:
 		var tb: TouchScreenButton = btns[n]
 		var tex := tb.texture_normal
-		var c: Vector2 = tb.position + tex.get_size() / 2.0
-		circles[n] = [c, (tb.shape as CircleShape2D).radius, Rect2(tb.position, tex.get_size())]
+		var c: Vector2 = tb.global_position + tex.get_size() / 2.0
+		circles[n] = [c, (tb.shape as CircleShape2D).radius, Rect2(tb.global_position, tex.get_size())]
 	var worst := 999.0
 	for i in names.size():
 		for j in range(i + 1, names.size()):
@@ -30,16 +36,16 @@ func _initialize() -> void:
 			var gap: float = (a[0] as Vector2).distance_to(b[0]) - (a[1] + b[1])
 			worst = minf(worst, gap)
 			if gap < 0.0:
-				_ck("h1 터치 반경 겹침 %s/%s" % [names[i], names[j]], false, "겹침 %.1fpx" % -gap)
-	_ck("h1 터치 반경 쌍별 겹침 없음", worst >= 0.0, "최소 간격 %.1fpx" % worst)
+				_ck(tag + "h1 터치 반경 겹침 %s/%s" % [names[i], names[j]], false, "겹침 %.1fpx" % -gap)
+	_ck(tag + "h1 터치 반경 쌍별 겹침 없음", worst >= 0.0, "최소 간격 %.1fpx" % worst)
 	for n in names:
 		var c: Vector2 = circles[n][0]
 		var r: float = circles[n][1]
 		# 화면 밖으로 삐져나온 반경은 눌림에 해롭지 않지만(잘릴 뿐) 4px 넘게 나가면 손가락이 못 닿는 영역이 생긴다
-		var spill := maxf(maxf(r - c.x, c.x + r - 480.0), maxf(r - c.y, c.y + r - 270.0))
-		_ck("h2 터치 반경이 화면 밖으로 4px 넘게 안 나감 %s" % n, c.x >= 0.0 and c.y >= 0.0 and spill <= 4.0, "c=%s r=%.0f 삐져나감 %.0fpx" % [c, r, maxf(spill, 0.0)])
+		var spill := maxf(maxf(r - c.x, c.x + r - vw), maxf(r - c.y, c.y + r - 270.0))
+		_ck(tag + "h2 터치 반경이 화면 밖으로 4px 넘게 안 나감 %s" % n, c.x >= 0.0 and c.y >= 0.0 and spill <= 4.0, "c=%s r=%.0f 삐져나감 %.0fpx" % [c, r, maxf(spill, 0.0)])
 	# 2) 화면에 보이는 버튼 그림 사각형 쌍별 겹침 (누르는 곳이 아니라 눈에 보이는 겹침)
-	var vw := 0.0
+	var worst_ov := 0.0
 	for i in names.size():
 		for j in range(i + 1, names.size()):
 			# 버튼 그림은 둥글다: 사각형이 아니라 (그림 크기/2) 반지름 원으로 겹침을 본다
@@ -47,26 +53,26 @@ func _initialize() -> void:
 			var rb: Rect2 = circles[names[j]][2]
 			var ov: float = (ra.get_center().distance_to(rb.get_center())) - (minf(ra.size.x, ra.size.y) + minf(rb.size.x, rb.size.y)) / 2.0
 			if ov < 0.0:
-				vw = maxf(vw, -ov)
-				_ck("h3 버튼 그림 겹침 %s/%s" % [names[i], names[j]], false, "%.1fpx" % -ov)
-	_ck("h3 버튼 그림 쌍별 겹침 없음", vw == 0.0)
+				worst_ov = maxf(worst_ov, -ov)
+				_ck(tag + "h3 버튼 그림 겹침 %s/%s" % [names[i], names[j]], false, "%.1fpx" % -ov)
+	_ck(tag + "h3 버튼 그림 쌍별 겹침 없음", worst_ov == 0.0)
 	# 3) 가장자리 여백: 오른쪽 위 메뉴 버튼은 노치/모서리에 닿지 않아야
 	for n in names:
 		var rr: Rect2 = circles[n][2]
-		var inside := rr.position.x >= SAFE and rr.end.x <= 480.0 - SAFE and rr.position.y >= SAFE - 2.0 and rr.end.y <= 270.0 - SAFE
-		_ck("h4 가장자리 여백 %s" % n, inside, "rect=%s" % rr)
+		var inside := rr.position.x >= SAFE and rr.end.x <= vw - SAFE and rr.position.y >= SAFE - 2.0 and rr.end.y <= 270.0 - SAFE
+		_ck(tag + "h4 가장자리 여백 %s" % n, inside, "rect=%s" % rr)
 	# 4) 부적 이름표(_tal_label)는 어떤 버튼 그림과도 겹치지 않는다
 	var tl: Label = hud._tal_label
-	var tlr := Rect2(tl.position, tl.size)
+	var tlr := Rect2(tl.global_position, tl.size)
 	var okl := true
 	for n in names:
 		if tlr.intersects(circles[n][2]):
 			okl = false
-			_ck("h5 부적 이름표 겹침 %s" % n, false)
-	_ck("h5 부적 이름표 버튼과 안 겹침", okl)
+			_ck(tag + "h5 부적 이름표 겹침 %s" % n, false)
+	_ck(tag + "h5 부적 이름표 버튼과 안 겹침", okl)
 	# 5) 왼쪽 위 상태 막대/아이콘 vs 오른쪽 위 메뉴: 가로로 충분히 떨어짐
 	var menu: Rect2 = circles["menu"][2]
-	_ck("h6 메뉴 버튼이 상태 막대(좌측 130px 이내)와 안 겹침", menu.position.x > 140.0)
+	_ck(tag + "h6 메뉴 버튼이 상태 막대(좌측 130px 이내)와 안 겹침", menu.position.x > 140.0)
 	# 5b) 왼쪽 위 상태 영역: Lv 글씨·휴대품 아이콘 3개·체력/기력/신명 막대가 서로 안 겹침
 	var left: Dictionary = {}
 	left["lv"] = Rect2(hud._lv.position, hud._lv.get_minimum_size())
@@ -83,36 +89,46 @@ func _initialize() -> void:
 			if (left[lk[i]] as Rect2).intersects(left[lk[j]]):
 				# 막대 3개는 서로 11px 간격으로 쌓인다(높이 8) — 같은 열 막대끼리의 겹침만 판정
 				lok = false
-				_ck("h7 좌측 상단 겹침 %s/%s" % [lk[i], lk[j]], false, "%s %s" % [left[lk[i]], left[lk[j]]])
-	_ck("h7 좌측 상단 HUD 요소끼리 안 겹침", lok)
+				_ck(tag + "h7 좌측 상단 겹침 %s/%s" % [lk[i], lk[j]], false, "%s %s" % [left[lk[i]], left[lk[j]]])
+	_ck(tag + "h7 좌측 상단 HUD 요소끼리 안 겹침", lok)
 	# 5c) 목표 문구 띠(design/gdd/objective-marker.md §3.6): 터치 버튼 7개(h0)는 그대로, 문구는 Label 하나 — 띠가 다른 HUD 와 겹치지 않는다
 	var obj: Label = hud._obj_label
-	var orect: Rect2 = hud.OBJ_RECT   # Label.size 는 폰트 최소 높이(23)로 부풀 수 있어 글줄이 앉는 띠(OBJ_RECT)로 판정한다
-	_ck("h8a 목표 문구 Label 이 OBJ_RECT 자리·폭", obj.position == orect.position and obj.size.x == orect.size.x, "%s %s" % [obj.position, obj.size])
+	var orect: Rect2 = hud.OBJ_RECT
+	orect.position.x += V.pad()   # Label.size 는 폰트 최소 높이(23)로 부풀 수 있어 글줄이 앉는 띠(OBJ_RECT)로 판정한다
+	_ck(tag + "h8a 목표 문구 Label 이 OBJ_RECT 자리·폭", obj.position == orect.position and obj.size.x == orect.size.x, "%s %s" % [obj.position, obj.size])
 	var o_ok := true
 	for n in names:
 		if orect.intersects(circles[n][2]):
 			o_ok = false
-			_ck("h8 문구 띠 ↔ 버튼 그림 겹침 %s" % n, false, "%s %s" % [orect, circles[n][2]])
-	_ck("h8 문구 띠가 버튼 7개 그림과 안 겹침", o_ok)
+			_ck(tag + "h8 문구 띠 ↔ 버튼 그림 겹침 %s" % n, false, "%s %s" % [orect, circles[n][2]])
+	_ck(tag + "h8 문구 띠가 버튼 7개 그림과 안 겹침", o_ok)
 	for k in left.keys():
 		if orect.intersects(left[k]):
 			o_ok = false
-			_ck("h8 문구 띠 ↔ 좌측 상단 %s 겹침" % k, false, str(left[k]))
-	_ck("h8 문구 띠가 좌측 상단 상태 영역과 안 겹침(여유 %.0fpx)" % (orect.position.x - 126.0), orect.position.x >= 126.0 + 6.0)
-	_ck("h8 문구 띠가 메뉴 버튼과 안 겹침(여유 %.0fpx)" % ((menu as Rect2).position.x - orect.end.x), not orect.intersects(menu) and (menu as Rect2).position.x - orect.end.x >= SAFE)
-	_ck("h8 문구 띠가 부적 이름표와 안 겹침", not orect.intersects(tlr))
-	_ck("h8 문구 띠가 토스트 줄(y54~74)과 안 겹침", not orect.intersects(Rect2(0, 54, 480, 20)))
-	_ck("h8 문구 띠가 대화창(20,188,440,74)과 안 겹침", not orect.intersects(Rect2(20, 188, 440, 74)))
+			_ck(tag + "h8 문구 띠 ↔ 좌측 상단 %s 겹침" % k, false, str(left[k]))
+	_ck(tag + "h8 문구 띠가 좌측 상단 상태 영역과 안 겹침(여유 %.0fpx)" % (orect.position.x - 126.0), orect.position.x >= 126.0 + 6.0)
+	_ck(tag + "h8 문구 띠가 메뉴 버튼과 안 겹침(여유 %.0fpx)" % ((menu as Rect2).position.x - orect.end.x), not orect.intersects(menu) and (menu as Rect2).position.x - orect.end.x >= SAFE)
+	_ck(tag + "h8 문구 띠가 부적 이름표와 안 겹침", not orect.intersects(tlr))
+	_ck(tag + "h8 문구 띠가 토스트 줄(y54~74)과 안 겹침", not orect.intersects(Rect2(0, 54, vw, 20)))
+	_ck(tag + "h8 문구 띠가 대화창(20,188,440,74)과 안 겹침", not orect.intersects(Rect2(20 + V.pad(), 188, 440, 74)))
 	# 보스 체력바(y14~42)는 겹치므로 문구를 숨긴다(규칙 R-숨김, tests/objective_hud.gd T5) — 숨김 규칙이 있는지만 본다
-	_ck("h8 보스 체력바와 겹치는 높이라 숨김 규칙에 의존(체력바 y14 < 띠 끝 %.0f)" % orect.end.y, orect.end.y > 14.0)
+	_ck(tag + "h8 보스 체력바와 겹치는 높이라 숨김 규칙에 의존(체력바 y14 < 띠 끝 %.0f)" % orect.end.y, orect.end.y > 14.0)
 	# h9: 가장자리 여백 — 좌우는 SAFE, 위는 메뉴 버튼과 같은 상단 여유
-	_ck("h9 문구 띠 가장자리 여백", orect.position.x >= SAFE and orect.end.x <= 480.0 - SAFE and orect.position.y >= 3.0, str(orect))
+	_ck(tag + "h9 문구 띠 가장자리 여백", orect.position.x >= SAFE and orect.end.x <= vw - SAFE and orect.position.y >= 3.0, str(orect))
 	# h10: 18자 최악 문구 폭이 띠 안에 들어간다 (넓은 한글 글리프 18자 + 앞장식)
 	var ofont: Font = obj.get_theme_font("font")
 	var osz := obj.get_theme_font_size("font_size")
 	var worst_w: float = ofont.get_string_size(hud.OBJ_PREFIX + "가".repeat(18), HORIZONTAL_ALIGNMENT_LEFT, -1, osz).x
-	_ck("h10 18자 최악 문구 폭 %.0fpx <= 띠 폭 %.0fpx" % [worst_w, orect.size.x], worst_w <= orect.size.x)
+	_ck(tag + "h10 18자 최악 문구 폭 %.0fpx <= 띠 폭 %.0fpx" % [worst_w, orect.size.x], worst_w <= orect.size.x)
+	hud.queue_free()
+	await process_frame
+
+
+func _initialize() -> void:
+	for w in [480.0, 585.0, 600.0, 640.0]:
+		await _hud_checks(w)
+	root.get_node("View").force_window(Vector2i(960, 540))
+	await process_frame
 	# 6) 타이틀: 메뉴 글씨 줄들과 허구 고지 문구가 안 겹치고 가장자리 여유가 있다
 	var title = load("res://scripts/title.gd").new()
 	root.add_child(title)

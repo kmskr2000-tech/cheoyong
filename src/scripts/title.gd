@@ -10,6 +10,7 @@ var _ready_t := 0.0
 
 
 func _ready() -> void:
+	View.set_fixed(true)   # 480x270 기준으로 그린 장면
 	# test runs (--level=…, captures of levels) go straight into the game
 	var args := Array(OS.get_cmdline_user_args())
 	if "--intro" in args:  # test hook
