@@ -288,6 +288,8 @@ func _gyeongju_enter(level: Node) -> void:
 			_open_road_to_gwana(level)
 		if Game.flag("briefed") and not Game.flag("rescued"):
 			level._exit(level.def["gates"]["pyega"])
+			if Game.spawn_name == "fromGwana":   # 관아에서 막 돌아왔다: 서쪽 길이 열렸음을 한 줄로 알린다 (§3.7)
+				_announce_once("pyega_open", "서쪽 길이 열렸다.")
 
 
 ## SC1-08: 약방 앞. 난영 첫 등장.
@@ -424,12 +426,25 @@ func _night_summons(level: Node) -> void:
 	await off.walk_to(level.lift(level.def["anchors"]["gwana_gate"]), 70.0)
 	off.set_present(false)
 	p.locked = false
-	_open_road_to_gwana(level)
+	_open_road_to_gwana(level, true)
 
 
-func _open_road_to_gwana(level: Node) -> void:
+func _open_road_to_gwana(level: Node, announce := false) -> void:
 	if Levels.DATA.has("gwana"):
 		level._exit(level.def["gates"]["gwana"])
+		if announce:
+			_announce_once("gwana_open", "관아로 가는 길이 열렸다.")
+
+
+## 길이 열렸다는 토스트 — 세션당 한 번 (세이브에 새 키를 만들지 않는다)
+var _announced := {}
+
+
+func _announce_once(key: String, text: String) -> void:
+	if _announced.has(key):
+		return
+	_announced[key] = true
+	Game.say_toast(text, Color(0.8, 0.95, 1.0))
 
 
 # ================================================================ 1장 1-4 역병 조사와 폐가 (SC1-12~15)
@@ -724,31 +739,82 @@ func _farewell(level: Node) -> void:
 		Game.to_title()
 
 
-# ================================================================ 용패 길잡이 (바이블 2-5)
-## where the 용패 faintly pulls (footprint coords), or null when there's nothing to follow
-func objective(level: Node):
+# ================================================================ 용패 길잡이 · 목표 (바이블 2-5, design/gdd/objective-marker.md)
+## 목표 한 건 = {id, text, target, kind, follow, via, show}  (데이터는 design/gdd/objective-marker-table.md §3 과 1:1)
+##  text   : UI 간결체 18자 이하. "" 이면 문구만 숨김(마커는 유지). show=="fallback" 이면 20초 무입력 때만 노출(SC1-01)
+##  target : 마커가 향할 footprint 좌표(Vector2) 또는 null(마커 없음)
+##  kind   : npc · interact · exit · node · area · none
+##  follow : 움직이는 대상 추적 — "npc:<id>" / "node:<노드 이름>". 없거나 숨었으면 target 좌표로 폴백
+##  via    : 직선이 막힐 때 먼저 향할 footprint 지점들
+## 상태 없는 계산: Game.level_id + Game.flags 만 본다(세이브·디버그 진입이 따로 손대지 않아도 맞는다). 위에서 아래로 처음 맞는 행.
+const OBJ_MAX_CHARS := 18
+
+
+func _obj(id: String, text := "", target = null, kind := "none", follow := "", via := [], show := "normal") -> Dictionary:
+	return {"id": id, "text": text, "target": target, "kind": kind, "follow": follow, "via": via, "show": show}
+
+
+func objective_info(level: Node) -> Dictionary:
 	var f := func(k): return Game.flag(k)
 	match Game.level_id:
 		"beach":
-			if not f.call("flute"): return Vector2(205, 427)
-			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"): return level.def["anchors"]["yokai"]
+			if not f.call("flute"):
+				return _obj("ch1.beach.flute", "반짝이는 것을 줍는다", Vector2(205, 427), "interact", "", [], "fallback")   # 바이블 SC1-01 무음: 폴백 때만
+			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"):
+				return _obj("ch1.beach.yokai", "요괴를 정화한다", level.def["anchors"]["yokai"], "node", "node:Gaetgwi")
+			return _obj("ch1.beach.scene")
 		"gyeongju":
-			if f.call("appointed"): return null
-			if f.call("rumor"): return null if f.call("king_call") else Vector2(96, 130)
-			if not f.call("met_nanyeong"): return Vector2(220, 314)
-			if not f.call("sang_child"): return Vector2(240, 376)
-			if not f.call("night"): return Vector2(130, 237)
-			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 379)
-			if f.call("summoned") and not f.call("briefed"): return Vector2(562, 27)
+			if f.call("chapter1_done"):
+				return _obj("ch1.gyeongju.done")   # 예외 E-5
+			if f.call("appointed"):
+				return _obj("ch1.gyeongju.farewell")
+			if f.call("rumor"):
+				if f.call("king_call"):
+					return _obj("ch1.gyeongju.royal_call")
+				# SC1-21: 마을 사람에게 소문을 들으면 처용탈이 생긴다(선택 보상을 목표로 올림 — 디렉터 결정 2026-10-13)
+				if not "cheoyong" in Game.tals:
+					return _obj("ch1.gyeongju.rumor_hear", "마을 소문을 듣는다", Vector2(318, 213), "npc", "npc:villagerA")
+				return _obj("ch1.gyeongju.rumor_rest", "집에서 쉰다", Vector2(130, 237), "interact")   # 집 interact "home" (옛 (96,130) 결함 D-1 수정)
+			if not f.call("met_nanyeong"):
+				return _obj("ch1.gyeongju.apothecary", "약방에서 약재를 구한다", Vector2(220, 314), "npc", "npc:nanyeong")
+			if not f.call("sang_child"):
+				return _obj("ch1.gyeongju.child", "금줄 친 집 아이를 살핀다", Vector2(240, 376), "npc", "npc:child")
+			if not f.call("night"):
+				return _obj("ch1.gyeongju.rest", "집에서 쉰다", Vector2(130, 237), "interact")
+			if f.call("briefed") and not f.call("rescued"):
+				return _obj("ch1.gyeongju.pyega_road", "서쪽 폐가로 간다", Vector2(4, 379), "exit")
+			if f.call("summoned") and not f.call("briefed"):
+				return _obj("ch1.gyeongju.summoned", "관아로 간다", Vector2(562, 28), "exit")
+			return _obj("ch1.gyeongju.scene")   # 밤 연출(SC1-11 도입·SC1-20 난영 깨어남) 중
 		"gwana":
-			return Vector2(395, 140) if not f.call("briefed") else Vector2(100, 410)
+			if not f.call("briefed"):
+				return _obj("ch1.gwana.officer", "형방 박문을 만난다", Vector2(395, 140), "npc", "npc:gwanri")
+			return _obj("ch1.gwana.leave", "관아를 나서 폐가로 간다", Vector2(100, 410), "exit")
 		"pyega1":
-			return Vector2(146, 197)
+			return _obj("ch1.pyega1.attic", "다락으로 올라간다", Vector2(146, 197), "exit")
 		"pyega2":
 			var b = level.get_node_or_null("Boss")
-			if b and b.state == "wait": return level.def["anchors"]["boss_goal"]
+			if b and b.state == "wait":
+				if b.home_pos == Vector2.ZERO:   # 아직 깨어나기 전(사람 모습으로 앉아 있다)
+					return _obj("ch1.pyega2.deep", "폐가 안쪽으로 나아간다", level.def["anchors"]["boss_goal"], "area")
+				return _obj("ch1.pyega2.after_death", "역신 앞으로 다시 나선다", level.def["anchors"]["boss_goal"], "node", "node:Boss")
+			return _obj("ch1.pyega2.fight")   # 보스전·무릎 꿇음: 체력바·노래 점등이 말한다(E-3)
 		"palace":
-			return Vector2(256, 228)
+			return _obj("ch1.palace.audience", "편전 앞으로 나아간다", Vector2(256, 228), "area")
+	# ---- 2장: 문구는 후속(P7). 마커 좌표는 이전 동작 그대로 ----
+	var t = _objective_ch2(level)
+	return _obj("ch2." + Game.level_id, "", t, "none" if t == null else "area")
+
+
+## where the 용패 faintly pulls (footprint coords), or null when there's nothing to follow — objective_info 의 래퍼
+func objective(level: Node):
+	var t = objective_info(level).get("target")
+	return t if t is Vector2 else null
+
+
+func _objective_ch2(level: Node):
+	var f := func(k): return Game.flag(k)
+	match Game.level_id:
 		"hwagae":
 			if not f.call("raided"): return Vector2(345, 250) if f.call("ch2_start") else null
 			if not f.call("ch2_old_man"): return Vector2(385, 173)

@@ -294,12 +294,6 @@ func _exit(ex: Array) -> void:
 	add_child.call_deferred(a)
 
 
-# ---------------------------------------------------------------- 용패 guide + wet feet
-var _guide: Sprite2D
-var _guide_t := 0.0
-var _splash_cd := 0.0
-
-
 # ---------------------------------------------------------------- 한풀이: every 원혼 here sung clean
 var _earned_j := 0
 var _earned_d := 0
@@ -376,41 +370,166 @@ func _update_darkness(d: float) -> void:
 	_dark.color.a = move_toward(_dark.color.a, want, d * 1.6)
 
 
+# ---------------------------------------------------------------- 용패 길잡이 (design/gdd/objective-marker.md §3.4~3.5)
+## 가슴에서 목표 쪽으로 흐르는 빛 조각 3개 + (목표가 화면 안이면) 대상 위 빛기둥. 가까우면 말하기 점등이 이어받는다.
+const GUIDE_HANDOFF := TALK_RANGE + 6.0     # H: 이 안이면 빛 조각·빛기둥을 끄고 말하기 점등에 맡긴다 (26px 점등 시작 + 6px 여유 → 빈 구간 없음)
+const GUIDE_MOTES := 3
+const GUIDE_PERIOD := 1.6
+const GUIDE_FAR := 240.0                    # 이 거리 이상이면 크고(1.4) 밝게(0.95)
+const GUIDE_VIEW := Vector2(240, 135)       # 빛기둥 시야 절반 크기. 뷰포트가 바뀌면 여기만 고친다 (시점/카메라 설계 대비)
+const BEACON_PERIOD := 1.4
+const OBJ_EVAL_EVERY := 0.25
+var _motes: Array = []
+var _beacon: Sprite2D
+var _guide_t := 0.0
+var _splash_cd := 0.0
+var _obj: Dictionary = {}                   # 현재 목표 (Story.objective_info). 0.25초마다·progress_changed 때 갱신
+var _obj_eval_t := 0.0
+var _via_i := 0                             # 경유점 진행 (목표가 바뀌면 0으로)
+var _via_id := ""
+var _beacon_fade := 0.0
+
+
 func _make_guide() -> void:
-	_guide = Sprite2D.new()
 	var img := Image.create(5, 5, false, Image.FORMAT_RGBA8)
 	for y in 5:
 		for x in 5:
 			var d := Vector2(x - 2, y - 2).length()
 			if d < 2.6:
-				img.set_pixel(x, y, Color(0.8, 0.95, 1.0, 1.0 if d < 1.2 else 0.45))
-	_guide.texture = ImageTexture.create_from_image(img)
+				img.set_pixel(x, y, Color(1.0, 1.0, 1.0, 1.0) if d < 1.2 else Color(0.62, 0.88, 1.0, 0.85))   # 폰 야외에서도 보이도록 중심은 흰색·테두리도 진하게
+	var tex := ImageTexture.create_from_image(img)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	add.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
-	_guide.material = add
-	_guide.z_index = 45
-	_guide.z_as_relative = false
-	_guide.visible = false
-	add_child(_guide)
+	for i in GUIDE_MOTES:
+		var m := Sprite2D.new()
+		m.texture = tex
+		m.material = add
+		m.z_index = 45
+		m.z_as_relative = false
+		m.visible = false
+		add_child(m)
+		_motes.append(m)
+	# 빛기둥: 3x22 세로 그라데이션 (위로 갈수록 옅다). 같은 색(0.8,0.95,1.0), ADD
+	var bi := Image.create(3, 22, false, Image.FORMAT_RGBA8)
+	for y in 22:
+		var a := pow(float(y) / 21.0, 1.5)
+		bi.set_pixel(0, y, Color(0.8, 0.95, 1.0, a * 0.45))
+		bi.set_pixel(1, y, Color(0.8, 0.95, 1.0, a))
+		bi.set_pixel(2, y, Color(0.8, 0.95, 1.0, a * 0.45))
+	_beacon = Sprite2D.new()
+	_beacon.texture = ImageTexture.create_from_image(bi)
+	_beacon.material = add
+	_beacon.z_index = 44
+	_beacon.z_as_relative = false
+	_beacon.visible = false
+	add_child(_beacon)
+	Game.progress_changed.connect(func(): _obj_eval_t = 0.0)
+	_refresh_objective()
+
+
+func _refresh_objective() -> void:
+	_obj = Story.objective_info(self)
+	if hud:
+		hud.set_objective(_obj)
+	if _obj.get("id", "") != _via_id:
+		_via_id = _obj.get("id", "")
+		_via_i = 0
+
+
+## 목표 대상의 화면 좌표(발밑). 움직이는 대상(npc/node)은 노드를 따라가고, 숨었거나 없으면 표의 좌표로 폴백
+func goal_screen_pos(info: Dictionary) -> Variant:
+	var tgt = info.get("target")
+	if tgt == null:
+		return null
+	var follow: String = info.get("follow", "")
+	if follow.begins_with("npc:"):
+		var n := npc(follow.substr(4))
+		if n != null and n.visible:
+			return n.global_position
+	elif follow.begins_with("node:"):
+		var nd := get_node_or_null(follow.substr(5))
+		if nd is Node2D and is_instance_valid(nd) and (nd as Node2D).visible:
+			return (nd as Node2D).global_position
+	return lift(tgt)
+
+
+## 빛기둥을 세울 높이(대상 발밑 위 px) — 종류별
+func _beacon_lift(kind: String) -> float:
+	match kind:
+		"npc": return 30.0
+		"node": return 34.0
+		_: return 18.0
+
+
+## 출구 빔 폭: 목표 좌표를 중심으로 가진 출구/게이트 사각형의 폭(최대 48), 없으면 기둥 폭 그대로
+func _beam_width(tgt: Vector2) -> float:
+	var rects: Array = []
+	for ex in def.get("exits", []):
+		rects.append(ex[0])
+	for g in def.get("gates", {}).values():
+		rects.append(g[0])
+	for r in rects:
+		if (r as Rect2).get_center().distance_to(tgt) <= 3.0:
+			return minf((r as Rect2).size.x, 48.0)
+	return 3.0
 
 
 func _update_guide(d: float) -> void:
 	_guide_t += d
+	_obj_eval_t -= d
+	if _obj_eval_t <= 0.0:
+		_obj_eval_t = OBJ_EVAL_EVERY
+		_refresh_objective()
 	var p: Node2D = $Player
-	var goal = Story.objective(self)
-	if goal == null or p.locked:
-		_guide.visible = false
+	var goal = goal_screen_pos(_obj)
+	var light_on = Game.setting("obj_light")
+	if light_on == null:
+		light_on = true
+	for m in _motes:
+		m.visible = false
+	if goal == null or p.locked or not light_on:
+		_beacon.visible = false
 		return
-	var to: Vector2 = lift(goal) - p.global_position
-	if to.length() < 40.0:
-		_guide.visible = false
+	var to: Vector2 = goal - p.global_position
+	var dist := to.length()
+	if dist <= GUIDE_HANDOFF:
+		_beacon_fade = move_toward(_beacon_fade, 0.0, d / 0.25)
+		_beacon.visible = false
 		return
-	_guide.visible = true
-	# a mote that drifts out from the 용패 at his chest toward where the 탁기 is thick, then fades
-	var k := fmod(_guide_t, 1.6) / 1.6
-	_guide.global_position = p.global_position + Vector2(0, -22) + to.normalized() * (10.0 + k * 22.0)
-	_guide.modulate.a = sin(k * PI) * 0.8
+	# 직선이 막히는 곳은 경유점을 먼저 따라간다 (경유점 32px 안이면 다음으로)
+	var aim: Vector2 = goal
+	var via: Array = _obj.get("via", [])
+	while _via_i < via.size() and p.global_position.distance_to(lift(via[_via_i])) <= GUIDE_HANDOFF:
+		_via_i += 1
+	if _via_i < via.size():
+		aim = lift(via[_via_i])
+	var ato: Vector2 = aim - p.global_position
+	var far := dist >= GUIDE_FAR
+	var reach := 12.0 + clampf((dist - GUIDE_HANDOFF) / 12.0, 0.0, 34.0)   # r(d)
+	for i in GUIDE_MOTES:
+		var k := fmod(_guide_t / GUIDE_PERIOD + float(i) / GUIDE_MOTES, 1.0)
+		var m: Sprite2D = _motes[i]
+		m.visible = true
+		m.scale = Vector2.ONE * (1.4 if far else 1.0)
+		m.global_position = p.global_position + Vector2(0, -22) + ato.normalized() * (10.0 + k * reach)
+		m.modulate.a = sin(k * PI) * (0.95 if far else 0.8)
+	# 빛기둥: 대상이 카메라 시야 안일 때만, 문구와 같은 숨김 규칙(튜토리얼 점등·보스 체력바·대화…)을 따른다
+	var cam: Camera2D = p.get_node_or_null("Camera")
+	var center: Vector2 = cam.get_screen_center_position() if cam else p.global_position
+	var in_view := absf(goal.x - center.x) < GUIDE_VIEW.x and absf(goal.y - center.y) < GUIDE_VIEW.y
+	var show_beacon: bool = in_view and hud != null and hud.objective_gate() and Hud.objective_mode() != "off"   # 설정 "끔" 이면 문구도 빛기둥도 없다 (§5-16)
+	_beacon_fade = move_toward(_beacon_fade, 1.0 if show_beacon else 0.0, d / 0.25)
+	if _beacon_fade <= 0.01:
+		_beacon.visible = false
+		return
+	_beacon.visible = true
+	var kind: String = _obj.get("kind", "")
+	_beacon.global_position = goal + Vector2(0, -_beacon_lift(kind) - 11.0)
+	_beacon.scale = Vector2(1.0, 1.0)
+	if kind == "exit":
+		_beacon.scale.x = _beam_width(_obj["target"]) / 3.0
+	_beacon.modulate.a = (0.35 + 0.35 * sin(TAU * _guide_t / BEACON_PERIOD)) * _beacon_fade
 
 
 func _wet_feet(d: float) -> void:
@@ -705,7 +824,7 @@ func _blob(parent: Node2D, half_w: float) -> void:
 
 
 func _process(d: float) -> void:
-	if _guide:
+	if _beacon:
 		_update_guide(d)
 		_wet_feet(d)
 	_update_darkness(d)

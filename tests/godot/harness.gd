@@ -280,7 +280,24 @@ func _main() -> void:
 
 
 # ================================================================ chain: 타이틀 → 1절 → 타이틀
+## 목표·마커(design/gdd/objective-marker.md T3): 현재 레벨의 목표 id 가 기대와 같아질 때까지 기다렸다가 OBJ 로그를 찍는다.
+## 레벨 간 stale 검사 — id 의 레벨 접두(ch1.<레벨>.)가 현재 레벨과 같아야 한다 (이전 레벨 좌표를 들고 있지 않다는 뜻).
+var toasts: Array = []
+func obj_expect(id: String, label := "") -> void:
+	await until(func(): return lvl() != null and str(lvl()._obj.get("id", "")) == id, "목표 → " + id + (" " + label if label != "" else ""), 600)
+	var o: Dictionary = lvl()._obj
+	print("OBJ %s %s '%s' target=%s kind=%s" % [G.level_id, o["id"], o["text"], str(o["target"]), o["kind"]])
+	await must(String(o["id"]).begins_with("ch1.%s." % G.level_id), "목표 id 가 현재 레벨 것 (stale 아님): " + id)
+	if o["text"] != "":
+		await must(String(o["text"]).length() <= 18, "문구 18자 이하: " + String(o["text"]))
+
+
+func toast_count(text: String) -> int:
+	return toasts.filter(func(t): return t == text).size()
+
+
 func sc_chain() -> void:
+	G.toast.connect(func(t, _c): toasts.append(t))
 	step("타이틀 (세이브 없음)")
 	await boot("res://scenes/title.tscn")
 	await until(func(): return scene_name() == "title.tscn" and current_scene.get("_ready_t") > 0.9, "타이틀 준비", 600)
@@ -296,6 +313,8 @@ func sc_chain() -> void:
 
 	step("SC1-01 백사장 기상")
 	await until(func(): return player().state == "move" and not player().locked, "기상 연출 끝, 조작 가능", 1500)
+	await obj_expect("ch1.beach.flute", "(폴백 문구 — 20초 무입력 전엔 숨김)")
+	await must(lvl().hud.objective_alpha() < 0.01, "SC1-01 무음: 문구는 폴백 20초 전까지 보이지 않는다")
 	await must(G.flag("logo_shown") == 1, "타이틀 로고 카드가 나갔다")
 
 	step("SC1-03/04 피리 → 요괴 출현")
@@ -304,6 +323,7 @@ func sc_chain() -> void:
 	await until(func(): return lvl().get_node_or_null("Gaetgwi") != null, "갯귀 출현", 600)
 	await must(G.flag("flute") == 1, "피리 획득 플래그")
 	await until(func(): return not player().locked, "마을 사람 대사 끝", 1500)
+	await obj_expect("ch1.beach.yokai")
 
 	step("SC1-05 첫 전투 → 정화 (노래)")
 	await tp(lvl().def["anchors"]["fight_player"])
@@ -324,9 +344,11 @@ func sc_chain() -> void:
 
 	step("SC1-08 난영 첫 만남")
 	await free_player()
+	await obj_expect("ch1.gyeongju.apothecary")
 	await tp_to_npc("nanyeong")
 	await interact("nanyeong")
 	await until(func(): return G.flag("met_nanyeong") == 1 and not player().locked, "난영 대화 완료", 2000)
+	await obj_expect("ch1.gyeongju.child")
 
 	step("SC1-09 병든 아이 → 노래로 치유")
 	var child = lvl().npc("child")
@@ -335,6 +357,7 @@ func sc_chain() -> void:
 	await tick(2)
 	await sing_now()
 	await until(func(): return G.flag("sang_child") == 1 and not player().locked, "아이 치유 후 난영 대사 끝", 3000)
+	await obj_expect("ch1.gyeongju.rest")
 
 	step("SC1-10 휴식 → 혼례 컷 → 밤 (세이브)")
 	var iid := level_iid()
@@ -347,16 +370,20 @@ func sc_chain() -> void:
 
 	step("SC1-11 밤 · 관아 사람의 호출")
 	await until(func(): return G.flag("summoned") == 1 and not player().locked, "관아 사람 호출 대사 끝", 3000)
+	await obj_expect("ch1.gyeongju.summoned")
+	await must(toast_count("관아로 가는 길이 열렸다.") == 1, "열림 토스트(관아) 정확히 1회")
 	iid = level_iid()
 	await tp(gate_center("gwana"))
 	await until(func(): return level_ready("gwana", iid), "관아 도착(출구 이동)", 1500)
 
 	step("SC1-12 관아 의뢰 + 난영 쓰러짐")
 	await free_player()
+	await obj_expect("ch1.gwana.officer")
 	await tp_to_npc("gwanri")
 	await interact("gwanri")
 	await until(func(): return G.flag("briefed") == 1 and not player().locked, "의뢰 대사·일꾼 소식 끝", 3000)
 	await must(G.flag("nanyeong_fallen") == 1, "난영 쓰러짐 플래그")
+	await obj_expect("ch1.gwana.leave")
 	await must(int(G.items["insam"]) >= 4, "관아 지급 인삼정기탕 +2 (2→4)")
 	iid = level_iid()
 	await tp(lvl().def["anchors"]["exit"])
@@ -364,9 +391,12 @@ func sc_chain() -> void:
 
 	step("SC1-13 경주 → 서쪽 폐가 (마당)")
 	await free_player()
+	await obj_expect("ch1.gyeongju.pyega_road")
+	await must(toast_count("서쪽 길이 열렸다.") == 1, "열림 토스트(서쪽 길) 정확히 1회")
 	iid = level_iid()
 	await tp(gate_center("pyega"))
 	await until(func(): return level_ready("pyega1", iid), "폐가 마당 도착", 1500)
+	await obj_expect("ch1.pyega1.attic")
 	await clear_room()
 
 	step("SC1-14 폐가 다락")
@@ -375,6 +405,7 @@ func sc_chain() -> void:
 	await until(func(): return level_ready("pyega2", iid), "폐가 다락 도착", 1500)
 	var boss = lvl().get_node("Boss")
 	await must(boss.state == "wait", "역신은 사람 모습으로 앉아 있다(wait)")
+	await obj_expect("ch1.pyega2.deep")
 	await clear_room()
 	await tp(Vector2(420, 190))   # trigger close
 	await until(func(): return not player().locked, "'가깝다' 연출 끝", 1500)
@@ -382,6 +413,9 @@ func sc_chain() -> void:
 	step("SC1-15~17 최심부 · 역신 각성")
 	await tp(Vector2(562, 190))   # trigger inner
 	await until(func(): return boss.state == "idle", "역신 각성", 3000)
+	await until(func(): return lvl().hud._boss_root != null, "보스 체력바 표시", 300)
+	await tick(30)
+	await must(lvl().hud.objective_alpha() < 0.01, "보스 체력바 표시 중에는 목표 문구 숨김 (T5)")
 	await until(func(): return not player().locked, "각성 후 조작 가능", 600)
 
 	step("SC1-18 2페이즈")
@@ -408,11 +442,13 @@ func sc_chain() -> void:
 	await until(func(): return G.flag("rumor") == 1 and level_ready("gyeongju"), "소문 확산, '며칠 뒤' 경주", 5000)
 	await must(G.flag("nanyeong_woke") == 1, "난영 깨어남")
 	await free_player()
+	await obj_expect("ch1.gyeongju.rumor_hear")
 
 	step("SC1-21 소문 → 처용탈")
 	await tp_to_npc("elder")
 	await interact("elder")
 	await until(func(): return G.tal == "cheoyong" and not player().locked, "처용탈 획득", 3000)
+	await obj_expect("ch1.gyeongju.rumor_rest")
 
 	step("SC1-22 밤 · 왕의 부름 (휴식 → 내관)")
 	var iid2 := level_iid()
@@ -425,6 +461,7 @@ func sc_chain() -> void:
 
 	step("SC1-22~23 편전 · 퇴마어사 임명")
 	await free_player()
+	await obj_expect("ch1.palace.audience")
 	iid2 = level_iid()
 	await tp(Vector2(256, 228))
 	await until(func(): return G.flag("appointed") == 1, "임명 플래그", 3000)

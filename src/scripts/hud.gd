@@ -137,6 +137,7 @@ func _ready() -> void:
 	_toast.size = Vector2(480, 20)
 	_toast.modulate.a = 0.0
 	root.add_child(_toast)
+	_make_objective_label(root)
 	Game.toast.connect(show_toast)
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_touch_root.visible = DisplayServer.is_touchscreen_available() or "--touch" in OS.get_cmdline_user_args()
@@ -207,6 +208,7 @@ func _update_icons() -> void:
 func _process(_d: float) -> void:
 	_update_icons()
 	_update_charge_ring()
+	_objective_process(_d)
 	if not _touch_root.visible or _buttons.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
@@ -278,7 +280,7 @@ func _open_bag() -> void:
 	while true:
 		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
 		var i: int = await dialog.choose({"name": "행낭", "text": status},
-			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "닫기"])
+			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "안내 설정", "닫기"])
 		if i == 0:
 			if await _bag_items(dialog):
 				break
@@ -291,9 +293,30 @@ func _open_bag() -> void:
 		elif i == 4:
 			await _recall()
 			break
+		elif i == 5:
+			await _bag_guide_settings(dialog)
 		else:
 			break
 	get_tree().paused = false
+
+
+const OBJ_MODE_NAMES := {"always": "항상", "brief": "잠깐", "off": "끔"}
+
+
+## 안내 설정 (design/gdd/objective-marker.md §3.6): 목표 문구 항상/잠깐/끔 · 길잡이 빛 켜짐/끔. user://settings.json 에 저장(세이브와 분리)
+func _bag_guide_settings(dialog: DialogBox) -> void:
+	while true:
+		var light_on = Game.setting("obj_light")
+		light_on = true if light_on == null else bool(light_on)
+		var i: int = await dialog.choose({"name": "안내 설정", "text": "목표 문구는 화면 위, 길잡이 빛은 용패에서 흐른다."},
+			["목표 문구: %s" % OBJ_MODE_NAMES[objective_mode()], "길잡이 빛: %s" % ("켜짐" if light_on else "끔"), "돌아가기"])
+		if i == 0:
+			var order := ["always", "brief", "off"]
+			Game.set_setting("obj_text", order[(order.find(objective_mode()) + 1) % order.size()])
+		elif i == 1:
+			Game.set_setting("obj_light", not light_on)
+		else:
+			break
 
 
 ## 회상: the intro 「떠나는 자」 again, played over the paused level; the level is left exactly as it was
@@ -503,6 +526,155 @@ func _on_stats(hp: float, max_hp: float, ki: float, max_ki: float) -> void:
 	_ki_fill.size.x = roundf(_ki_w * clampf(ki / max_ki, 0, 1))
 
 
+# ---------------------------------------------------------------- 목표 문구 (design/gdd/objective-marker.md §3.6~3.7)
+## 상단 중앙 한 줄. 새 TouchScreenButton 이 아니라 Label 하나다(tests/hud_layout.gd h0 = 버튼 7개 유지).
+## 시점/카메라 설계가 뷰포트를 바꾸면 아래 상수(레이아웃)만 고친다 — 코드 안에 480/270 을 새로 박지 않는다.
+const OBJ_RECT := Rect2(136, 3, 308, 14)        # 좌상단 상태(~x126)·메뉴(x450~)·보스 체력바(y14~)·토스트(y54~)를 피하는 유일한 가로 띠
+const OBJ_PREFIX := "◇ "
+const OBJ_ALPHA := 0.75                         # 상시 알파
+const OBJ_FLASH := 1.5                          # 새 목표 때 알파 1.0 + 밝은 번쩍임 유지
+const OBJ_FADE := 0.25                          # 아웃/인
+const OBJ_FALLBACK_IDLE := 20.0                 # SC1-01 무음 폴백: 조작 가능 무입력 N초 → 폴백 문구
+const OBJ_FALLBACK_SHOW := 5.0
+const OBJ_BRIEF_SHOW := 5.0                     # "잠깐" 모드: 새 목표 때 노출
+const OBJ_BRIEF_IDLE := 25.0                    # "잠깐" 모드: 무입력 N초 → 재노출
+const OBJ_BRIEF_RESHOW := 4.0
+const OBJ_COLOR := Color(0.93, 0.90, 0.78)      # 진주빛
+const OBJ_COLOR_FLASH := Color(1.0, 1.0, 0.92)
+var _obj_label: Label
+var _obj_pending := {}         # level 이 계산한 최신 목표 (objective_info)
+var _obj_id := ""              # 지금 라벨이 말하는 목표
+var _obj_show := "normal"
+var _obj_alpha := 0.0
+var _obj_swap := false         # 이전 문구를 내리는 중 (다 내려가면 새 문구로 교체)
+var _obj_flash_t := 0.0
+var _obj_brief_t := 0.0
+var _obj_fb_t := 0.0
+var _obj_idle := 0.0           # 마지막 입력 후 경과 (조작 가능 상태에서만 쌓인다)
+var _obj_idle_brief := 0.0
+var _obj_force_gate = null     # 테스트 훅: true/false 로 표시 확정 조건을 덮어쓴다
+
+
+func _make_objective_label(parent: Node) -> void:
+	_obj_label = Label.new()
+	_obj_label.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
+	_obj_label.add_theme_font_size_override("font_size", 12)
+	_obj_label.add_theme_color_override("font_color", OBJ_COLOR)
+	_obj_label.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.06))
+	_obj_label.add_theme_constant_override("outline_size", 4)
+	_obj_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_obj_label.clip_text = true
+	_obj_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_obj_label.position = OBJ_RECT.position
+	_obj_label.size = OBJ_RECT.size
+	_obj_label.modulate.a = 0.0
+	parent.add_child(_obj_label)
+
+
+## level.gd 가 0.25초마다·진행도 변화 때 부른다
+func set_objective(info: Dictionary) -> void:
+	_obj_pending = info
+
+
+## 노출 모드 설정 ("always" 기본 / "brief" / "off")
+static func objective_mode() -> String:
+	var m = Game.setting("obj_text")
+	return m if m in ["always", "brief", "off"] else "always"
+
+
+## 표시 확정 조건 (§3.7) + 숨김 규칙 (R-숨김): 조작 가능하고 연출·대화·카드·페이드·일시정지·튜토리얼 점등·보스 체력바가 없을 때만 true
+func objective_gate() -> bool:
+	if _obj_force_gate != null:
+		return _obj_force_gate
+	if player == null or player.locked or get_tree().paused:
+		return false
+	var lv := get_parent()
+	if lv != null and lv.get("_talking") != null and int(lv.get("_talking")) > 0:
+		return false
+	if Game._busy or Game._fade.color.a > 0.05 or Game._card.modulate.a > 0.05:
+		return false
+	if _guide != "":                         # 튜토리얼 점등 중: "빛나는 버튼 하나" 원칙 — 글 금지
+		return false
+	if _boss_root != null and is_instance_valid(_boss_root) and not _boss_root.is_queued_for_deletion():
+		return false
+	return true
+
+
+func objective_alpha() -> float:
+	return _obj_alpha
+
+
+func objective_text() -> String:
+	return _obj_label.text if _obj_label else ""
+
+
+func _objective_input(event: InputEvent) -> void:
+	if (event is InputEventKey and event.pressed) or event is InputEventScreenTouch or event is InputEventScreenDrag \
+			or (event is InputEventMouseButton and event.pressed) or event is InputEventJoypadButton \
+			or (event is InputEventJoypadMotion and absf(event.axis_value) > 0.4):
+		_obj_idle = 0.0
+		_obj_idle_brief = 0.0
+
+
+func _objective_process(d: float) -> void:
+	if _obj_label == null:
+		return
+	var gate := objective_gate()
+	var mode := objective_mode()
+	if gate:
+		_obj_idle += d
+		_obj_idle_brief += d
+		_obj_flash_t = maxf(0.0, _obj_flash_t - d)
+	# 1) 바뀐 목표는 조작이 돌아온 순간 적용 — 이전 문구를 먼저 내린다
+	if gate and not _obj_pending.is_empty() and (_obj_pending["id"] != _obj_id or _obj_swap):
+		if _obj_alpha > 0.02 and _obj_label.text != "":
+			_obj_swap = true
+		else:
+			_apply_objective(_obj_pending)
+	# 2) 보이려는 알파
+	var want := 0.0
+	var txt := _obj_label.text
+	if gate and not _obj_swap and txt != "" and mode != "off":
+		if _obj_show == "fallback":           # 바이블 SC1-01 무음: 20초 무입력일 때만
+			if _obj_fb_t <= 0.0 and _obj_idle >= OBJ_FALLBACK_IDLE:
+				_obj_fb_t = OBJ_FALLBACK_SHOW
+				_obj_idle = 0.0
+			if _obj_fb_t > 0.0:
+				_obj_fb_t -= d
+				want = OBJ_ALPHA
+		elif mode == "always":
+			want = 1.0 if _obj_flash_t > 0.0 else OBJ_ALPHA
+		else:                                  # brief
+			if _obj_brief_t <= 0.0 and _obj_idle_brief >= OBJ_BRIEF_IDLE:
+				_obj_brief_t = OBJ_BRIEF_RESHOW
+				_obj_idle_brief = 0.0
+			if _obj_brief_t > 0.0:
+				_obj_brief_t -= d
+				want = 1.0 if _obj_flash_t > 0.0 else OBJ_ALPHA
+	elif _obj_swap:
+		want = 0.0
+	var rate := (1.0 / OBJ_FADE) if gate else (1.0 / (OBJ_FADE * 0.5))
+	_obj_alpha = move_toward(_obj_alpha, want, rate * d)
+	_obj_label.modulate.a = _obj_alpha
+	var fl := clampf(_obj_flash_t / OBJ_FLASH, 0.0, 1.0)
+	_obj_label.add_theme_color_override("font_color", OBJ_COLOR.lerp(OBJ_COLOR_FLASH, fl))
+
+
+func _apply_objective(info: Dictionary) -> void:
+	var first := _obj_id == ""
+	_obj_swap = false
+	_obj_id = info["id"]
+	_obj_show = info.get("show", "normal")
+	var t: String = info["text"]
+	_obj_label.text = (OBJ_PREFIX + t) if t != "" else ""
+	_obj_flash_t = OBJ_FLASH
+	_obj_brief_t = OBJ_BRIEF_SHOW
+	_obj_fb_t = 0.0
+	_obj_idle = 0.0
+	if t != "" and not first and _obj_show == "normal":
+		Audio.sfx("pickup", -18.0, 0.0)   # 아주 작게 — 새 목표 알림
+
+
 # ---------------------------------------------------------------- boss gauge
 var _boss_fill: TextureRect
 var _boss_root: Control
@@ -543,6 +715,7 @@ func _show_stick(at: Vector2) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	_objective_input(event)
 	if not _touch_root.visible:
 		return
 	if event is InputEventScreenTouch:

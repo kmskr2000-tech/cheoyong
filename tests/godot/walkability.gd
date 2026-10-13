@@ -39,6 +39,7 @@ const LIVE := {
 	"den3:start": [],
 }
 var live := false
+var obj_goal := ""   # T2(목표마커): "x,y" footprint — 스폰에서 그 지점까지 직선이 뚫려 있는지·우회 비율·via 후보를 출력하고 끝낸다
 var G: Node
 var level: Node
 var space: PhysicsDirectSpaceState2D
@@ -63,6 +64,7 @@ func _initialize() -> void:
 		elif a.begins_with("--flags="): flags = a.get_slice("=", 1)
 		elif a.begins_with("--dump="): dump = a.get_slice("=", 1)
 		elif a == "--live": live = true
+		elif a.begins_with("--obj="): obj_goal = a.get_slice("=", 1)
 	G = root.get_node("Game")
 	G.level_id = map_id
 	G.spawn_name = spawn
@@ -291,6 +293,34 @@ func _main() -> void:
 		_fail("시작 위치가 막혀 있음 %s" % str(player.position))
 		return
 	var prev := _bfs(start)
+	if obj_goal != "":
+		var gp := Vector2(float(obj_goal.get_slice(",", 0)), float(obj_goal.get_slice(",", 1)))
+		var gs: Vector2 = level.lift(gp)
+		var gc := _near(prev, gs, 20.0)   # NPC 는 몸이 막고 있으므로 말 걸 거리 안쪽까지
+		if gc.x == -9999:
+			print("OBJ_VIA %s %s->%s UNREACHABLE" % [map_id, G.spawn_name, obj_goal])
+			quit(1)
+			return
+		var path := _path(prev, gc)
+		var plen := 0.0
+		for i in range(1, path.size()):
+			plen += (path[i] as Vector2).distance_to(path[i - 1])
+		var straight := player.position.distance_to(gs)
+		var free := _line_free(player.position, gs)
+		var corner := player.position
+		for pt in path:
+			if _line_free(player.position, pt):
+				corner = pt
+		var corner_fp := Vector2(corner.x, 0)   # lift() 역변환(근사): 화면 y 에 가장 가까운 footprint y
+		var bestd := 1e9
+		for yy in range(0, int(m["size"][1]) + 40):
+			var dd := absf(level.lift(Vector2(corner.x, yy)).y - corner.y)
+			if dd < bestd:
+				bestd = dd
+				corner_fp.y = yy
+		print("OBJ_VIA %s %s->%s straight_free=%s detour=%.2f path=%.0f straight=%.0f corner_fp=%s" % [map_id, G.spawn_name, obj_goal, str(free), plen / maxf(straight, 1.0), plen, straight, str(corner_fp)])
+		quit(0)
+		return
 	if live:
 		for i in 3:
 			await physics_frame   # 출구·트리거 Area 는 call_deferred 로 붙으므로 기다린 뒤에 끈다
