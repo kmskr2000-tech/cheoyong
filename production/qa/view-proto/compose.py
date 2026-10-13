@@ -57,7 +57,7 @@ def grid(scene, title, cols=2, aggro=False, out=None):
     rows = (len(ps) + cols - 1) // cols
     head = 70
     sheet = Image.new('RGB', (cols * w + (cols + 1) * 12, head + rows * (h + 12) + 12), (10, 10, 16))
-    ImageDraw.Draw(sheet).text((12, 16), title + '   (기기: 아이폰 가로 2556×1179 px = 393×852pt @3x, 정수 배율 nearest, 모든 칸 같은 비율로 축소)', font=f_big, fill=(255, 255, 255))
+    ImageDraw.Draw(sheet).text((12, 16), title + '  [아이폰 가로 2556×1179px 기준·정수배율]', font=f_big, fill=(255, 255, 255))
     for i, p in enumerate(ps):
         sheet.paste(p, (12 + (i % cols) * (w + 12), head + (i // cols) * (h + 12)))
     o = os.path.join(HERE, out or 'cmp_%s.png' % scene)

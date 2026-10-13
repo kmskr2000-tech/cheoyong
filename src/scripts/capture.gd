@@ -174,6 +174,12 @@ func _process(_delta: float) -> void:
 	if perf: _perf_report()
 	if not (perf and DisplayServer.get_name() == "headless"):
 		get_viewport().get_texture().get_image().save_png(out)
+	var hp := get_tree().current_scene.get_node_or_null("Player") if get_tree().current_scene else null
+	if hp != null:
+		print("HERO_SCREEN ", hp.get_global_transform_with_canvas().origin)
+	if view_mode != "a":
+		var st := get_viewport().get_screen_transform()
+		print("VIEWPORT size=", get_viewport().get_visible_rect().size, " display_scale=", st.x.x, " window=", get_window().size)
 	print("t=", Time.get_ticks_msec(), "ms  captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	var pl = get_tree().current_scene.get_node_or_null("Player")
 	var bs = get_tree().current_scene.get_node_or_null("Boss")
