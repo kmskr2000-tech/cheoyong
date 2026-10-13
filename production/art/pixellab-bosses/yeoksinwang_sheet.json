@@ -1,0 +1,22 @@
+{
+ "boss": "5장 역신왕",
+ "cell": [
+  64,
+  64
+ ],
+ "sheet": "yeoksinwang_sheet.png",
+ "rows": [
+  {
+   "row": 0,
+   "name": "base",
+   "frames": 1,
+   "fps": 0,
+   "facing": "east(side)"
+  }
+ ],
+ "notes": "west = horizontal flip. hit = idle frame + white flash (not generated). BASE ONLY: animations not generated (Pixellab 402 quota exhausted).",
+ "generations": {
+  "base": 1,
+  "animate": 0
+ }
+}

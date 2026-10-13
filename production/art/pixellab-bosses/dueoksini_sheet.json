@@ -1,0 +1,43 @@
+{
+ "boss": "2장 두억시니",
+ "cell": [
+  64,
+  64
+ ],
+ "sheet": "dueoksini_sheet.png",
+ "rows": [
+  {
+   "row": 0,
+   "name": "base",
+   "frames": 1,
+   "fps": 0,
+   "facing": "east(side)"
+  },
+  {
+   "row": 1,
+   "name": "idle",
+   "frames": 4,
+   "fps": 6,
+   "facing": "east(side)"
+  },
+  {
+   "row": 2,
+   "name": "attack",
+   "frames": 4,
+   "fps": 10,
+   "facing": "east(side)"
+  },
+  {
+   "row": 3,
+   "name": "kneel",
+   "frames": 4,
+   "fps": 6,
+   "facing": "east(side)"
+  }
+ ],
+ "notes": "west = horizontal flip. hit = idle frame + white flash (not generated). ",
+ "generations": {
+  "base": 1,
+  "animate": 3
+ }
+}

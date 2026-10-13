@@ -1,0 +1,16 @@
+/animate-with-text 200 47 s
+usage {'type': 'generations', 'generations': 1.0}
+/animate-with-text 200 39 s
+usage {'type': 'generations', 'generations': 1.0}
+/animate-with-text 200 38 s
+usage {'type': 'generations', 'generations': 1.0}
+done b1_yeoksin
+/animate-with-text 200 34 s
+usage {'type': 'generations', 'generations': 1.0}
+/animate-with-text 200 29 s
+usage {'type': 'generations', 'generations': 1.0}
+/animate-with-text 200 39 s
+usage {'type': 'generations', 'generations': 1.0}
+done b2_dueoksini
+/animate-with-text 402 7 s
+ERROR 402 {"detail":"Insufficient generations and credits. Generations: 40.0/40.0, Credits: 0.0"}
