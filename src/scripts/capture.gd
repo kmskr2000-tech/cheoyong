@@ -10,6 +10,8 @@ var seq := {} # frame -> action tapped on that frame
 var frame_i := 0
 ## --perf: 프레임 시간·드로우콜·메모리 표본 수집 (헤드리스 한계: 소프트웨어 렌더라 절대 fps가 아니라 전후 비교용)
 var perf := false
+var burst := ""   # --burst=시작프레임:간격:장수  (out 파일명에 _NN 을 붙여 연속 캡처 + 플레이어 애니 상태 출력)
+var _burst_n := 0
 var perf_warm := 60
 var _pw: Array[float] = []   # wall frame ms
 var _pp: Array[float] = []   # script _process ms (Performance.TIME_PROCESS)
@@ -36,6 +38,7 @@ func _ready() -> void:
 		if a.begins_with("--capture="): out = a.get_slice("=", 1)
 		elif a.begins_with("--frames="): frames = int(a.get_slice("=", 1))
 		elif a == "--perf": perf = true
+		elif a.begins_with("--burst="): burst = a.get_slice("=", 1)
 		elif a.begins_with("--hold="): hold = a.get_slice("=", 1)
 		elif a.begins_with("--at="): at = a.get_slice("=", 1)
 		elif a.begins_with("--seq="):
@@ -126,6 +129,14 @@ func _process(_delta: float) -> void:
 			ev.action = seq[f]
 			ev.pressed = f == frame_i
 			Input.parse_input_event(ev)
+	if burst != "":
+		var b := burst.split(":")
+		var st := int(b[0]); var step := int(b[1]); var cnt := int(b[2])
+		if frame_i >= st and (frame_i - st) % step == 0 and _burst_n < cnt:
+			var pl0 = get_tree().current_scene.get_node_or_null("Player")
+			get_viewport().get_texture().get_image().save_png(out.get_basename() + "_%02d.png" % _burst_n)
+			if pl0: print("BURST ", _burst_n, " f=", frame_i, " pos=", pl0.position, " anim=", pl0.sprite.animation, " frame=", pl0.sprite.frame, " flip=", pl0.sprite.flip_h)
+			_burst_n += 1
 	frames -= 1
 	if frames > 0 or _finishing:
 		return

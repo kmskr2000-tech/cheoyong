@@ -10,7 +10,9 @@ signal sang(purified: int)
 signal sin_changed(value: float)
 signal talisman_changed(kind: String)
 
-const SPEED := 72.0
+const SPEED := 92.0   # 폰 피드백 8번: 72 → 92 (+28%). 근거는 production/qa/walk-anim.md
+const WALK_REF := 72.0   # 걷기 사이클 한 프레임(8fps)이 발 닿는 한 걸음에 맞던 기준 속도 — 실제 속도/이 값으로 재생 속도를 맞춘다
+const BASE_OFFSET := Vector2(0, 64.0 / 2.0 - 58.0)   # FRAME.y / 2 - FEET_ROW
 const FRAME := Vector2i(64, 64)   # Drive 도트 시트 임포트(art/import_hero.py): 64x64 셀, 공격 이펙트가 들어갈 여유
 const FEET_ROW := 58 # feet row inside the 64px cell; the node origin sits on it
 
@@ -32,7 +34,7 @@ const COMBO := [
 	{"from": 0.0, "to": 0.0, "time": 0.34, "dmg": 18, "reach": 42.0, "thrust": true},
 ]
 const ROLL_TIME := 0.32
-const ROLL_SPEED := 200.0
+const ROLL_SPEED := 256.0   # 걷기 +28%에 맞춰 같은 비율로(구르기 꼬리 속도 0.4배가 걷기보다 느려지지 않게). 구르기 시간·무적은 그대로
 const CT := preload("res://scripts/combat_tuning.gd")   # 전투 상수 (CS-08)
 const CFX := preload("res://scripts/fx/combat_fx.gd")   # 전투 신호 이펙트 (아트팀)
 
@@ -207,6 +209,8 @@ func _physics_process(delta: float) -> void:
 	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
 	if state == "dead":
 		return
+	sprite.speed_scale = 1.0   # 걷기 사이클 보폭 동기·튕김은 _move 가 매 틱 다시 건다 (다른 상태로 새지 않게)
+	sprite.offset = BASE_OFFSET
 	_free_t = 0.0 if locked else _free_t + delta   # 대사가 끝난 뒤 같은 확인 눌림이 곧바로 다시 말을 거는 일 방지
 	slow_t = maxf(0.0, slow_t - delta)
 	haste_t = maxf(0.0, haste_t - delta)
@@ -305,7 +309,9 @@ func _move(dir: Vector2) -> void:
 		_pose(facing + "_hurt", 0)
 		return
 	var row := "right" if facing == "left" else facing
-	var anim := row + ("_walk" if dir != Vector2.ZERO else "_idle")
+	# 실제로 움직일 때만 걷는다: 벽에 막혀 제자리면 idle (입력만 있고 발만 구르는 '미끄럼' 방지)
+	var moving := dir != Vector2.ZERO and get_real_velocity().length() > 6.0
+	var anim := row + ("_walk" if moving else "_idle")
 	if anim == "down_idle" and _last_h < 0.0:
 		anim = "downl_idle"   # the 3/4 idle turns toward the side he last moved to
 	sprite.flip_h = facing == "left"
@@ -313,6 +319,10 @@ func _move(dir: Vector2) -> void:
 	sprite.scale = Vector2.ONE
 	if sprite.animation != anim:
 		sprite.play(anim)
+	if moving:
+		# 보폭 동기: 속도가 빠르면 사이클도 빨라진다(느려짐·연풍·신명 포함). 발 닿는 프레임(홀수 인덱스=지나가는 자세)마다 몸이 1px 솟는다
+		sprite.speed_scale = clampf(get_real_velocity().length() / WALK_REF, 0.5, 2.0)
+		sprite.offset = BASE_OFFSET + Vector2(0, -1.0 if sprite.frame % 2 == 1 else 0.0)
 
 
 func _face(dir: Vector2) -> void:
