@@ -120,3 +120,14 @@
   · 구르기: 꼬리 속도 256×0.4=102 > 걷기 92(문서 근거 정확). 구르기 시간·무적 불변이라 타이밍 테스트 영향 없음(cs 11/11 로 확인).
   · 도주 과다 의견(수정 금지): 92 vs dog 62·pado 60 = 1.5×, sangun 56·bulgae 56(강화 84)·jangsanbeom 58. enemy.gd 에는 **리쉬/어그로 해제가 없어**(idle→chase 130px 후 추격 지속) 달아나도 추격이 끝나지 않고, 달리는 동안엔 요괴가 접근하지 못해 '순수 도주'로 전투를 회피하기 쉬워짐. 단 (a) 느려짐 중엔 46 으로 dog/pado 에 따라잡힘(함정 의미 유지), (b) 도주하면 정화·덕망 보상이 없고 보스는 구역 고정, (c) 원거리형(keep)은 sp 로 거리 유지라 영향 적음. → **불합격 사유 아님.** 권고: 폰 체감 후 너무 쉬우면 추격형 3종(dog·pado·sangun) 속도를 +10~15%(68~70) 또는 추격 중 대시 돌진 빈도로 조정, 속도 자체(92)는 맵 횡단 단축 목적상 유지. 어그로 ch2_aggro 는 정지 판정이라 속도 상향 영향 없음(PASS 확인).
 - 미해결(사람 확인): 폰에서 걷기 보폭 '미끄럼' 체감·도주 난이도. 머지 판단은 디렉터. 로그 ~/rpg-logs/audit-batch/walk/.
+
+## 순회 13 (2026-10-13 15:xx, 1회성, 일괄검증) — asset/intro-polish 8ba40c7 (worktree dev/wt-audit-intro)
+- [감사] **총평: 검증 통과 (진행 로직·타이밍·자막 불변 확인, 회귀 PASS, 달·용궁 육안 확인 OK). 권고 없음(경미 메모 1).**
+- ①범위 — **통과.** `git diff main...8ba40c7` 26파일 +281/-13. 코드: intro.gd(+92/-1)·title.gd(+26)·capture.gd(+4, `--every` 디버그 옵션). **intro.gd 의 삭제·변경 1줄은 `_taki` 입자 색 ramp(검정→보라, 가시화) 뿐**; `_play`·`_finish`·`_narrate`·`_fade_in/out`·`dialog.say` 호출·await 순서·자막 문자열("바다가 탁해지면, 용왕도 탁해진다."/"셋째 아들은 노래를 안고 물 위로 올랐다.")·길이 수치(3.0/3.2/1.6/0.8…) diff 0 → 진행 로직·타이밍·자막 불변. 추가분은 `_glow`·`_motes`·`_push`(전부 `_shot`/`head` 노드에 묶인 트윈·파티클, 샷 노드가 free 되면 함께 소멸하며 await 대상 아님 → 총 재생 길이 불변). title.gd 는 `_moon_glow()` 호출 1줄+함수 추가뿐, 메뉴·진행 불변. story.gd(로고 자막 "노래가 완성되면 —")·game.gd·combat_tuning.gd·levels.gd diff 0, 세이브 포맷 불변. 자산은 src/assets/intro/ 6개(교체 5·신규 intro_sea_mid.png)와 art/intro*.py·QA 문서/캡처뿐.
+- ②재실행(godot flock, 이 팁 8ba40c7, 로그 ~/rpg-logs/audit-batch/intro/): save_check **42 PASS** / smoke_godot **13/13 PASS**(title·intro 포함) / art_walk **12맵 PASS** / combat_strategy **11/11 PASS** / ch2_aggro **9/9 PASS** / chapter1_playthrough chain 22스텝·88체크 + save_mid·continue_mid·corrupt_save·death·boss_retry **6/6 PASS** / ch2 5종 PASS. SCRIPT ERROR 0건.
+- ③육안(내가 새로 캡처, xvfb `--title --frames=150`, `--intro --every=60 --frames=3300` + confirm 탭, 팁 코드): 
+  · **타이틀:** 달 본체는 선명한 흰 원반 그대로(알파 0.24 번짐이 원반을 날리지 않고 은은한 후광만), 별·달길·메뉴·고지 문구 정상.
+  · **샷4(밤바다):** 달 원반 흰색 유지(숨쉬기 따라 후광이 0.17~0.24 사이 변해도 원반 윤곽 보존; 인트로 번짐은 0.26), 마을 창불 4~6점 주황색 + 반영, 달길 반짝임, 처용 머리 일렁임, 자막 정상 노출. 흰 판·과노출 없음. 
+  · **용궁(샷1):** 원경 실루엣이 배경과 분리돼 읽힘(림라이트·창불·종 달린 용마루 + 진주빛 번짐), 중경 산호·보랏빛 탁기 입자 확인. 자막 가독 양호. **샷2(정전):** 청해파 바닥+보라 카펫 러너, 산호·큰 진주 2·들보 진주 줄·단청 기둥·창밖 풍경, 진주등 글로우가 인물 아래라 용왕·형제 번짐 없음, 용왕 침상 등불 확인. 전/후 QA 캡처의 '전' 용왕 스프라이트 차이는 문서가 밝힌 대로 main d707187 효과.
+  · 메모(경미): 샷1 하단 어두운 해저 띠가 완전히 사라진 건 아니고 어두운 디더 바닥으로 남아 자막이 그 위에 뜸 — 가독에 문제는 없음. 폰 저사양에서 CPUParticles(preprocess 9s·각 28~34개)·가산 글로우 몇 장의 부하는 헤드리스 비교 불가 → 폰 체감 확인 항목.
+- 미해결(사람 확인): 폰 저사양 프레임, 푸시인 연출 취향. 머지 판단은 디렉터. 로그 ~/rpg-logs/audit-batch/intro/.
