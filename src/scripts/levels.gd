@@ -253,7 +253,7 @@ const DATA := {
 		"exits": [[Rect2(0, 176, 6, 48), "den1", "fromDen2"], [Rect2(628, 176, 8, 48), "den3", "start"]],
 		"anchors": {"door": Rect2(446, 170, 14, 60), "exit": Vector2(610, 200)},
 	},
-	# 두억시니의 방 — 지형 den3(아레나 ≥300×300). M2 는 입장 연출(SC2-06·07)까지, 전투는 다음 마일스톤.
+	# 두억시니의 방 — 지형 den3(아레나 ≥300×300). M2: 입장 연출(SC2-06·07). M3: 두억시니전(gate 트리거에서 보스 생성, anchors.boss·boss_respawn).
 	"den3": {
 		"music": "dread", "amb": "",
 		"name": "두억시니의 방",
@@ -266,6 +266,6 @@ const DATA := {
 		"enemies": [],
 		"triggers": [[Rect2(70, 170, 40, 60), "gate"]],
 		"exits": [[Rect2(0, 176, 6, 48), "den2", "fromDen3"]],
-		"anchors": {"door": Rect2(26, 170, 16, 60), "hall": Vector2(460, 200), "exit": Vector2(14, 200)},
+		"anchors": {"door": Rect2(26, 170, 16, 60), "hall": Vector2(460, 200), "exit": Vector2(14, 200), "boss": Vector2(460, 200), "boss_respawn": Vector2(120, 200)},
 	},
 }

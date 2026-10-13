@@ -172,6 +172,19 @@ func tear_desc() -> String:
 	return "독기 지속 피해 약 %d%% 감소" % roundi(TEAR_MIASMA_CUT * 100.0)
 
 
+## 장신구 「도깨비 감투」(두억시니 정화 드롭): 은신 요괴를 화염·피격으로 드러내는 시간 +0.5초. 2장 이전에는 얻을 수 없다.
+const GAMTU_NAME := "도깨비 감투"
+const GAMTU_REVEAL_BONUS := 0.5
+
+
+func has_gamtu() -> bool:
+	return GAMTU_NAME in accessories
+
+
+func gamtu_desc() -> String:
+	return "은신한 적이 드러나 있는 시간 +%.1f초" % GAMTU_REVEAL_BONUS
+
+
 func miasma_dmg(base: int) -> int:
 	return maxi(1, int(round(base * (1.0 - TEAR_MIASMA_CUT)))) if has_tear() else base
 
@@ -238,14 +251,14 @@ func reward_bonus(jg: int, dk: int, where: Vector2, parent: Node) -> void:
 
 func dogam_count() -> int:
 	var n := 0
-	for k in Bestiary.ENTRIES:
+	for k in Bestiary.all():
 		if dogam.has(k):
 			n += 1
 	return n
 
 
 func _dogam_milestones() -> void:
-	var total := Bestiary.ENTRIES.size()
+	var total := Bestiary.all().size()
 	var n := dogam_count()
 	if n * 2 >= total and not flag("dogam_half"):
 		set_flag("dogam_half")

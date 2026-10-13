@@ -67,5 +67,21 @@ const ENTRIES := {
 }
 
 
+## 2장 신규 항목 (ch2 스위치가 켜졌을 때만 도감에 오른다 — 꺼진 빌드의 도감 총수 21 은 그대로). 설계서 §8: 21→22종
+const ENTRIES2 := {
+	"dueoksini": {"name": "두억시니", "family": "도깨비", "tier": "boss",
+		"lore": "밤에 사람을 해치는 야차라 전한다. 이 이야기에서는 버려진 절구에 깃든 정령이다."},
+}
+
+
+## 도감에 보이는 전체 목록: 기본 ENTRIES, 2장 스위치가 켜졌으면 ENTRIES2 포함
+static func all() -> Dictionary:
+	if not Game.ch2_enabled():
+		return ENTRIES
+	var d := ENTRIES.duplicate()
+	d.merge(ENTRIES2)
+	return d
+
+
 static func entry(kind: String) -> Dictionary:
-	return ENTRIES.get(kind, {"name": kind, "family": "역병", "tier": "normal", "lore": ""})
+	return ENTRIES.get(kind, ENTRIES2.get(kind, {"name": kind, "family": "역병", "tier": "normal", "lore": ""}))

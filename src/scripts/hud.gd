@@ -302,7 +302,7 @@ func _open_bag() -> void:
 	while true:
 		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
 		var i: int = await dialog.choose({"name": "행낭", "text": status},
-			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "안내 설정", "닫기"])
+			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.all().size()], "지닌 것", "회상", "안내 설정", "닫기"])
 		if i == 0:
 			if await _bag_items(dialog):
 				break
@@ -387,14 +387,14 @@ func _bag_items(dialog: DialogBox) -> bool:
 
 ## 요괴 도감: six to a page; unknown ones stay hidden
 func _bag_dogam(dialog: DialogBox) -> void:
-	var keys: Array = Bestiary.ENTRIES.keys()
+	var keys: Array = Bestiary.all().keys()
 	var page := 0
 	var per := 5
 	while true:
 		var opts := []
 		var shown := keys.slice(page * per, page * per + per)
 		for k in shown:
-			var e: Dictionary = Bestiary.ENTRIES[k]
+			var e: Dictionary = Bestiary.all()[k]
 			opts.append(("%s%s" % ["★ " if e["tier"] != "normal" else "", e["name"]]) if Game.dogam.has(k) else "？？？")
 		var has_next := (page + 1) * per < keys.size()
 		opts.append("다음 쪽" if has_next else "첫 쪽")
@@ -405,7 +405,7 @@ func _bag_dogam(dialog: DialogBox) -> void:
 		elif i > shown.size():
 			return
 		elif Game.dogam.has(shown[i]):
-			var e: Dictionary = Bestiary.ENTRIES[shown[i]]
+			var e: Dictionary = Bestiary.all()[shown[i]]
 			var tier: String = {"normal": "", "elite": " · 정예", "boss": " · 보스"}[e["tier"]]
 			await dialog.choose({"name": e["name"], "text": "%s 계열%s · 정화 %d번\n%s" % [e["family"], tier, int(Game.dogam[shown[i]]), e["lore"]]}, ["닫기"])
 

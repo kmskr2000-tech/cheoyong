@@ -128,6 +128,7 @@ var gim_t := 4.0              # timer for periodic gimmicks
 var aux_t := 0.0              # secondary timer (eclipse, blackout, lure…)
 var aux_v := Vector2.ZERO
 var stagger_time := 0.0
+var no_reward := false       # 두억시니 졸개: 정화해도 정기·덕망·도감·한풀이 보상이 없다 (소리·체력 회복은 그대로)
 var _tell_locked := false    # 이번 예고에서 tell_lock 을 이미 내보냈는지
 var is_clone := false
 var life_t := 6.0
@@ -626,7 +627,7 @@ func take_hit(dmg: int, dir: Vector2, heavy := false, quiet := false, charged :=
 	elif CT.ARMOR.has(kind):
 		mult = CT.ARMOR[kind]
 	dmg = int(ceil(dmg * mult))
-	reveal_t = 2.0
+	reveal_t = 2.0 + (Game.GAMTU_REVEAL_BONUS if Game.has_gamtu() else 0.0)   # 도깨비 감투(2장)
 	if not quiet:
 		Audio.sfx("hit", -3.0)
 	if kind == "eodukssini":
@@ -733,7 +734,7 @@ func _purify() -> void:
 	CFX.clear_sigil(self)
 	if not is_clone:
 		CFX.purify(get_parent(), global_position)   # 연꽃이 피고 맑은 넋이 오른다 (아트팀)
-	if not is_clone:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
+	if not is_clone and not no_reward:   # 맑아진 탁기 → 정기·덕망 (growth-system §1)
 		var lv: Node = get_tree().current_scene
 		var r := Game.reward_purify(kind, global_position, get_parent())
 		if lv.has_method("on_purified"):
