@@ -66,5 +66,9 @@
 ## 4. 챕터2 영향
 광원 코드가 맵 공통이라 hwagae·jiri_path·old_village·den1~3 에도 같은 변경이 적용된다. 위 표대로 전부 halo 가 `off` 수준이고 어두운 굴·마을은 대비 유지/상승. 에셋·데이터 무변경.
 
-## 5. 회귀
-smoke_godot / save_check / combat_strategy / art_walk / chapter1_playthrough — 결과는 아래(실행 후 갱신).
+## 5. 회귀 (로그 ~/logs/art-glow/reg, godot.lock 직렬화)
+- smoke_godot: 13개 중 12 PASS, `boss` 1건만 FAIL(rc=124 = 스크립트 180초 시간 초과, VM load 8~12 환경). 같은 훅(`--boss --frames=400`)을 시간 제한 400초로 직접 재실행 → rc=0·SCRIPT ERROR 없음·보스 hp 1000 정상 기동(`~/logs/art-glow/boss400.log`). 광원과 무관한 부하성 시간 초과로 판단(보스 캡처 90프레임 측정도 정상).
+- save_check: SAVE_CHECK PASS (42 checks). (래퍼 rc=143 은 flock 래핑 종료 신호, 검사 결과는 PASS)
+- combat_strategy: 전 시나리오 PASS (rc=0).
+- art_walk: 12맵 전부 PASS (rc=0).
+- chapter1_playthrough: godot.lock 대기열(타 팀 6개)에 막혀 기한 내 미실행. 이번 변경은 광원 노드 파라미터·light_mask 뿐이라 스토리·세이브 로직 무접촉이나, 락 확보 즉시 실행 필요 — 디렉터 확인 요망.
