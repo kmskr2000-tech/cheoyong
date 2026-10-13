@@ -518,7 +518,7 @@ func _update_guide(d: float) -> void:
 	var cam: Camera2D = p.get_node_or_null("Camera")
 	var center: Vector2 = cam.get_screen_center_position() if cam else p.global_position
 	var in_view := absf(goal.x - center.x) < GUIDE_VIEW.x and absf(goal.y - center.y) < GUIDE_VIEW.y
-	var show_beacon: bool = in_view and hud != null and hud.objective_gate()
+	var show_beacon: bool = in_view and hud != null and hud.objective_gate() and Hud.objective_mode() != "off"   # 설정 "끔" 이면 문구도 빛기둥도 없다 (§5-16)
 	_beacon_fade = move_toward(_beacon_fade, 1.0 if show_beacon else 0.0, d / 0.25)
 	if _beacon_fade <= 0.01:
 		_beacon.visible = false
