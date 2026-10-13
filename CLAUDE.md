@@ -17,7 +17,7 @@
 - 튜토리얼은 BotW식: "○○를 눌러보세요" 텍스트 금지, **빛나는 버튼은 한 번에 하나**, 상호작용은 "다가가면 버튼이 빛난다"로 통일.
 
 ## 엔진·구조
-- Godot 4.4, GL Compatibility, 480x270 정수 배율 픽셀 퍼펙트. 프로젝트는 `src/`(= Godot 코드 루트, `project.godot` 위치. 템플릿 규약, ADR-001).
+- Godot 4.4, GL Compatibility, 논리 높이 270 고정·정수 배율 픽셀 퍼펙트(가로는 기기 비율대로 480~640, 480 폭 기기에서는 480x270; `src/scripts/view.gd`, design/gdd/view-camera.md 1단계). 프로젝트는 `src/`(= Godot 코드 루트, `project.godot` 위치. 템플릿 규약, ADR-001).
 - 흐름: `title.tscn` → `intro.tscn`(인트로 샷 1~4) → `level.tscn`(모든 레벨 공용, `Levels.DATA[Game.level_id]`).
 - 스토리 비트는 전부 `scripts/story.gd`(오토로드 Story): `on_enter` / `interact` / `trigger` / `objective`(용패 길잡이). 진행은 `Game.flags`.
 - 레벨 데이터 `scripts/levels.gd`: props(5번째 칸 = 표시 조건 플래그), npcs(6번째 칸 "hidden"), interact, triggers, vents, exits, ambient.

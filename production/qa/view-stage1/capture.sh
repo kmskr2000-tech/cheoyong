@@ -23,8 +23,10 @@ for row in "${MAPS[@]}"; do
   ex=(); [ -n "$extra" ] && ex=("$extra")
   for dev in iphone:2556x1179 galaxy:2400x1080; do
     d=${dev%%:*}; win=${dev#*:}
-    cap "${m}_${d}_spawn" "$win" 40 --level="$m" "${ex[@]}"
-    cap "${m}_${d}_tl" "$win" 40 --level="$m" "${ex[@]}" --at=30,-30
+    if [ "$d" = iphone ]; then   # 아이폰: 스폰·좌상단·우하단 구석, 갤럭시: 우하단 구석(가장 넓은 폭 600)
+      cap "${m}_${d}_spawn" "$win" 40 --level="$m" "${ex[@]}"
+      cap "${m}_${d}_tl" "$win" 40 --level="$m" "${ex[@]}" --at=30,-30
+    fi
     cap "${m}_${d}_br" "$win" 40 --level="$m" "${ex[@]}" --at=$((w-30)),$((b-16))
   done
 done

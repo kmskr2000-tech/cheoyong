@@ -29,6 +29,7 @@ func _main() -> void:
 	var G: Node = root.get_node("Game")
 	var V: Node = root.get_node("View")
 	for m in maps:
+		G.set_flag("beach_done")   # 백사장 기상 연출(3초 대기)이 장면 교체와 겹쳐 오류를 내지 않게
 		G.level_id = m
 		G.spawn_name = ""
 		change_scene_to_file("res://scenes/level.tscn")
@@ -65,8 +66,7 @@ func _main() -> void:
 		await process_frame
 		cam.position = Vector2(0, -16)
 		lv._cam_look = Vector2(64, 40)
-		for i in 30:
-			await process_frame
+		await create_timer(0.5).timeout   # 게임 시간 0.5초(프레임 수가 아니라 델타 합)
 		_ck("%s 룩어헤드 0.5초 복귀 (남은 %.2fpx)" % [m, lv._cam_look.length()], lv._cam_look.length() <= 2.0)
 	print("VIEW_RANGE ", "PASS" if fails == 0 else "FAIL", " checks=", checks, " fails=", fails)
 	quit(1 if fails > 0 else 0)
