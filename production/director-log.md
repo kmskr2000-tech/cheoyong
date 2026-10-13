@@ -483,3 +483,4 @@
 - [지시] 16:17 — 에이전트 배정: Agent "프로그래밍팀 통합배포 머지(overlap·objective)" finished · 6m 48s
 - [지시] 16:17 — 에이전트 배정: 에셋 겹침과 목표 마커 머지가 main에 들어갔습니다. 배포는 하지 않았고 rebase도 쓰지 않았습니다. 17시 보고까지 남은 것은 asset/hero-glow와 prog/view-stage1의 감사·머지, 그리고 main 일괄 회귀입니다.
 - [지시] 16:22 — 에이전트 배정: Background agent "감사팀 hero-glow·view-stage1 순회" didn't finish before the previous session ended
+- [재개] 16:2x VM 재부팅(16:17) 후 — 감사팀-시점밝기검증 중단. main=403bc6a(걷기·인트로·겹침·목표마커 머지 완료). 감사팀-처용밝기재검증(순회16 hero-glow)·감사팀-시점재검증(순회17 view-stage1) 재투입, 시한 25분. 17:00 중간 보고 예정(사장님 지시).
