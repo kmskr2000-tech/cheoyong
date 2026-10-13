@@ -7,6 +7,7 @@ run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 
 [autoload]
+View="*res://scripts/view.gd"
 Game="*res://scripts/game.gd"
 Story="*res://scripts/story.gd"
 Audio="*res://scripts/audio.gd"

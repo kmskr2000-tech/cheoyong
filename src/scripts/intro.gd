@@ -16,8 +16,10 @@ signal finished
 
 func _ready() -> void:
 	if overlay:
+		View.lock_base(true)   # 회상: 레벨의 넓은 뷰 위에서도 480x270 그림 그대로
 		Audio.override("title")
 	else:
+		View.set_fixed(true)
 		Audio.music("title")
 	Audio.ambience("waves")
 	dialog = DialogBox.new()
@@ -48,6 +50,11 @@ func _ready() -> void:
 			_finish())
 	ui.add_child(_skip)
 	_play()
+
+
+func _exit_tree() -> void:
+	if overlay:
+		View.lock_base(false)
 
 
 func _unhandled_input(event: InputEvent) -> void:

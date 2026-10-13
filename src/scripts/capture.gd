@@ -18,12 +18,6 @@ var _pd: Array[float] = []   # draw calls
 var _po: Array[float] = []   # canvas items drawn (objects in frame)
 var _last_us := 0
 var _finishing := false
-## --view=<안>: 시점·카메라 설계 프로토타입(design/gdd/view-camera.md). 기본값(플래그 없음)은 현행 480x270 그대로다.
-##   a 현행 480x270 / a2 현행+카메라 룩어헤드 / b576 576x324 / b640 640x360 / c75 480x270 + 카메라 zoom 0.75(스프라이트 축소)
-##   bkh 480x270 기준 + 가로만 기기 비율로 확장(content_scale_aspect=KEEP_HEIGHT, --winsize=WxH 로 기기 창 크기를 흉내)
-var view_mode := "a"
-var view_size := Vector2(480, 270)   # 논리 해상도 (HUD가 우하단 버튼을 이만큼 밀어 앵커링한다)
-var view_zoom := 1.0
 var _cpu0 := 0.0   # /proc/self/stat utime+stime (초) — 프레임 시간이 다른 프로세스 때문에 부풀어도 CPU 소비량은 그대로 남는다
 
 
@@ -42,23 +36,12 @@ func _ready() -> void:
 		if a.begins_with("--capture="): out = a.get_slice("=", 1)
 		elif a.begins_with("--frames="): frames = int(a.get_slice("=", 1))
 		elif a == "--perf": perf = true
-		elif a.begins_with("--view="): _set_view(a.get_slice("=", 1))
 		elif a.begins_with("--hold="): hold = a.get_slice("=", 1)
 		elif a.begins_with("--at="): at = a.get_slice("=", 1)
 		elif a.begins_with("--seq="):
 			for item in a.get_slice("=", 1).split(","):
 				seq[int(item.get_slice(":", 1))] = item.get_slice(":", 0)
-	if view_mode != "a":
-		var sz := Vector2i(view_size)
-		get_window().content_scale_size = sz
-		if view_mode == "bkh":
-			get_window().content_scale_aspect = Window.CONTENT_SCALE_ASPECT_KEEP_HEIGHT
-		for a in OS.get_cmdline_user_args():
-			if a.begins_with("--winsize="):
-				var w := a.get_slice("=", 1).split("x")
-				get_window().size = Vector2i(int(w[0]), int(w[1]))
-		print("VIEW ", view_mode, " logical=", sz, " zoom=", view_zoom, " window=", get_window().size)
-	if out == "" and view_mode != "a2":
+	if out == "":
 		set_process(false)
 	else:
 		Engine.max_fps = 0 if perf else 60  # frame counts ≈ seconds × 60 regardless of how light the scene is
@@ -66,25 +49,6 @@ func _ready() -> void:
 			Input.action_press(hold)
 		if at != "":
 			_place.call_deferred()
-
-
-func _set_view(v: String) -> void:
-	view_mode = v
-	match v:
-		"b576": view_size = Vector2(576, 324)
-		"b640": view_size = Vector2(640, 360)
-		"c75": view_zoom = 0.75
-		"bkh": view_size = Vector2(480, 270)
-
-
-## a2: 이동 방향으로 카메라를 미리 내민다(룩어헤드). 캡처에서는 --hold=move_right 와 함께 쓴다.
-func _lookahead() -> void:
-	var sc := get_tree().current_scene
-	var cam: Camera2D = sc.get_node_or_null("Player/Camera") if sc else null
-	if cam == null:
-		return
-	var d := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	cam.offset = cam.offset.lerp(d * Vector2(64, 40), 0.06)
 
 
 func _place() -> void:
@@ -154,7 +118,6 @@ func _perf_report() -> void:
 
 
 func _process(_delta: float) -> void:
-	if view_mode == "a2": _lookahead()
 	if out == "":
 		return
 	frame_i += 1
@@ -177,9 +140,8 @@ func _process(_delta: float) -> void:
 	var hp := get_tree().current_scene.get_node_or_null("Player") if get_tree().current_scene else null
 	if hp != null:
 		print("HERO_SCREEN ", hp.get_global_transform_with_canvas().origin)
-	if view_mode != "a":
-		var st := get_viewport().get_screen_transform()
-		print("VIEWPORT size=", get_viewport().get_visible_rect().size, " display_scale=", st.x.x, " window=", get_window().size)
+	var st := get_viewport().get_screen_transform()
+	print("VIEWPORT size=", get_viewport().get_visible_rect().size, " display_scale=", st.x.x, " window=", get_window().size)
 	print("t=", Time.get_ticks_msec(), "ms  captured ", out, "  enemies left: ", get_tree().get_nodes_in_group("enemy").size(), "  downed: ", get_tree().get_nodes_in_group("downed").size(), "  level: ", Game.level_id, "  flags: ", Game.flags)
 	var pl = get_tree().current_scene.get_node_or_null("Player")
 	var bs = get_tree().current_scene.get_node_or_null("Boss")

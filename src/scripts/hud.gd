@@ -23,6 +23,7 @@ var _charge_ring: Line2D     # CS-08: 베기 버튼 둘레 충전 링 (0.35 지�
 var _charge_mark: Line2D
 var _sin_last := 0.0
 var _touch_root: Control
+var _right: Node2D           # 우측 앵커 터치 요소(버튼·링·부적 이름표): x 를 View.extra() 만큼 민다
 var _base: TextureRect
 var _knob: TextureRect
 var _stick_id := -1
@@ -69,6 +70,8 @@ func _ready() -> void:
 	_knob.texture = load("res://assets/ui/stick_knob.png")
 	_knob.visible = false
 	_touch_root.add_child(_knob)
+	_right = Node2D.new()
+	_touch_root.add_child(_right)
 	# buttons: [texture, action, centre, touch radius]
 	# touch radii are chosen so no two circles overlap (centre distance >= r1 + r2): the old 30/22 pairs
 	# overlapped by up to 7.6px, so a thumb on one button could fire its neighbour too
@@ -83,7 +86,7 @@ func _ready() -> void:
 		var rm := CanvasItemMaterial.new()
 		rm.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 		ring.material = rm
-		_touch_root.add_child(ring)
+		_right.add_child(ring)
 		_rings[b[0]] = ring
 		var tb := TouchScreenButton.new()
 		var tex: Texture2D = load("res://assets/ui/btn_%s.png" % b[0])
@@ -95,13 +98,13 @@ func _ready() -> void:
 		tb.shape_centered = true
 		tb.position = b[2] - tex.get_size() / 2.0
 		tb.passby_press = true
-		_touch_root.add_child(tb)
+		_right.add_child(tb)
 		_buttons[b[0]] = tb
 	_charge_ring = Line2D.new()
 	_charge_ring.width = 2.0
 	_charge_ring.visible = false
 	_charge_ring.position = Vector2(430, 222)
-	_touch_root.add_child(_charge_ring)
+	_right.add_child(_charge_ring)
 	_charge_mark = Line2D.new()   # CHARGE_MIN 표식: 이 선을 넘기면 놓았을 때 발동한다
 	_charge_mark.width = 2.0
 	_charge_mark.default_color = Color(1.0, 1.0, 1.0, 0.9)
@@ -109,7 +112,7 @@ func _ready() -> void:
 	_charge_mark.points = PackedVector2Array([Vector2.from_angle(ma) * 25.0, Vector2.from_angle(ma) * 32.0])
 	_charge_mark.visible = false
 	_charge_mark.position = Vector2(430, 222)
-	_touch_root.add_child(_charge_mark)
+	_right.add_child(_charge_mark)
 	_tal_label = Label.new()   # which talisman the button will draw
 	_tal_label.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
 	_tal_label.add_theme_font_size_override("font_size", 12)
@@ -120,13 +123,13 @@ func _ready() -> void:
 	_tal_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_tal_label.position = Vector2(290, 179)
 	_tal_label.size = Vector2(56, 14)
-	_touch_root.add_child(_tal_label)
+	_right.add_child(_tal_label)
 	# the 말하기 face laid over the attack button while something can be talked to
 	_talk = Sprite2D.new()
 	_talk.texture = load("res://assets/ui/btn_talk.png")
 	_talk.position = Vector2(430, 222)
 	_talk.visible = false
-	_touch_root.add_child(_talk)
+	_right.add_child(_talk)
 	_toast = Label.new()
 	_toast.add_theme_font_override("font", DialogBox._pixel_font("res://assets/fonts/Galmuri11.ttf"))
 	_toast.add_theme_font_size_override("font_size", 12)
@@ -143,21 +146,23 @@ func _ready() -> void:
 	if _touch_root.visible:
 		_show_stick(Vector2(70, 214))  # resting position hint
 	_release_dirs()   # a Hud rebuilt mid-drag (level change) must not inherit a held direction
-	_apply_view_proto()
+	View.changed.connect(_on_view)
+	_layout()
 
 
-## --view 프로토타입 전용: 논리 해상도가 480x270이 아니면 우측·하단 터치 버튼을 가장자리에 앵커링한다.
-## (정식 구현은 앵커/컨테이너 기반으로 다시 짠다 — design/gdd/view-camera.md §6)
-func _apply_view_proto() -> void:
-	var d: Vector2 = Capture.view_size - Vector2(480, 270)
-	if d == Vector2.ZERO:
-		return
-	if _touch_root.visible:
-		_show_stick(Vector2(70, 214 + d.y))
-	for n in _touch_root.get_children():
-		if n is TouchScreenButton or n is Sprite2D or n is Line2D:
-			var top_right: bool = n.position.y < 40.0
-			n.position += Vector2(d.x, 0.0 if top_right else d.y)
+## 가로 확장(design/gdd/view-camera.md §5.1 A+): 높이는 270 고정이고 폭만 늘어난다.
+## 좌측(상태 막대·조이스틱 대기 위치)은 그대로, 우측 버튼·메뉴는 오른쪽 가장자리에 붙고, 토스트·보스 막대는 가운데에 선다.
+## 480 폭에서는 extra()=0 이라 현행과 같다.
+func _on_view(_s: Vector2) -> void:
+	_layout()
+
+
+func _layout() -> void:
+	var ex := View.extra()
+	_right.position.x = ex
+	_toast.size.x = View.size.x
+	if is_instance_valid(_boss_root):
+		_boss_root.position.x = View.pad()
 
 
 func _item_icon(parent: Node, at: Vector2, path: String) -> TextureRect:
@@ -321,7 +326,7 @@ func _recall() -> void:
 	cl.process_mode = Node.PROCESS_MODE_ALWAYS
 	var bg := ColorRect.new()  # the level must not show through between shots
 	bg.color = Color.BLACK
-	bg.size = Vector2(480, 270)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	cl.add_child(bg)
 	var intro: Node = load("res://scenes/intro.tscn").instantiate()
 	intro.overlay = true
@@ -528,6 +533,7 @@ func show_boss(boss: Node, title: String) -> void:
 	_boss_root = Control.new()
 	_boss_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_boss_root)
+	_boss_root.position.x = View.pad()   # 480 폭 보스 막대를 가운데에
 	_boss_fill = _gauge(_boss_root, Vector2(140, 34), BOSS_W, "res://assets/ui/gauge_hp.png")
 	var seal := NinePatchRect.new()
 	seal.texture = load("res://assets/ui/seal.png")
