@@ -478,3 +478,4 @@
 - [지시] 16:07 — 에이전트 배정: 16:06 기준 직전 점검과 같습니다. 에이전트 2개가 가동 중이고, 푸시 헤드와 감사 기록도 그대로입니다(audit/log 마지막은 인트로 순회 13). 감사팀의 적발이나 중단 권고는 없습니다.
 - [승인] 16:0x prog/overlap-fix 04e2433(순회15)·prog/objective-marker 91b77b8(순회14) — 감사팀-일괄검증 4건 전부 PASS(걷기12·인트로13·목표마커14·겹침15). 디렉터 결정: F-3(2장에도 동일 길잡이) 수용, F-2 수용. 목표 문구 가시성 상향(OBJ_ALPHA 0.75→0.9, 글자 12→14). 도주 용이성(추격형 dog·pado·sangun 속도 +10~15%)은 폰 체감 후 판단. 머지 순서 overlap→objective(난영 좌표 (220,314) 통일), 통합배포4 지시. view-stage1은 감사(순회17) 통과 후 objective 뒤에 머지(충돌 4곳 해소안 적용).
 - [지시] 16:12 — 에이전트 배정: 프로그래밍팀 통합배포 머지(overlap·objective
+- [머지] 16:1x prog/overlap-fix f606629(충돌 없음)·prog/objective-marker 8ad7bf2(story.gd 충돌: 난영 길잡이 (236,309)→(220,314), rumor (130,237) 유지; 설계표·objective_via.sh 동일 좌표 정정)·소수정 f78cb25(OBJ_ALPHA 0.9·글자 14)·main 재머지 ce6b17a. hud_layout PASS(18자 최악 272px/띠 308px). rebase 미사용, 배포 안 함. 남은 머지: hero-glow·view-stage1(감사 순회16·17 대기) → 이후 main 일괄 회귀.
