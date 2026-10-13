@@ -84,13 +84,53 @@ def palace_silhouette(w, h):
 
 
 def shot_sea():
-    g = (1 - yy / H) * 3.2 + noise((H, W), 40, 1) * 0.8 + np.exp(-((xx - 300) ** 2) / 9000.0) * (1 - yy / H) * 1.5
+    # water: lit from the surface far above, a pearl-glow pooled around the drowned palace
+    glow = np.exp(-(((xx - 300) / 150.0) ** 2 + ((yy - 150) / 70.0) ** 2))
+    g = (1 - yy / H) * 3.2 + noise((H, W), 40, 1) * 0.8 + glow * 2.6
+    g += (np.sin(xx * 0.05 + noise((H, W), 30, 2) * 6) * 0.5 + 0.5) * np.clip(1 - yy / 130.0, 0, 1) * 0.5   # caustic bands near the top
     rgb = dither(g, DEEP)
+    rng = np.random.default_rng(31)
+    for _ in range(90):                               # marine snow / plankton glints
+        px, py = rng.integers(0, W), rng.integers(0, H - 30)
+        rgb[py, px] = hx('#2c4e70') if rng.random() > 0.3 else hx('#4a7a98')
     save('intro_sea', rgb)
     far, win = palace_silhouette(W, H)
-    col = np.zeros((H, W, 3)) + hx('#08162a')
-    col[win & (noise((H, W), 9, 3) > 0.35)] = hx('#4a7a98')   # faint lit windows in the drowned palace
-    save('intro_sea_far', col, (far * 210).astype(np.uint8))
+    # edge light: roofs catch the pearl glow on their upper rims, walls fall into the dark below
+    up = far & ~np.roll(far, 1, 0)
+    up2 = far & ~np.roll(far, 2, 0) & ~up
+    tone = np.clip((1 - (yy - 100) / 120.0), 0, 1)
+    col = np.zeros((H, W, 3)) + hx('#0a1c34') * (0.55 + 0.45 * tone[..., None])
+    col[up] = hx('#3a7a9c')
+    col[up2] = hx('#1e4c70')
+    lit = win & (noise((H, W), 9, 3) > 0.3)
+    col[lit] = np.where((noise((H, W), 4, 8)[lit] > 0.55)[:, None], hx('#e8b868'), hx('#6ab4c8'))   # warm lamps and pearl-light in the windows
+    spire = np.zeros((H, W), bool)                      # a hanging-bell finial on the great roof
+    spire |= (np.abs(xx - 300) < 1) & (yy > 92) & (yy < 112)
+    spire |= (np.hypot(xx - 300, yy - 90) < 3)
+    col[spire] = hx('#c8a050')
+    save('intro_sea_far', col, ((far | spire) * 235).astype(np.uint8))
+    # mid layer: coral reef and tall sea-fans lit by bioluminescent pearls, between the palace and the kelp
+    mid = np.zeros((H, W), bool)
+    rng = np.random.default_rng(12)
+    for k in range(9):
+        x0 = rng.integers(10, W - 10); hgt = rng.integers(22, 62); ph = rng.random() * 6
+        for y in range(H - 52 - hgt, H - 52):
+            t = (y - (H - 52 - hgt)) / hgt
+            for br in (-1, 1):                          # fan-shaped branching
+                x = int(x0 + br * (1 - t) * (hgt * 0.35) * math.sin(0.5 + t) + math.sin(y * 0.09 + ph) * 2)
+                mid[y, max(0, x - 1):max(0, min(W, x + 2))] = True
+            mid[y, max(0, x0 - 2):max(0, min(W, x0 + 3))] = True
+    mid |= (yy > H - 52 + np.sin(xx * 0.03 + 1) * 9 - noise((H, W), 18, 17) * 12)
+    mcol = np.zeros((H, W, 3)) + hx('#06101e')
+    mup = mid & ~np.roll(mid, 1, 0)
+    gr = dither(noise((H, W), 6, 40) * 2.2 + (1 - np.clip((yy - (H - 60)) / 60.0, 0, 1)) * 1.2, ramp('#040a14', '#07121f', '#0b1a2c', '#10243a'))
+    mcol = np.where(mid[..., None], gr, mcol)
+    mcol[mup] = hx('#1c4a66')
+    for _ in range(26):                                # glowing sea-pearls and anemone tips
+        px, py = rng.integers(0, W), rng.integers(H - 70, H - 20)
+        if mid[py, px]:
+            mcol[py, px] = hx('#8ad0d8'); mcol[py, min(W - 1, px + 1)] = hx('#3a8aa0'); mcol[max(0, py - 1), px] = hx('#3a8aa0')
+    save('intro_sea_mid', mcol, (mid * 255).astype(np.uint8))
     fg = np.zeros((H, W), bool)
     rng = np.random.default_rng(5)
     for k in range(14):                              # kelp fronds rising from the floor
@@ -99,9 +139,12 @@ def shot_sea():
             t = (H - y) / hgt
             x = int(x0 + math.sin(y * 0.05 + ph) * 8 * t)
             wdt = int(3 + (1 - t) * 3)
-            fg[y, max(0, x - wdt):min(W, x + wdt)] = True
-    fg |= (yy > H - 26 + np.sin(xx * 0.018) * 8 - noise((H, W), 24, 7) * 14)
-    save('intro_sea_fg', np.zeros((H, W, 3)) + hx('#010306'), (fg * 255).astype(np.uint8))
+            fg[y, max(0, x - wdt):max(0, min(W, x + wdt))] = True
+    fg |= (yy > H - 8 + np.sin(xx * 0.018) * 6 - noise((H, W), 12, 7) * 26)
+    fcol = np.zeros((H, W, 3)) + hx('#010306')
+    fup = fg & ~np.roll(fg, 1, 0) | (fg & ~np.roll(fg, 1, 1))
+    fcol[fup] = hx('#0c2a40')                          # a thin rim of palace-light on the kelp edges
+    save('intro_sea_fg', fcol, (fg * 255).astype(np.uint8))
 
 
 def shot_hall():
@@ -135,8 +178,18 @@ def shot_night(name='intro_night', shore=True):
         hill = horizon - 1 - rise * (16 + noise((H, W), 30, 11) * 10)
         land = (yy > hill) & (yy < horizon)
         rgb[land] = hx('#020306')
-        for (lx, ly) in ((40, 146), (62, 147), (75, 145), (108, 148), (130, 147)):
-            rgb[ly, lx] = hx('#ffb060'); rgb[ly, lx + 1] = hx('#c06a28')
+        # a fishing village on the far shore: thatched roofs, warm lit windows, and their reflections in the swell
+        houses = ((22, 144, 7), (40, 146, 9), (63, 147, 8), (78, 145, 6), (104, 148, 9), (128, 148, 8), (150, 149, 6))
+        for (hx_, hy_, hw_) in houses:
+            for dy in range(0, 5):                         # roof: a stepped triangle
+                w_ = hw_ // 2 + 1 - dy // 2 + 1
+                rgb[hy_ - 6 + dy, max(0, hx_ - w_):hx_ + w_ + 1] = hx('#05070d')
+            rgb[hy_ - 1:hy_ + 1, hx_ - hw_ // 2:hx_ + hw_ // 2 + 1] = hx('#04060a')
+            rgb[hy_ - 1, hx_] = hx('#ffb060'); rgb[hy_ - 1, hx_ + 1] = hx('#c06a28'); rgb[hy_, hx_] = hx('#8a4a1c')
+            for k in range(1, 9):                          # reflection streak, broken by the swell
+                yy_ = horizon + 2 + k * 2
+                if yy_ < H and ((k + hx_) % 3) != 0:
+                    rgb[yy_, hx_ - (k % 2): hx_ + 1 + (k % 2)] = hx('#a05a24') if k < 5 else hx('#5a3418')
     save(name, rgb)
 
 
