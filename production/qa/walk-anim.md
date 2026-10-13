@@ -43,3 +43,8 @@
 ## 4. 검증 기록
 회귀 로그: `~/walk_logs/after/`(smoke / save / combat_strategy 11종 / art_walk / ch2_aggro / chapter1 / ch2 5종). 결과는 체크포인트 prog-walk.md 에 기록.
 전/후 연속 캡처: `production/qa/walk-anim/` (xvfb, `--burst`).
+
+## 5. 회귀 결과 (최종 코드 2b9ddbe 기준, 로그 ~/walk_logs/after/)
+- smoke_godot PASS, save_check PASS(42), combat_strategy 11종 PASS(타이밍 불변: combat_tuning.gd 무변경), art_walk 12맵 PASS, ch2_aggro 9건 PASS, chapter1_playthrough PASS(1차 실행은 외부 SIGTERM rc=143 으로 중단 → 재실행 PASS), ch2 시나리오 5종 PASS.
+- 캡처 한계: xvfb 캡처의 위치 증가량은 부하로 프레임 시간이 흔들려 실제 속도 측정에 부적합. 속도 값은 코드 상수(72→92)와 이론 횡단 시간으로 기록. 아래/위 방향 전/후 캡처는 락 대기로 생략(오른쪽 방향만 첨부; 같은 코드 경로).
+- NPC/요괴 이동 모션 후보(수정 안 함): enemy.gd 8fps 고정 재생(속도 비연동), npc.gd walk_to(speed 40) 걷기 프레임 선택 미확인.
