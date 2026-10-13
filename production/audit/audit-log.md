@@ -151,3 +151,12 @@
 - ⑤2장 보고(범위 밖·수정 없음, 리포트 기재 확인): hwagae 6건·jiri_path 4건·old_village 1건·den1 2건·den3 2건 — 2장 담당 후속. 그 중 hwagae 좌판 구역(6건)은 폰에서 같은 피드백이 나올 가능성이 높음.
 - ⑥머지 주의: prog/objective-marker(91b77b8)와 story.gd 충돌(순회 14 ⑥-b). 난영 좌표를 (220,314)로 통일할 것.
 - 미해결(사람 확인): 폰에서 상점 구역 체감, 2장 겹침 후속. 머지 판단은 디렉터. 로그 ~/rpg-logs/audit-batch/overlap/.
+
+## 순회 16 hero-glow (2026-10-13 16:3x, 1회성, 재검증) — asset/hero-glow 714e533 (worktree dev/wt-aud-glow)
+- [감사] **총평: PASS (범위·불변 확인, 회귀 5종 재실행 전부 PASS, 4맵 새 캡처·재측정이 문서 표와 일치). 적발 0건, 경미 메모 2건.** (이전 감사 에이전트가 재부팅으로 중단돼 처음부터 재수행.)
+- ①범위 — **통과.** `git diff main...714e533` 44파일 +173/-6. 코드는 `level.gd`(+34/-… `_glow_params()` 신설·`_atmosphere()` 광원 에너지/크기/몸 전용광(range_item_cull_mask 2)·`--glow=` 캡처 전용 덮어쓰기)·`player.gd`(+2: sprite/arm light_mask=3)·`capture.gd`(+1: 캡처 로그에 player_screen 출력)뿐. 나머지는 `production/qa/hero-glow.md`·`measure.py`·전/후 캡처 PNG. **game.gd(세이브)·combat_tuning·enemy·levels.gd·story.gd·src/assets diff 0** → 1장 게임플레이·세이브 포맷·스토리 진행 불변(light_mask 는 렌더링만, `--glow=` 는 캡처 인자라 플레이 경로 영향 없음).
+- ②재실행(godot, flock godot.lock 직렬화, 이 팁 714e533, 로그 ~/rpg-logs/audit16/): smoke_godot **13/13 PASS**(rc=0; ERR_CANT_OPEN 13줄은 xvfb ALSA 오디오 장치 없음, 장면당 1줄 — 무해) / art_walk **12맵 PASS** / save_check **SAVE_CHECK PASS (42 checks)** / combat_strategy **11/11 PASS** / chapter1_playthrough chain 22스텝·88체크 + save_mid·continue_mid·corrupt_save·death·boss_retry **6/6 PASS**. SCRIPT ERROR·Parse Error 0건.
+- ③캡처 재측정(내가 새로 촬영, measure.py): gyeongju halo 1.26·대비 **0.43** / hwagae halo 1.51·대비 **0.44** / beach(누워 있는 처용) halo 1.53·대비 0.16 / palace halo 1.07·대비 **0.55** — 문서 §3 표(0.43/0.44/0.16/0.56, halo 1.27/1.52/1.69/1.05)와 일치(beach 는 물결 노이즈 범위).
+- ④육안(480x270 원본 + 80x80 4배 확대, ~/rpg-logs/audit16/cap/ zoom4.png·ba.png): **경주·화개** — 처용 윤곽(관모·도포 주름·발)이 또렷하고 바닥으로 번지는 후광 없음. 전/후 비교에서 전은 처용 주위가 흰 번짐으로 뭉개졌고 후는 몸에만 은은한 가장자리 빛. 옆 인물(난영·소년)과도 분리됨. **역신전** — 처용 몸 식별 양호, 주변 바닥 어두운 채 유지, 기둥·소품이 몸 전용광에 안 물듦. **백사장** — 누운 처용이 모래와 구분되고 번짐 없음.
+- ⑤경미 메모(적발 아님): ①몸 전용광 때문에 도포가 밝은 맵(경주·화개)에서 흰~연보라로 약간 떠 보이고(L_hero 155~170) 얼굴은 원 스프라이트가 무표정이라 구분 안 됨 — 전/후 동일하므로 광원 문제 아님. 폰 야외 직사 환경에서 몸이 너무 '발광'처럼 보이는지는 폰 확인 항목. ②`--glow=` 인자는 캡처 전용이지만 릴리스 빌드에서도 파싱됨(사용자 인자 없으면 무영향).
+- 미해결(사람 확인): 폰 체감(사장님 피드백 "처용 주변이 너무 밝음" 해소 여부·몸 발광감). 머지 판단은 디렉터. 로그 ~/rpg-logs/audit16/.
