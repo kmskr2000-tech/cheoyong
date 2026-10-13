@@ -732,6 +732,16 @@ func _process(d: float) -> void:
 		l.energy = l.get_meta("base") * (1.0 + sin(t * 9.0 + i * 3.1) * 0.05 + sin(t * 23.0 + i) * 0.035)
 
 
+## 처용 주변 빛 파라미터 (기본값 = 확정값). 측정·튜닝용 `--glow=키:값,...` 로 덮어쓸 수 있다 (캡처 전용, 게임 플레이에는 영향 없음).
+func _glow_params() -> Dictionary:
+	var g := {"ae": 0.55, "aek": 1.5, "as": 0.55, "ask": 0.3, "re": 1.4, "rs": 0.4, "he": 0.0, "hs": 0.5}
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--glow="):
+			for kv in a.get_slice("=", 1).split(","):
+				g[kv.get_slice(":", 0)] = float(kv.get_slice(":", 1))
+	return g
+
+
 func _atmosphere() -> void:
 	# moonlit night: everything unlit sinks into cold violet-blue
 	# 해질녘 (dusk) for daily life in 경주; full night otherwise
@@ -749,26 +759,36 @@ func _atmosphere() -> void:
 	moon.rotation = deg_to_rad(35)
 	add_child(moon)
 	# a faint cold aura around the hero so he never vanishes in the dark
+	var gp := _glow_params()
 	var pl := PointLight2D.new()
 	pl.texture = light_tex
 	pl.color = Color(0.6, 0.7, 0.95)
-	pl.energy = 0.55
 	var amb: Color = cm.color
 	var dark_k := clampf((0.42 - (amb.r * 0.3 + amb.g * 0.59 + amb.b * 0.11)) / 0.16, 0.0, 1.0)   # 어두운 맵(폐가·보스전 등)일수록 1
-	pl.energy += 1.5 * dark_k   # 처용 가독성: 어두운 맵에서만 외곽 빛을 약하게 키운다 (아트팀)
-	pl.texture_scale = 0.55 + 0.3 * dark_k
+	pl.energy = gp.ae + gp.aek * dark_k
+	pl.texture_scale = gp["as"] + gp.ask * dark_k
 	pl.position = Vector2(0, -16)
 	pl.height = 30.0
 	$Player.add_child(pl)
-	if dark_k > 0.0:   # 어두운 맵: 발밑 따뜻한 바닥 림라이트로 처용 실루엣을 바닥에서 분리 (아트팀)
+	if dark_k > 0.0 and gp.re > 0.0:   # 어두운 맵: 발밑 따뜻한 바닥 림라이트로 처용 실루엣을 바닥에서 분리 (아트팀)
 		var rim := PointLight2D.new()
 		rim.texture = light_tex
 		rim.color = Color(1.0, 0.8, 0.55)
-		rim.energy = 1.4 * dark_k
-		rim.texture_scale = 0.4
+		rim.energy = gp.re * dark_k
+		rim.texture_scale = gp.rs
 		rim.position = Vector2(0, -4)
 		rim.height = 12.0
 		$Player.add_child(rim)
+	if dark_k > 0.0 and gp.he > 0.0:   # 처용 몸에만 닿는 빛(광원 마스크 2): 주변 바닥은 밝히지 않고 처용 본체 대비만 올린다
+		var hl := PointLight2D.new()
+		hl.texture = light_tex
+		hl.color = Color(0.75, 0.82, 1.0)
+		hl.energy = gp.he * dark_k
+		hl.texture_scale = gp.hs
+		hl.range_item_cull_mask = 2
+		hl.position = Vector2(0, -16)
+		hl.height = 30.0
+		$Player.add_child(hl)
 	# fog over the ground, lit by the lanterns it drifts through
 	var fog := ColorRect.new()
 	var w: float = meta["size"][0]
