@@ -494,3 +494,5 @@
 - [지시] 16:42 — 에이전트 배정: 프로그래밍팀 통합배포 머지(view-stage1
 - [머지] 16:5x prog/view-stage1 — main 반영 3fe5145(충돌 2파일 해소: level.gd _update_camera+if _beacon, GUIDE_VIEW_Y=135·가로 View.size.x*0.5, hud.gd OBJ_RECT View.pad() 중앙, tests/hud_layout.gd 4폭 루프), QA 문서 2d725fb, main HEAD 5f005e6. 머지 후 main 일괄 회귀 11종 전부 PASS(smoke13·save42·combat11·art12·ch1 6·ch2_aggro9·view504·hud_layout130·objective_hud20·targets190·via DONE). 폰 피드백 6개 전부 main 머지 완료 → 묶음 배포 지시(프로그래밍팀-배포담당). 아침 보고서→17시 중간 보고 형태로 갱신.
 - [배포] 16:5x 라이브 — version.json 20261013030331 → 20261013165031 반영 확인(Pages 빌드 07:51Z, 반영 직전 약 1분간 일시 404 관측 후 200 복구). 배포담당 상세 검증 보고 대기. 폰 확인 요청 항목은 중간 보고서 참조.
+- [지시] 16:52 — 에이전트 배정: 묶음 배포가 반영됐습니다. 라이브가 20261013165031로 바뀌었습니다(16:51 확인).
+- [지시] 16:52 — 에이전트 배정: 16:52 기준 라이브는 20261013165031이고, 메인 페이지도 200으로 정상입니다. 에이전트 1개(배포담당)가 2분째 가동 중이고, 감사 대기 브랜치는 없습니다.
