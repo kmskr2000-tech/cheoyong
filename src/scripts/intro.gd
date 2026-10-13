@@ -261,11 +261,14 @@ func _shot_hall() -> void:
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
 	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 226), Rect2(64, 0, 64, 64))  # back view (up_idle)
+	var lamps: Array[Sprite2D] = []
 	for pg in [Vector2(164, 117), Vector2(316, 117)]:
-		_glow(pg, Color(0.45, 0.75, 0.85, 0.36), 60.0, 0.35)     # the great pearls on their pedestals
+		lamps.append(_glow(pg, Color(0.45, 0.75, 0.85, 0.36), 60.0, 0.35))     # the great pearls on their pedestals
 	for pg in [Vector2(160, 33), Vector2(320, 33), Vector2(176, 40), Vector2(300, 40)]:
-		_glow(pg, Color(0.4, 0.7, 0.85, 0.38), 36.0, 0.4)
-	_glow(Vector2(240, 120), Color(1.0, 0.7, 0.35, 0.28), 120.0, 0.25)   # lamplight over the sick-bed
+		lamps.append(_glow(pg, Color(0.4, 0.7, 0.85, 0.38), 36.0, 0.4))
+	lamps.append(_glow(Vector2(240, 120), Color(1.0, 0.7, 0.35, 0.22), 120.0, 0.25))   # lamplight over the sick-bed
+	for g in lamps:   # light the room, not the people: glows sit right above the painted hall, below every figure
+		_shot.move_child(g, 1)
 	_motes(_shot, Vector2(240, 10), Vector2(240, 270), Color(0.6, 0.85, 1.0, 0.5), 34, -1.0, 9.0)   # bubbles rising through the hall
 	_motes(_shot, Vector2(30, 6), Vector2(240, 108), Color(0.62, 0.3, 0.82, 0.6), 12, -1.0, 6.0)    # 탁기 curling off the king's bed
 	_push(24.0, 1.06)
