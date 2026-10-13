@@ -193,20 +193,20 @@ def black_pool(cv, wm, cx, cy, rx, ry, seed):
     d = np.sqrt(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2) + n * 0.55
     m = d < 1.0
     m &= wm[y0:y1, x0:x1] > 0.5
-    rim = m & ~ndi.binary_erosion(m, iterations=1)
-    inn = ndi.binary_erosion(m, iterations=2)
+    dist = ndi.distance_transform_edt(m)
     sub = cv[y0:y1, x0:x1]
-    sub[m] = (14, 16, 30)
-    sub[inn] = (8, 10, 22)
-    sub[rim] = (44, 52, 86)
-    # 잔물결: 가로 한 줄짜리 밝은 선, 보라 반짝이
-    for k in range(int(rx * ry / 55)):
+    sub[m & (dist <= 1.5)] = (46, 54, 90)                 # 가장자리 물기 테
+    sub[m & (dist > 1.5) & (dist <= 3.5)] = (18, 20, 38)
+    sub[m & (dist > 3.5) & (dist <= 6)] = (12, 13, 28)
+    sub[m & (dist > 6)] = (7, 8, 20)
+    ww_ = m & (dist > 2.5)
+    for k in range(int(rx * ry / 40)):                     # 잔물결(가로 한 줄 밝은 선) + 보라 반짝이
         px, py = int(rng.integers(0, x1 - x0)), int(rng.integers(0, y1 - y0))
-        if inn[py, px]:
-            ln = int(rng.integers(3, 7))
-            seg = inn[py, px:px + ln]
-            sub[py, px:px + len(seg)][seg] = (34, 44, 82)
-            if rng.random() < 0.35 and inn[py, min(px + 1, x1 - x0 - 1)]:
+        if ww_[py, px]:
+            ln = int(rng.integers(3, 8))
+            seg = ww_[py, px:px + ln]
+            sub[py, px:px + len(seg)][seg] = (30, 40, 78)
+            if rng.random() < 0.3:
                 sub[py, px] = VIO[1]
 
 
@@ -255,6 +255,7 @@ def den3_source():
     d1 = T.den1_png()
     sl = d1[36:98, 20:132]
     L.paste(cv, sl, CX - 56, CY - 30, None)
+    L.glow_pools(cv, [(60, 120), (580, 120), (60, 260), (580, 260), (320, 70)], radii=(18, 40, 70), adds=((10, 4, 20), (8, 3, 14), (6, 2, 10)))
     # 검은 웅덩이 4곳(소품·소환점과 겹치지 않는 모서리 쪽) + 일러스트 웅덩이 스탬프
     black_pool(cv, wm, 100, 118, 26, 11, 3)
     real_puddle(cv, wm, (510, 365, 705, 510), (480, 238), flip=True)            # 동쪽 아래: 깨진 항아리 + 검은 물
@@ -263,7 +264,6 @@ def den3_source():
     T.decals(cv, rng, [('pots_b', 136, 262, False), ('pile', 500, 86, True)], d1)
     fissures(cv, wm, rng, r)
     L.rubble(cv, rng, [(rng.uniform(70, 570), rng.uniform(72, 292)) for _ in range(12)])
-    L.glow_pools(cv, [(60, 120), (580, 120), (60, 260), (580, 260), (320, 70)], radii=(18, 40, 70), adds=((10, 4, 20), (8, 3, 14), (6, 2, 10)))
     walls(cv, rng)
     return cv, None, None
 
@@ -314,14 +314,13 @@ def walls(cv, rng):
         while y < 305:
             seg = (c if k % 2 == 0 else c[::-1])
             h = min(seg.shape[0], 305 - y)
-            cv[y:y + h, x0:x0 + seg.shape[1]] = seg[:h]
+            for yy in range(h):
+                if not (x0 < 100 and 150 <= y + yy < 212):                 # 서쪽 입구 틈은 바닥을 남긴다
+                    cv[y + yy, x0:x0 + seg.shape[1]] = seg[yy]
             y += seg.shape[0]; k += 1
     side(24, False)
     side(598, True)
     # 입구 틈(png y150~212)은 갓돌을 지우고 문설주 돌 둘로 끝을 마감한다 — 바닥은 걷기 면이라 건드리지 않음
-    gate = ndi.binary_dilation(np.pad(np.zeros((1, 1), bool), 0), iterations=0) if False else None
-    fl = cv[150:212, 46:70].copy()
-    cv[150:212, 20:46] = np.concatenate([fl[:, ::-1], fl[:, ::-1]], 1)[:, :26]
     post = np.rot90(cap_row[:, :24], 1)                  # 24 x 20
     for y0 in (128, 212):
         cv[y0:y0 + 24, 24:44] = post
