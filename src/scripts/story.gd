@@ -1122,8 +1122,8 @@ func _den3_enter(_level: Node) -> void:
 
 
 func _den3_gate(level: Node) -> void:
-	if Game.flag("boss2_done"):
-		return   # 이미 거둔 방: 보스도 봉쇄문도 없다
+	if Game.flag("boss2_done") or not Game.ch2_enabled():
+		return   # 이미 거둔 방(또는 2장 스위치가 꺼진 빌드): 보스도 봉쇄문도 없다
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	await level.get_tree().process_frame
