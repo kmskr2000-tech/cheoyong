@@ -341,7 +341,7 @@ func _shot_rise() -> void:
 	_layer("res://assets/intro/intro_night.png")
 	var head := _sprite("res://assets/sprites/cheoyong.png", Vector2(250, 197), Rect2(64, 20, 64, 28))  # head and shoulders above the swell
 	head.modulate = Color(0.18, 0.22, 0.35)
-	_glow(Vector2(340, 52), Color(0.55, 0.65, 0.9, 0.45), 130.0, 0.2)     # moon bloom
+	_glow(Vector2(340, 52), Color(0.5, 0.6, 0.9, 0.26), 130.0, 0.2)     # moon bloom
 	for vx in [Vector2(40, 145), Vector2(63, 146), Vector2(104, 147), Vector2(128, 147)]:
 		_glow(vx, Color(1.0, 0.62, 0.28, 0.5), 14.0, 0.6)               # village windows breathing
 	_motes(_shot, Vector2(60, 3), Vector2(340, 190), Color(0.8, 0.9, 1.0, 0.7), 14, -0.2, 3.0)    # glints on the moon-path

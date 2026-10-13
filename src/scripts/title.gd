@@ -109,14 +109,14 @@ func _moon_glow() -> void:
 	s.texture = tex
 	s.position = Vector2(340, 52)
 	s.scale = Vector2.ONE * 150.0 / 64.0
-	s.modulate = Color(0.55, 0.65, 0.9, 0.42)
+	s.modulate = Color(0.5, 0.6, 0.9, 0.24)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	s.material = add
 	add_child(s)
 	var tw := s.create_tween().set_loops()
-	tw.tween_property(s, "modulate:a", 0.3, 2.6).set_trans(Tween.TRANS_SINE)
-	tw.tween_property(s, "modulate:a", 0.42, 2.6).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(s, "modulate:a", 0.17, 2.6).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(s, "modulate:a", 0.24, 2.6).set_trans(Tween.TRANS_SINE)
 
 
 func _motes() -> void:
