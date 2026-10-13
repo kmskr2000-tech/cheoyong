@@ -42,6 +42,8 @@ func _ready() -> void:
 	cam.limit_top = int(-tier * 2)
 	cam.limit_right = int(size[0])
 	cam.limit_bottom = int(size[1] - tier)
+	if Capture.view_zoom != 1.0:
+		cam.zoom = Vector2.ONE * Capture.view_zoom   # --view=c75 프로토타입 전용
 	cam.reset_smoothing()
 	if def.has("wisps"):
 		for i in 4:

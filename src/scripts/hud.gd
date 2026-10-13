@@ -143,6 +143,21 @@ func _ready() -> void:
 	if _touch_root.visible:
 		_show_stick(Vector2(70, 214))  # resting position hint
 	_release_dirs()   # a Hud rebuilt mid-drag (level change) must not inherit a held direction
+	_apply_view_proto()
+
+
+## --view 프로토타입 전용: 논리 해상도가 480x270이 아니면 우측·하단 터치 버튼을 가장자리에 앵커링한다.
+## (정식 구현은 앵커/컨테이너 기반으로 다시 짠다 — design/gdd/view-camera.md §6)
+func _apply_view_proto() -> void:
+	var d: Vector2 = Capture.view_size - Vector2(480, 270)
+	if d == Vector2.ZERO:
+		return
+	if _touch_root.visible:
+		_show_stick(Vector2(70, 214 + d.y))
+	for n in _touch_root.get_children():
+		if n is TouchScreenButton or n is Sprite2D or n is Line2D:
+			var top_right: bool = n.position.y < 40.0
+			n.position += Vector2(d.x, 0.0 if top_right else d.y)
 
 
 func _item_icon(parent: Node, at: Vector2, path: String) -> TextureRect:
