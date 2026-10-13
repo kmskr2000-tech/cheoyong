@@ -126,7 +126,7 @@ const DATA := {
 		"props": [
 			["stall", 262, 288, [-20, WARM, 0.7, 0.8]],
 			["board", 350, 155, null],
-			["jangseung_m", 14, 355, null], ["jangseung_f", 14, 403, null],
+			["jangseung_m", 10, 351, null], ["jangseung_f", 40, 407, null],
 			["cairn", 200, 384, null],
 			# SC1-21: 소문이 돌자 대문마다 처용탈이 걸린다
 			["tal", 546, 40, null, "rumor"], ["tal", 578, 40, null, "rumor"], ["tal", 140, 227, null, "rumor"], ["tal", 484, 67, null, "rumor"],
@@ -136,8 +136,8 @@ const DATA := {
 			[491, 109, WARM, 0.9, 0.5], [545, 69, WARM, 0.9, 0.5], [497, 33, WARM, 0.7, 0.45],
 			[235, 157, WARM, 0.6, 0.4], [300, 120, WARM, 0.6, 0.4], [440, 29, WARM, 0.6, 0.4], [480, 340, WARM, 0.5, 0.4], [590, 73, WARM, 0.6, 0.4], [100, 160, WARM, 0.6, 0.4]],
 		"npcs": [
-			["nanyeong", "npc_nanyeong", 236, 309, "난영"],
-			["apothecary", "npc_seokgu", 292, 277, "약방 주인"],
+			["nanyeong", "npc_nanyeong", 220, 314, "난영"],
+			["apothecary", "npc_seokgu", 304, 281, "약방 주인"],
 			["elder", "npc_elder", 385, 173, "노인"],
 			["villagerA", "npc_villager_f", 318, 213, "마을 아낙"],
 			["villagerB", "npc_dolsoe", 448, 157, "나무꾼"],

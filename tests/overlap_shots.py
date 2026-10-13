@@ -40,15 +40,16 @@ def main():
         cy = min(max(py, top + 135), bot - 135)
         sx, sy = tx - (cx - 240), ty - (cy - 135)
         raw = f"{out}/_raw_{m}_{int(fx)}_{int(fy)}.png"
-        cmd = ["flock", LOCK, "xvfb-run", "-a", GODOT, "--path", f"{HERE}/src", "--", f"--capture={raw}", "--frames=45",
+        cmd = ([] if os.environ.get("NOLOCK") else ["flock", LOCK]) + ["xvfb-run", "-a", GODOT, "--path", f"{HERE}/src", "--", f"--capture={raw}", "--frames=45",
                f"--level={m}", f"--at={px},{py}"] + ([f"--flags={flags}"] if flags else [])
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=1500)
         im = Image.open(raw).convert("RGB")
-        box = (int(sx - 80), int(sy - 62), int(sx + 80), int(sy + 28))
-        crop = Image.new("RGB", (160, 90), (0, 0, 0))
+        cw, ch = (int(v) for v in os.environ.get("CROP", "160,90").split(","))   # 기본 160x90 → 4배 640x360
+        box = (int(sx - cw / 2), int(sy - ch * 0.69), int(sx + cw / 2), int(sy + ch * 0.31))
+        crop = Image.new("RGB", (cw, ch), (0, 0, 0))
         crop.paste(im.crop(box), (0, 0))
         dst = f"{out}/{prefix}_{m}_{int(fx)}_{int(fy)}.png"
-        crop.resize((640, 360), Image.NEAREST).save(dst)
+        crop.resize((cw * 4, ch * 4), Image.NEAREST).save(dst)
         os.remove(raw)
         print(dst, "target_screen", (round(sx), round(sy)), "box", box)
 

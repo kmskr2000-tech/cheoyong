@@ -735,7 +735,7 @@ func objective(level: Node):
 		"gyeongju":
 			if f.call("appointed"): return null
 			if f.call("rumor"): return null if f.call("king_call") else Vector2(96, 130)
-			if not f.call("met_nanyeong"): return Vector2(236, 309)
+			if not f.call("met_nanyeong"): return Vector2(220, 314)
 			if not f.call("sang_child"): return Vector2(240, 376)
 			if not f.call("night"): return Vector2(130, 237)
 			if f.call("briefed") and not f.call("rescued"): return Vector2(4, 379)
