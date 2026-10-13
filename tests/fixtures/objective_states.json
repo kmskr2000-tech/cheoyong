@@ -1,0 +1,256 @@
+{
+ "_note": "design/gdd/objective-marker-table.md §3 을 기계가독 형태로 옮긴 것. exempt = 표 §3.5 의 문구 없음 예외(E-n). tests/objective_targets.gd(T1·T6)가 읽는다.",
+ "states": [
+  {
+   "id": "ch1.beach.flute",
+   "level": "beach",
+   "flags": [],
+   "text": "반짝이는 것을 줍는다",
+   "kind": "interact",
+   "show": "fallback"
+  },
+  {
+   "id": "ch1.beach.yokai",
+   "level": "beach",
+   "flags": [
+    "flute"
+   ],
+   "stub": [
+    "gaetgwi"
+   ],
+   "text": "요괴를 정화한다",
+   "kind": "node"
+  },
+  {
+   "id": "ch1.beach.scene",
+   "level": "beach",
+   "flags": [
+    "flute",
+    "beach_done"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-4"
+  },
+  {
+   "id": "ch1.gyeongju.apothecary",
+   "level": "gyeongju",
+   "flags": [],
+   "text": "약방에서 약재를 구한다",
+   "kind": "npc"
+  },
+  {
+   "id": "ch1.gyeongju.child",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong"
+   ],
+   "text": "금줄 친 집 아이를 살핀다",
+   "kind": "npc"
+  },
+  {
+   "id": "ch1.gyeongju.rest",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child"
+   ],
+   "text": "집에서 쉰다",
+   "kind": "interact"
+  },
+  {
+   "id": "ch1.gyeongju.scene",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child",
+    "night"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-4"
+  },
+  {
+   "id": "ch1.gyeongju.summoned",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child",
+    "night",
+    "summoned"
+   ],
+   "text": "관아로 간다",
+   "kind": "exit"
+  },
+  {
+   "id": "ch1.gyeongju.pyega_road",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child",
+    "night",
+    "summoned",
+    "briefed"
+   ],
+   "text": "서쪽 폐가로 간다",
+   "kind": "exit"
+  },
+  {
+   "id": "ch1.gyeongju.scene",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child",
+    "night",
+    "summoned",
+    "briefed",
+    "rescued"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-4"
+  },
+  {
+   "id": "ch1.gyeongju.rumor_hear",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child",
+    "summoned",
+    "briefed",
+    "rescued",
+    "rumor"
+   ],
+   "tals": [],
+   "text": "마을 소문을 듣는다",
+   "kind": "npc"
+  },
+  {
+   "id": "ch1.gyeongju.rumor_rest",
+   "level": "gyeongju",
+   "flags": [
+    "met_nanyeong",
+    "sang_child",
+    "summoned",
+    "briefed",
+    "rescued",
+    "rumor"
+   ],
+   "tals": [
+    "cheoyong"
+   ],
+   "text": "집에서 쉰다",
+   "kind": "interact"
+  },
+  {
+   "id": "ch1.gyeongju.royal_call",
+   "level": "gyeongju",
+   "flags": [
+    "rumor",
+    "king_call",
+    "night"
+   ],
+   "tals": [
+    "cheoyong"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-4"
+  },
+  {
+   "id": "ch1.gyeongju.farewell",
+   "level": "gyeongju",
+   "flags": [
+    "rumor",
+    "king_call",
+    "appointed"
+   ],
+   "tals": [
+    "cheoyong"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-4"
+  },
+  {
+   "id": "ch1.gyeongju.done",
+   "level": "gyeongju",
+   "flags": [
+    "rumor",
+    "king_call",
+    "appointed",
+    "chapter1_done"
+   ],
+   "tals": [
+    "cheoyong"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-5"
+  },
+  {
+   "id": "ch1.gwana.officer",
+   "level": "gwana",
+   "flags": [],
+   "text": "형방 박문을 만난다",
+   "kind": "npc"
+  },
+  {
+   "id": "ch1.gwana.leave",
+   "level": "gwana",
+   "flags": [
+    "briefed"
+   ],
+   "text": "관아를 나서 폐가로 간다",
+   "kind": "exit"
+  },
+  {
+   "id": "ch1.pyega1.attic",
+   "level": "pyega1",
+   "flags": [],
+   "text": "다락으로 올라간다",
+   "kind": "exit"
+  },
+  {
+   "id": "ch1.pyega2.deep",
+   "level": "pyega2",
+   "flags": [],
+   "stub": [
+    "boss_wait"
+   ],
+   "text": "폐가 안쪽으로 나아간다",
+   "kind": "area"
+  },
+  {
+   "id": "ch1.pyega2.after_death",
+   "level": "pyega2",
+   "flags": [],
+   "stub": [
+    "boss_wait_awake"
+   ],
+   "text": "역신 앞으로 다시 나선다",
+   "kind": "node",
+   "allow": [
+    "역신"
+   ]
+  },
+  {
+   "id": "ch1.pyega2.fight",
+   "level": "pyega2",
+   "flags": [],
+   "stub": [
+    "boss_fight"
+   ],
+   "text": "",
+   "kind": "none",
+   "exempt": "E-3"
+  },
+  {
+   "id": "ch1.palace.audience",
+   "level": "palace",
+   "flags": [],
+   "text": "편전 앞으로 나아간다",
+   "kind": "area"
+  }
+ ]
+}
