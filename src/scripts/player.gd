@@ -163,6 +163,8 @@ func _ready() -> void:
 	arm.offset = Vector2(-1, -4) # shoulder pivot inside the arm image
 	arm.visible = false
 	add_child(arm)
+	sprite.light_mask = 3   # 1 = 월드 광원, 2 = 처용 몸 전용 광원(level.gd _atmosphere)
+	arm.light_mask = 3
 	slash = Sprite2D.new()
 	slash.texture = load("res://assets/fx/slash.png")
 	slash.hframes = 4
