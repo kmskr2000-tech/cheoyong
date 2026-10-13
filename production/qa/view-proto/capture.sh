@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 시점 프로토타입 캡처: 같은 장면을 안(view)별로 찍는다. 사용: production/qa/view-proto/capture.sh [OUTDIR]
-# 기본(--view 없음)은 현행 480x270. 캡처 1장마다 godot.lock 을 잡았다 놓는다(규칙 9: 장시간 배치가 락을 독점하지 않게).
+# 기본(--view 없음)은 현행 480x270. 캡처는 한 번에 하나씩 순차·nice(짧은 단일 캡처, 규칙 9 예외). 장시간 배치(perf.sh)는 flock.
 set -u
 GODOT="${GODOT:-$HOME/workspace/tools/godot-4.4.1/Godot_v4.4.1-stable_linux.x86_64}"
 HERE="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -10,7 +10,7 @@ mkdir -p "$OUT"
 cap() {  # name view frames args...
   local name="$1" view="$2" frames="$3"; shift 3
   [ -f "$OUT/$name.png" ] && return
-  flock "$LOCK" timeout 200 xvfb-run -a -s "-screen 0 2600x1300x24" "$GODOT" --path "$HERE/src" --rendering-driver opengl3 -- --capture="$OUT/$name.png" --frames="$frames" --view="$view" "$@" >"$OUT/$name.log" 2>&1
+  nice -n 10 timeout 200 xvfb-run -a -s "-screen 0 2600x1300x24" "$GODOT" --path "$HERE/src" --rendering-driver opengl3 -- --capture="$OUT/$name.png" --frames="$frames" --view="$view" "$@" >"$OUT/$name.log" 2>&1
   echo "$name $(file -b "$OUT/$name.png" 2>/dev/null | cut -c1-40)"
 }
 G1=(--level=gyeongju --spawn=start --flags=summoned,briefed,arrived)

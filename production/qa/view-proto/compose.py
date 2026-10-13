@@ -22,12 +22,21 @@ def on_device(im):
     return canvas, s, used
 
 
-def panel(key, label, scene, scale_out=0.34):
+def panel(key, label, scene, scale_out=0.34, aggro=False):
     p = os.path.join(RAW, '%s_%s.png' % (scene, key))
     if not os.path.exists(p):
         return None
     im = Image.open(p)
     dev, s, used = on_device(im)
+    if aggro:   # 요괴 어그로 반경 130px(enemy.gd): 처용 발밑(화면 중심 +16px)이 중심. 줌 C는 월드가 0.75배라 반경도 0.75배
+        z = 0.75 if key == 'c75' else 1.0
+        up_w, up_h = im.width * s, im.height * s
+        ox, oy = (DEV[0] - up_w) // 2, (DEV[1] - up_h) // 2
+        cx, cy = ox + up_w // 2, oy + up_h // 2 + 16 * s * z
+        r = 130 * s * z
+        d0 = ImageDraw.Draw(dev)
+        d0.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(255, 60, 60), width=10)
+        d0.rectangle([ox, oy, ox + up_w - 1, oy + up_h - 1], outline=(90, 160, 255), width=6)
     sm = dev.resize((int(DEV[0] * scale_out), int(DEV[1] * scale_out)), Image.LANCZOS)
     cap_h = 64
     out = Image.new('RGB', (sm.width, sm.height + cap_h), (18, 18, 26))
@@ -39,8 +48,8 @@ def panel(key, label, scene, scale_out=0.34):
     return out
 
 
-def grid(scene, title, cols=2):
-    ps = [panel(k, l, scene) for k, l in VARS]
+def grid(scene, title, cols=2, aggro=False, out=None):
+    ps = [panel(k, l, scene, aggro=aggro) for k, l in VARS]
     ps = [p for p in ps if p]
     if not ps:
         return
@@ -51,7 +60,7 @@ def grid(scene, title, cols=2):
     ImageDraw.Draw(sheet).text((12, 16), title + '   (기기: 아이폰 가로 2556×1179 px = 393×852pt @3x, 정수 배율 nearest, 모든 칸 같은 비율로 축소)', font=f_big, fill=(255, 255, 255))
     for i, p in enumerate(ps):
         sheet.paste(p, (12 + (i % cols) * (w + 12), head + (i // cols) * (h + 12)))
-    o = os.path.join(HERE, 'cmp_%s.png' % scene)
+    o = os.path.join(HERE, out or 'cmp_%s.png' % scene)
     sheet.save(o, optimize=True)
     print('wrote', o, sheet.size)
 
@@ -87,4 +96,5 @@ if __name__ == '__main__':
     grid('s4_combat', 'S4 전투 — 개·구울이 달려드는 순간')
     grid('s5_touch', 'S5 터치 UI(--touch)')
     grid('s2_hwagae', 'S2 화개 저자(2장, 폭 800)')
+    grid('s1_village', 'S1 요괴 어그로 반경 130px(빨강 원) — 파랑 테두리 = 논리 화면', aggro=True, out='cmp_aggro.png')
     hero_crop('s1_village')
