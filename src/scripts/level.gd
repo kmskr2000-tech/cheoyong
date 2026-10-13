@@ -732,9 +732,11 @@ func _process(d: float) -> void:
 		l.energy = l.get_meta("base") * (1.0 + sin(t * 9.0 + i * 3.1) * 0.05 + sin(t * 23.0 + i) * 0.035)
 
 
-## 처용 주변 빛 파라미터 (기본값 = 확정값). 측정·튜닝용 `--glow=키:값,...` 로 덮어쓸 수 있다 (캡처 전용, 게임 플레이에는 영향 없음).
+## 처용 주변 빛 파라미터 (2026-10-13 사장님 폰 피드백 "처용 주변이 너무 밝음" 대응, 측정은 production/qa/hero-glow.md).
+## ae/as = 월드까지 닿는 찬 오라(에너지/크기), aek/ask = 어두운 맵 가산분, re/rs = 발밑 림라이트, he/hs = 처용 몸에만 닿는 빛.
+## 측정용 `--glow=키:값,...` 로 덮어쓸 수 있다(캡처 전용, 플레이에는 영향 없음).
 func _glow_params() -> Dictionary:
-	var g := {"ae": 0.55, "aek": 1.5, "as": 0.55, "ask": 0.3, "re": 1.4, "rs": 0.4, "he": 0.0, "hs": 0.5}
+	var g := {"ae": 0.15, "aek": 0.0, "as": 0.4, "ask": 0.0, "re": 0.0, "rs": 0.4, "he": 1.6, "hs": 0.35}
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--glow="):
 			for kv in a.get_slice("=", 1).split(","):
