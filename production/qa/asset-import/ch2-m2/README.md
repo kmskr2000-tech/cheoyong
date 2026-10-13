@@ -22,7 +22,7 @@
 | 소품 11종 | `src/assets/props/{hut_ruin,hut_ruin_b,old_tools,old_tools_mortar,old_tools_broom,old_tools_pot,old_tools_sandals,dok_torch,mortar_altar,doll,rockwall}.png` + `_n.png` + `dok_torch_glow` `mortar_altar_glow` `hut_ruin_b_glow` | `rockwall` 은 M1 파일을 개선판으로 **교체**(같은 이름·같은 크기 64×52, 충돌 OCCLUDE 그대로) |
 | 코드 | `art/ch2m2_terrain.py`(지형) `ch2m2_maps.py`(걷기 마스크=지형·충돌 단일 원천) `ch2m2_collision.py`(충돌 json + 게임 충돌 재현 검증) `ch2m2_markers.py`(좌표) `ch2m2_props.py`(소품) `ch2m2_walls.py`(석축) `ch2m2_lib.py` `ch2m2_verify.py` | `art/vox.py` 는 `last_r0` 한 줄만 추가(동작 변화 없음) |
 
-재생성: `python3 art/ch2m2_terrain.py && python3 art/ch2m2_collision.py && python3 art/ch2m2_props.py` / 검증 `python3 art/ch2m2_collision.py --check` · `python3 art/ch2m2_verify.py`.
+재생성: `python3 art/ch2m2_terrain.py && python3 art/ch2m2_collision.py && python3 art/ch2m2_props.py` (※ den3 는 art/ch2den3_terrain.py 가 정본 — ch2m2_terrain.py 의 den3 는 그쪽으로 위임) / 검증 `python3 art/ch2m2_collision.py --check` · `python3 art/ch2m2_verify.py`.
 
 ## 2. levels.gd 교체 방법
 

@@ -387,8 +387,9 @@ DEN3_TONE = dict(bright=1.05, sat=1.0, tint=(34, 22, 70), mix=0.14)
 
 
 def build_den3():
-    img, _, _ = den3_source()
-    return finish('den3', Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)), DEN3_TONE, 640, 326)
+    # 회귀 방지: den3 정본은 art/ch2den3_terrain.py. 옛 빌더 대신 위임(순환 import 피하려 지연 import).
+    import ch2den3_terrain
+    return ch2den3_terrain.build()
 
 
 BUILDERS = {'old_village': build_old_village, 'den1': build_den1, 'den2': build_den2, 'den3': build_den3}
