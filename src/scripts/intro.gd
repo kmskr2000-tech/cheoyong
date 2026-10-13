@@ -256,14 +256,20 @@ func _shot_sea() -> void:
 	await _fade_out()
 
 
+func _breathe(k: float, king: Sprite2D) -> void:
+	king.scale.y = k
+	king.position.y = 82.0 + 27.0 * (1.0 - k)
+
+
 ## 2–3: 병석의 용왕. 세 아들. 맏형의 봉쇄론. 용왕의 유언과 용패.
 func _shot_hall() -> void:
 	_new_shot()
 	_layer("res://assets/intro/intro_hall.png")
-	var king := _sprite("res://assets/sprites/npc_dragonking.png", Vector2(240, 114))   # on the canopied bed
-	king.rotation = -PI / 2
-	king.offset = Vector2(0, -12)
-	king.modulate = Color(0.82, 0.86, 0.92)
+	# 용왕은 서 있는 NPC 시트를 눕혀 쓰지 않고, 침상에 누운 전용 그림(art/intro_king.py)을 쓴다
+	var king := _layer("res://assets/intro/intro_king.png", Vector2(200, 82))   # 머리는 왼쪽 베개, 발은 오른쪽 — 침상 윗면에 얹힘
+	var breath := king.create_tween().set_loops()   # 느린 숨결: 가슴이 오르내림(바닥선 고정)
+	breath.tween_method(_breathe.bind(king), 1.0, 1.035, 2.2).set_trans(Tween.TRANS_SINE)
+	breath.tween_method(_breathe.bind(king), 1.035, 1.0, 2.6).set_trans(Tween.TRANS_SINE)
 	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(200, 168))   # 맏형 해강
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
@@ -300,7 +306,7 @@ func _shot_hall() -> void:
 	var scale_ := Sprite2D.new()
 	scale_.texture = load("res://assets/ui/icons/item_dragonseal.png")   # 용인: the dragon's teardrop seal
 	scale_.scale = Vector2(0.7, 0.7)
-	scale_.position = king.position + Vector2(-8, -10)
+	scale_.position = Vector2(200, 82) + Vector2(49, 18)   # 용왕의 손(이불 위에 얹은 팔 끝)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	scale_.material = add
