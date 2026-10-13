@@ -259,6 +259,8 @@ func _main() -> void:
 		"ch2_m1": await sc_ch2_m1()
 		# ---- 2장 마일스톤 2 (old_village·den1~3, tests/chapter1_playthrough.sh ch2_m2): 실제 걷기 + 정화 경로, tp 는 레벨 이동(출구 중심)에만
 		"ch2_m2": await sc_ch2_m2()
+		# ---- 2장 마일스톤 3 (두억시니전, tests/chapter1_playthrough.sh ch2_m3): 진입·군단 장갑·씻김 공명·은신·엄폐·2페이즈·패배 후 재시도·세이브 이어하기·격파
+		"ch2_m3": await sc_ch2_m3()
 		# ---- 2장 진입 검증(prog/ch2-enter): ch2_farewell·ch2_continue 는 --ch2 로, ch2_off_continue 는 인자 없이(꺼짐) 실행
 		"ch2_farewell": await sc_ch2_farewell()
 		"ch2_continue": await sc_ch2_continue()
@@ -1796,6 +1798,7 @@ func sc_ch2_m2() -> void:
 	G.save()
 
 	step("두억시니의 방 (SC2-06·07): 입구에서 오른쪽으로 걸어 gate 트리거, 체크포인트 den3")
+	god = true   # M3: gate 뒤에는 실제 두억시니전이 시작된다 — 이 시나리오는 연출·체크포인트만 본다
 	await goto_exit(1, "den3")
 	await must(G.checkpoint == "den2", "연출 전 체크포인트는 den2")
 	await must(G.flag("boss2_intro_seen") == 0, "boss2_intro_seen = 0")
@@ -1828,3 +1831,442 @@ func sc_ch2_m2() -> void:
 		G.checkpoint = id
 		await must(G.checkpoint_spawn()[0] == "gyeongju", "꺼짐 checkpoint=%s → 경주(2장 지점으로 들이지 않음)" % id)
 	await done()
+
+
+# ================================================================ 2장 M3: 두억시니의 방 보스전 (design/levels/ch2-dokkaebigol.md §6·§7 M-2)
+const D3_FLAGS := ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided", "night", "ch2_old_man", "village_seen",
+	"den_sight", "den_deep", "den2_seen", "den2_gate_cleared"]
+
+
+func d3_boss():
+	return lvl().get_node_or_null("Boss") if lvl() != null else null
+
+
+## den3 시작 지점에서 보스방으로 걸어 들어간다 (gate 트리거). pump 로 SC2-06·07 대사를 넘기고, 전투가 시작(awaken → idle)될 때까지 기다린다.
+func d3_enter_fight(first: bool) -> void:
+	await free_player()
+	Input.action_press("move_right")
+	await until(func(): return d3_boss() != null, "gate 트리거 → 두억시니 등장", 900)
+	Input.action_release("move_right")
+	pump = first
+	await until(func(): return d3_boss() != null and d3_boss().state == "idle", "전투 개시(awaken)", 3000)
+	pump = false
+	await free_player()
+
+
+## 졸개 n체를 소환하고(소환점 n 곳) 처용 곁으로 모아 둔다
+func d3_minions(boss, n: int) -> Array:
+	boss._sigils = boss._pick_sigils(n)
+	boss._do_summon()
+	var ms: Array = boss.minions.duplicate()
+	for i in ms.size():
+		ms[i].position = player().position + Vector2(-18 + i * 12, 8 - i * 5)
+	return ms
+
+
+func sc_ch2_m3() -> void:
+	seed(20261013)
+	var BEST = load("res://scripts/bestiary.gd")   # 클래스 이름을 직접 쓰면 오토로드 등록 전에 컴파일돼 실패한다
+	step("준비: M2 까지 끝낸 세이브, 두억시니의 방 입구 (스위치 켜짐)")
+	G.flags["ch2_unlocked"] = 1
+	for f in D3_FLAGS:
+		G.flags[f] = 1
+	G.checkpoint = "den2"
+	G.level_id = "den3"
+	G.spawn_name = "start"
+	await boot_level()
+	await free_player()
+	await must(G.ch2_enabled(), "ch2_enabled() 켜짐")
+	await must(get_nodes_in_group("enemy").is_empty(), "연출 전 방은 비어 있다 (보스는 gate 에서 등장)")
+	await must(G.flag("boss2_intro_seen") == 0 and G.checkpoint == "den2", "연출 전 체크포인트 den2")
+	step("도감: 스위치 켜짐 22종, 꺼짐 21종 (1장 도감 불변)")
+	await must(BEST.all().size() == BEST.ENTRIES.size() + 1 and BEST.all().has("dueoksini"), "켜짐: 두억시니가 도감에 오른다")
+	G.flags["ch2_unlocked"] = 0
+	await must(BEST.all().size() == BEST.ENTRIES.size() and not BEST.all().has("dueoksini"), "꺼짐: 도감 총수 불변")
+	G.flags["ch2_unlocked"] = 1
+
+	step("소환점 8 + 짚신 착지점: 전부 걸을 수 있고 기둥·절구에 끼지 않는다")
+	var pts: Array = load("res://scripts/dueoksini.gd").sigil_points()
+	await must(pts.size() == 8, "소환점 8 (45도, 반경 130)")
+	var p := player()
+	for i in pts.size():
+		await tp(pts[i])
+		await must(not p.test_move(p.global_transform, Vector2.ZERO), "소환점 %d %s 에 서도 끼지 않는다" % [i, str(pts[i])])
+		var inward: Vector2 = (lvl().lift(Vector2(320, 200)) - p.position).normalized() * 24.0
+		await must(not p.test_move(p.global_transform, inward), "소환점 %d 에서 의식대 쪽 24px 이동이 막히지 않는다" % i)
+		for pil in [Vector2(180, 126), Vector2(460, 126), Vector2(180, 274), Vector2(460, 274), Vector2(320, 200)]:
+			await must(pts[i].distance_to(pil) >= 30.0, "소환점 %d ↔ 기둥·절구 %s ≥ 30 (%.0f)" % [i, str(pil), pts[i].distance_to(pil)])
+	await tp(Vector2(240, 200))   # 음성 대조: 의식대 절구(320,200) 쪽으로 걸으면 막혀야 아래 '막히지 않는다' 검사가 의미가 있다
+	expect(p.test_move(p.global_transform, Vector2(140, 0)), "대조군: 절구 방향 이동은 막힘으로 보고된다")
+	await tp(Vector2(52, 200))   # gate 트리거(x70~110) 앞
+
+	step("SC2-06·07: 입구에서 오른쪽으로 걸어 gate → 두억시니 등장·대사·체크포인트 den3 → 전투 개시")
+	await d3_enter_fight(true)
+	var boss = d3_boss()
+	await must(boss != null and boss.state == "idle" and boss.phase == 1 and boss.hp == 600.0, "두억시니 HP 600·1페이즈·전투 상태")
+	await must(G.checkpoint == "den3" and G.flag("boss2_intro_seen") == 1, "체크포인트 den3, boss2_intro_seen")
+	await must(G.death_zone == "den3_boss", "사망 집계 키 den3_boss")
+	await must(is_instance_valid(lvl().get_meta("den3_door", null)), "입구 봉쇄문이 서 있다")
+	god = true
+	await tp(Vector2(60, 200))
+	var blocked: bool = p.test_move(p.global_transform, Vector2(-40, 0))
+	expect(blocked, "봉쇄문이 입구를 막는다")
+	await must(p.spawn.distance_to(lvl().lift(lvl().def["anchors"]["boss_respawn"])) < 2.0, "부활 지점 = anchors.boss_respawn (봉쇄문 안쪽)")
+	await must(lvl().def["anchors"]["boss_respawn"].x > 110.0, "부활 지점은 gate 트리거(x70~110) 밖")
+
+	step("군단 장갑·상태별 피해 배율 (T7): 졸개 생존 ×0.4 · 전부 쓰러지면 ×1.0 · 열림 ×1.5 · 은신 ×0.3")
+	boss.set_physics_process(false)
+	boss.position = lvl().lift(Vector2(460, 200))
+	boss.state = "idle"
+	await must(boss.exposure() == 1.0, "졸개가 없으면 ×1.0")
+	var ms := d3_minions(boss, 4)
+	await must(ms.size() == 4 and boss.minions_alive() == 4, "방망이 호출: 졸개 4")
+	await must(ms[0].kind == "dokkaebi_oneeye" and ms[1].kind == "dokkaebi_fire" and ms[2].kind == "dokkaebi_oneeye", "외눈박이·불도깨비 교대")
+	await must(ms[0].no_reward, "졸개는 no_reward")
+	var hp0: float = boss.hp
+	boss.take_hit(50, Vector2.ZERO)
+	await must(int(hp0 - boss.hp) == 20, "졸개 생존: 50 → 20 (실제 %d)" % int(hp0 - boss.hp))
+	for e in ms:
+		e.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	await must(boss.minions_alive() == 0 and boss.minions_total() == 4, "전원 쓰러짐(downed): 생존 0 · 소환수 4")
+	hp0 = boss.hp
+	boss.take_hit(50, Vector2.ZERO)
+	await must(int(hp0 - boss.hp) == 50, "졸개 전원 쓰러짐: 50 → 50 장갑 풀림 (실제 %d)" % int(hp0 - boss.hp))
+	for spec in [["open", 1.5, 75], ["stealth", 1.5, 15]]:
+		boss.state = spec[0]
+		boss.open_mult = spec[1]
+		hp0 = boss.hp
+		boss.take_hit(50, Vector2.ZERO)
+		var want: int = spec[2]
+		await must(int(hp0 - boss.hp) == want, "%s: 50 → %d (실제 %d)" % [spec[0], want, int(hp0 - boss.hp)])
+		boss._stealth_dmg = 0.0
+	boss.state = "idle"
+	cs_purge_minions(boss)
+
+	step("씻김 공명 (T8): 2·3·4체 한꺼번에 정화 → HP −30/−45/−60, 열림 2.5초 ×1.5, 사이클당 1회, 졸개 보상 0")
+	boss.hp = 600.0
+	boss.state = "idle"
+	var jg0: int = G.jeonggi
+	for spec in [[2, 30], [3, 45], [4, 60]]:
+		var n: int = spec[0]
+		boss._begin("idle")
+		boss._sigils = boss._pick_sigils(n)
+		boss._do_summon()
+		var cl: Array = boss.minions.duplicate()
+		await must(cl.size() == n, "%d체 소환" % n)
+		for i in cl.size():
+			cl[i].position = p.position + Vector2(-16 + i * 10, 6 - i * 4)
+		for e in cl:
+			e.take_hit(9999, Vector2.ZERO)
+		await tick(2)
+		hp0 = boss.hp
+		await sing_now()
+		await tick(3)
+		await must(int(hp0 - boss.hp) == spec[1], "%d체 공명: HP −%d (실제 −%d)" % [n, spec[1], int(hp0 - boss.hp)])
+		await must(boss.state == "open" and boss.open_mult == 1.5 and absf(boss.open_t - 2.5) < 0.01, "열림 2.5초 ×1.5 (state=%s open_t=%s)" % [boss.state, str(boss.open_t)])
+		boss.minions.clear()
+	await must(G.jeonggi == jg0 and not G.dogam.has("dokkaebi_oneeye") and not G.dogam.has("dokkaebi_fire"), "졸개 정화는 정기·도감 보상 0")
+	boss._begin("idle")
+	var ex := []
+	for i in 2:   # 같은 사이클에 또 2체 → 공명 없음
+		var e = lvl().spawn_enemy("dokkaebi_oneeye", Vector2(300 + i * 10, 200))
+		e.position = p.position + Vector2(-14 + i * 12, 5)
+		e.no_reward = true
+		e.purified.connect(boss._on_minion_purified)
+		boss.minions.append(e)
+		ex.append(e)
+	for e in ex:
+		e.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	hp0 = boss.hp
+	await sing_now()
+	await tick(3)
+	await must(boss.hp == hp0 and boss.state == "idle", "같은 호령 사이클의 두 번째 공명은 없다")
+	boss.minions.clear()
+	boss._sigils = boss._pick_sigils(1)   # 새 사이클, 1체 정화 → 공명 아님
+	boss._do_summon()
+	var one = boss.minions[0]
+	one.position = p.position + Vector2(-14, 4)
+	one.take_hit(9999, Vector2.ZERO)
+	await tick(2)
+	hp0 = boss.hp
+	await sing_now()
+	await tick(3)
+	await must(boss.hp == hp0 and boss._res_used == false, "1체 정화는 공명이 아니다 (사이클 유지)")
+	boss.minions.clear()
+
+	step("감투 은신 (②): 화염부 위에서 노출 → 휘청 1.2초 ×1.5 / 결박부로는 안 풀림 / 누적 피해 40 이상이면 풀림")
+	boss.hp = 600.0
+	boss.position = lvl().lift(Vector2(460, 200))
+	p.position = lvl().lift(Vector2(120, 330))
+	boss.set_physics_process(true)
+	boss.state = "stealth"
+	boss._stealth_dmg = 0.0
+	var TZ = load("res://scripts/fx/talisman_zone.gd")
+	var bz = TZ.new()
+	bz.kind = "bind"
+	bz.position = boss.position
+	lvl().add_child(bz)
+	await tick(20)
+	await must(boss.state == "stealth", "결박부는 은신을 풀지 못한다")
+	bz.queue_free()
+	var fz = TZ.new()
+	fz.kind = "fire"
+	fz.angle = 0.0
+	fz.position = boss.position
+	lvl().add_child(fz)
+	await until(func(): return boss.state == "open", "화염부 노출 → 은신 해제", 120)
+	await must(boss.open_mult == 1.5 and boss.open_t >= 1.19 and boss.exposure() == 1.5, "노출 휘청 1.2초 ×1.5")
+	fz.queue_free()
+	boss.set_physics_process(false)
+	boss.state = "stealth"
+	boss._stealth_dmg = 0.0
+	hp0 = boss.hp
+	boss.take_hit(120, Vector2.ZERO)
+	await must(boss.state == "stealth", "누적 피해 36 < 40: 아직 은신")
+	boss.take_hit(30, Vector2.ZERO)
+	await must(boss.state == "open", "누적 45 ≥ 40: 은신 해제 (실제 state=%s)" % boss.state)
+	step("방망이 내려침: 반경 안이면 18 피해(받아넘기기 대상), 밖이면 빗나가 열림")
+	god = false
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 300)
+	boss.position = lvl().lift(Vector2(200, 200))
+	p.position = boss.position + Vector2(30, 0)
+	var php: float = p.hp
+	await must(boss._slam(), "반경 44 안: 맞는다")
+	await must(php - p.hp >= 15.0, "내려침 피해 약 18 (실제 %d)" % int(php - p.hp))
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 300)
+	p.position = boss.position + Vector2(120, 0)
+	await must(not boss._slam(), "반경 밖: 빗나간다")
+	god = true
+	p.hp = p.max_hp
+
+	step("패턴 순환: 1페이즈 ①→③→②→③, 2페이즈 7칸(② 직후 ① 없음, 같은 패턴 연속 없음)")
+	boss.state = "idle"
+	boss.pat_i = 0
+	var seq1 := []
+	for i in 4:
+		boss._next_pattern()
+		seq1.append(boss.state)
+		boss._clear_tells()
+		boss.state = "idle"
+	await must(seq1 == ["summon", "blink_tell", "stealth_in", "blink_tell"], "1페이즈: " + str(seq1))
+	boss.phase = 2
+	boss.pat_i = 0
+	boss.minions.clear()
+	var c2: Array = boss._cycle()
+	await must(c2.size() == 7, "2페이즈 순환 7칸")
+	var okc := true
+	for i in c2.size():
+		var a: String = c2[i]
+		var b: String = c2[(i + 1) % c2.size()]
+		if a == b or (a == "stealth" and b == "summon"):
+			okc = false
+	await must(okc, "② 직후 ① 금지·연속 금지 (wrap 포함): " + str(c2))
+	boss.phase = 1
+	boss.pat_i = 0
+	boss._clear_tells()
+
+	step("소환 상한: 졸개가 상한(4)을 채우면 호령이 건너뛴다")
+	cs_purge_minions(boss)
+	boss.minions.clear()
+	var full := d3_minions(boss, 4)
+	await must(boss._summon_count() == 0, "상한 4 도달 → 소환 0")
+	boss.state = "idle"
+	boss.pat_i = 0
+	boss._next_pattern()
+	await must(boss.state == "blink_tell" and boss.pat_i == 2, "호령 건너뛰고 ③ (state=%s pat_i=%d)" % [boss.state, boss.pat_i])
+	boss._clear_tells()
+	for e in full:
+		if is_instance_valid(e):
+			e.remove_from_group("enemy")
+			e.queue_free()
+	boss.minions.clear()
+	boss.state = "idle"
+
+	step("엄폐 (CS-10): 짚신 불덩이는 기둥에 막히고, 열린 곳에서는 맞는다")
+	god = false
+	boss.position = lvl().lift(pts[7])   # (412,108) 북동 소환점
+	boss.set_physics_process(false)
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 300)
+	p.hp = p.max_hp
+	await tp(Vector2(484, 135))   # 기둥 (460,126) 뒤: 두억시니-기둥-처용이 일직선
+	var hp_c: float = p.hp
+	boss.aim = (p.global_position - boss.global_position).angle()
+	boss._fire_fan()
+	await tick(150)
+	await must(p.hp == hp_c, "기둥 뒤: 3발 모두 맞지 않는다 (hp %s → %s)" % [str(hp_c), str(p.hp)])
+	for pr in lvl().get_children().filter(func(n): return n.get("vel") != null and n.get("radius") != null):
+		pr.queue_free()   # 남은 불덩이 정리
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 300)
+	await tp(Vector2(412, 190))   # 열린 곳: 두억시니 바로 남쪽
+	hp_c = p.hp
+	boss.aim = (p.global_position - boss.global_position).angle()
+	boss._fire_fan()
+	await tick(150)
+	await must(p.hp < hp_c, "열린 곳: 맞는다 (hp %s → %s)" % [str(hp_c), str(p.hp)])
+	god = true
+
+	step("실전 순환: 1페이즈 패턴이 실제로 돌아간다 (호령·은신·짚신, 열림) — 스크립트 오류 없음")
+	cs_purge_minions(boss)
+	boss.minions.clear()
+	await tp(Vector2(200, 200))
+	boss.position = lvl().lift(Vector2(460, 200))
+	boss.hp = 600.0
+	boss.phase = 1
+	boss.pat_i = 0
+	boss._begin("idle")
+	boss.set_physics_process(true)
+	var seen := {}
+	var t0 := frame
+	while frame - t0 < 3600 and not (seen.has("summon") and seen.has("stealth_in") and seen.has("stealth") and seen.has("blink_tell") and seen.has("blink_aim") and seen.has("open")):
+		seen[boss.state] = true
+		p.hp = p.max_hp
+		await process_frame
+	await must(seen.has("summon") and seen.has("stealth_in") and seen.has("blink_tell") and seen.has("blink_aim") and seen.has("open"), "관측한 상태: " + str(seen.keys()))
+	await must(boss.minions_total() > 0 or seen.has("summon"), "호령이 졸개를 냈다")
+
+	step("2페이즈 (SC2-22): HP 절반 이하 → 대사 → 열림 1.2초·소리 +30 → 검은 비")
+	cs_purge_minions(boss)
+	boss.minions.clear()
+	boss.set_physics_process(true)
+	boss._begin("idle")
+	boss.state = "idle"
+	var ki0: float = p.ki
+	p.ki = 0.0
+	pump = true
+	boss.hp = 301.0
+	boss.take_hit(int(10.0 / boss.exposure()) + 1, Vector2.ZERO)
+	await until(func(): return boss.phase == 2, "2페이즈 진입", 300)
+	await until(func(): return boss.rain_on, "대사 뒤 phase_shift → 검은 비", 1500)
+	pump = false
+	await must(p.ki >= 29.0, "소리 +30 (ki=%s)" % str(p.ki))
+	await until(func(): return boss._rain_node != null and is_instance_valid(boss._rain_node), "검은 비 표식", 300)
+	var spot0: Vector2 = boss._rain_node.position
+	await until(func(): return boss._rain_node != null and boss._rain_node.position != spot0, "검은 비가 다음 자리로 번갈아", 1500)
+	# 수호부가 있으면 검은 비 틱은 무효 (kind=miasma). 다른 공격이 섞이지 않게 두억시니를 열림 상태로 붙들어 둔다 (비는 계속 내린다)
+	boss._begin("open")
+	boss.open_t = 99999.0
+	cs_purge_minions(boss)
+	for g in ["enemy", "downed"]:
+		for e in get_nodes_in_group(g):
+			if e.get("kind") != null:
+				e.remove_from_group("enemy")
+				e.remove_from_group("downed")
+				e.queue_free()
+	for n in lvl().get_children().filter(func(n): return (n.get("vel") != null and n.get("radius") != null) or (n.get("tick") != null and n.get("radius") != null)):
+		n.queue_free()   # 날아가던 불덩이·불 장판
+	god = false
+	await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 300)
+	p.hp = p.max_hp
+	p.shield = 1
+	p.shield_t = 10.0
+	var rp: Vector2 = boss._rain_node.position
+	p.position = rp
+	boss._rain_tick = 0.0
+	hp_c = p.hp
+	await until(func(): return boss._rain_node != null and boss._rain_node.get_node("drops").emitting, "비 활성", 600)
+	p.position = boss._rain_node.position
+	await tick(40)
+	await must(p.hp == hp_c and p.shield == 1, "수호부: 검은 비 틱 무효·충전 소모 없음 (hp %s→%s shield %s)" % [str(hp_c), str(p.hp), str(p.shield)])
+	p.shield = 0
+	p.shield_t = 0.0
+	p.position = boss._rain_node.position
+	boss._rain_tick = 0.0
+	await tick(40)
+	await must(p.hp < hp_c, "수호부 없이 비 속에 서면 맞는다")
+	god = true
+	p.hp = p.max_hp
+
+	step("패배 → 입구 안쪽에서 부활 (레벨 재로드 없음) → 두억시니 HP·페이즈·졸개 초기화, 사망은 den3_boss 로 집계")
+	G.deaths = {}
+	var iid := level_iid()
+	for attempt in 2:
+		god = false
+		boss = d3_boss()
+		if attempt == 0:
+			cs_purge_minions(boss)
+			d3_minions(boss, 3)
+		await until(func(): return p.hurt_t <= 0.0, "피격 유예 해제", 300)
+		p.hurt(99999, Vector2.RIGHT)
+		await must(p.hp == 0.0, "치명타로 쓰러졌다")
+		await until(func(): return p.hp == p.max_hp and p.state == "move", "플레이어 부활", 900)
+		await tick(3)
+		await must(level_iid() == iid, "레벨 재로드 없음")
+		boss = d3_boss()
+		await must(boss.hp == 600.0 and boss.phase == 1 and boss.state == "idle" and not boss.rain_on, "두억시니 초기화 hp=%s ph=%d st=%s" % [str(boss.hp), boss.phase, boss.state])
+		await must(boss.minions_total() == 0 and get_nodes_in_group("enemy").filter(func(e): return e.get("kind") != null and not e.is_queued_for_deletion()).is_empty(), "졸개 제거")
+		await must(G.flag("boss2_done") == 0, "boss2_done 미설정")
+		await must(p.position.distance_to(lvl().lift(lvl().def["anchors"]["boss_respawn"])) < 2.0, "봉쇄문 안쪽에서 부활")
+		await must(int(G.deaths.get("den3_boss", 0)) == attempt + 1 and int(G.deaths.get("den3", 0)) == 0, "사망이 den3_boss 키로 집계")
+		await must(boss.st < 0.0, "재시작 직후 1.5초 여유")
+		if attempt == 0:   # 2페이즈를 겪은 뒤 죽어도 처음부터
+			boss.set_physics_process(false)
+			boss.hp = 301.0
+			pump = true
+			boss.take_hit(int(10.0 / boss.exposure()) + 1, Vector2.ZERO)
+			await until(func(): return boss.phase == 2 and boss.rain_on, "2페이즈 + 검은 비", 1500)
+			pump = false
+			boss.set_physics_process(true)
+	god = true
+
+	step("세이브 이어하기: 전투 중 저장 → 타이틀 이어하기 → den3 start, 연출 생략 후 곧 전투")
+	G.save()
+	await must(G.checkpoint == "den3" and G.flag("boss2_intro_seen") == 1, "저장된 체크포인트 den3")
+	await boot("res://scenes/title.tscn")
+	await until(func(): return scene_name() == "title.tscn" and current_scene.get("_ready_t") > 0.9, "타이틀 준비", 600)
+	await must("continue" in title_actions(), "'이어하기' 노출")
+	_tap("confirm")
+	await until(func(): return level_ready("den3"), "이어하기 → 두억시니의 방", 2500)
+	await must(G.checkpoint_spawn() == ["den3", "start"] and G.spawn_name == "start", "이어하기 지점 den3 start")
+	await must(d3_boss() == null, "입장 직후엔 아직 보스 없음 (gate 에서 등장)")
+	god = true
+	await d3_enter_fight(false)
+	boss = d3_boss()
+	await must(boss != null and boss.state == "idle" and boss.hp == 600.0, "재입장: 연출 생략, 보스 새로 시작")
+	await must(lvl()._talking == 0, "SC2-06·07 대사창 없음 (boss2_intro_seen)")
+
+	step("격파: 무릎 꿇음 → 노래 → 두억시니 정화(SC2-09·10) → 화개 저자 '이튿날 아침' (boss2_done·세이브·장신구·도감)")
+	cs_purge_minions(boss)
+	await must(not G.has_gamtu() and not G.dogam.has("dueoksini"), "격파 전: 감투 없음·도감 미등록")
+	boss.set_physics_process(false)
+	boss.state = "idle"
+	boss.take_hit(int(boss.hp / boss.exposure()) + 5, Vector2.ZERO)
+	await until(func(): return boss.state == "kneel", "무릎 꿇음", 600)
+	await until(func(): return lvl().hud._guide == "song", "노래 안내", 1500)
+	player().position = boss.position + Vector2(-30, 8)
+	await tick(2)
+	pump = true
+	await sing_now()
+	await until(func(): return G.flag("boss2_done") == 1, "격파 플래그 boss2_done", 600)
+	var iid2 := level_iid()
+	await until(func(): return level_ready("hwagae", iid2), "SC2-09·10 후 화개 저자로", 3500)
+	pump = false
+	await must(G.checkpoint == "hwagae" and G.spawn_name == "fromBoss", "체크포인트 hwagae, 스폰 fromBoss")
+	await must(G.has_gamtu() and G.GAMTU_NAME in G.accessories, "장신구 「도깨비 감투」 획득")
+	await must(G.dogam.has("dueoksini") and BEST.entry("dueoksini")["tier"] == "boss", "도감: 두억시니(보스)")
+	await must(G.death_zone == "", "사망 집계 키 해제")
+	await must(save_flags().get("boss2_done", 0) == 1 and G.has_save(), "boss2_done 이 세이브에 기록됨")
+
+	step("격파 뒤 재입장: 보스도 봉쇄문도 없다")
+	G.level_id = "den3"
+	G.spawn_name = "start"
+	await boot_level()
+	await free_player()
+	Input.action_press("move_right")
+	await until(func(): return player().position.x > lvl().lift(Vector2(130, 0)).x, "gate 통과", 900)
+	Input.action_release("move_right")
+	await tick(30)
+	await must(d3_boss() == null and get_nodes_in_group("enemy").is_empty(), "보스 없음")
+	await must(not lvl().has_meta("den3_door"), "봉쇄문 없음")
+	await must(not player().locked, "조작 가능")
+	await done()
+
+
+func cs_purge_minions(boss) -> void:
+	for e in boss.minions:
+		if is_instance_valid(e):
+			e.remove_from_group("enemy")
+			e.remove_from_group("downed")
+			e.queue_free()
+	boss.minions.clear()

@@ -831,6 +831,7 @@ func _objective_ch2(level: Node):
 		"den2":
 			return level.def["anchors"]["exit"] if f.call("den2_gate_cleared") else Vector2(320, 200)
 		"den3":
+			if f.call("boss2_done"): return level.def["anchors"]["exit"]
 			return Vector2(90, 200) if not f.call("boss2_intro_seen") else level.def["anchors"]["hall"]
 	return null
 
@@ -1112,8 +1113,8 @@ func purified(level: Node, kind: String) -> void:
 		Game.set_flag("q_b_clean", 0)
 
 
-## 두억시니의 방: 입장하면 입구 복도가 닫힌다(SC2-06·07 연출, 체크포인트 den3). 재도전(boss2_intro_seen)이면 연출을 건너뛰고 1초 뒤 시작한다.
-## M2 에는 보스 전투가 없다 — 연출 뒤 안내만 하고 문을 다시 연다 (두억시니전은 다음 마일스톤).
+## 두억시니의 방: 입장하면 입구 복도가 닫히고(전투가 끝날 때까지) 두억시니가 모습을 드러낸다.
+## SC2-06·07 연출(첫 입장, 체크포인트 den3) 뒤 전투. 재도전(boss2_intro_seen)이면 연출을 건너뛰고 1초 뒤 전투. 격파(boss2_done) 뒤에는 방이 비어 있다.
 func _den3_enter(_level: Node) -> void:
 	Game.set_flag("flute")
 	if not Game.flag("boss2_intro_seen"):
@@ -1121,11 +1122,19 @@ func _den3_enter(_level: Node) -> void:
 
 
 func _den3_gate(level: Node) -> void:
+	if Game.flag("boss2_done") or not Game.ch2_enabled():
+		return   # 이미 거둔 방(또는 2장 스위치가 꺼진 빌드): 보스도 봉쇄문도 없다
 	var p: Node2D = level.get_node("Player")
 	p.locked = true
 	await level.get_tree().process_frame
-	var door: Node = level.add_barrier(level.def["anchors"]["door"])   # 입구 복도가 닫힌다
+	var door: Node = level.add_barrier(level.def["anchors"]["door"])   # 입구 복도가 닫힌다 (격파 때까지)
+	level.set_meta("den3_door", door)
 	Audio.sfx("door", -6.0)
+	var boss := Dueoksini.new()
+	boss.name = "Boss"
+	boss.position = level.lift(level.def["anchors"]["boss"])
+	level.add_child(boss)
+	boss.appear()
 	if not Game.flag("boss2_intro_seen"):
 		Game.checkpoint = "den3"
 		Game.set_flag("boss2_intro_seen")
@@ -1137,8 +1146,57 @@ func _den3_gate(level: Node) -> void:
 			{"name": "처용", "text": "…안다."},
 		])
 	else:
-		await level.get_tree().create_timer(1.0).timeout   # 재도전: 연출 생략, 곧 전투 (M2: 전투 미구현)
+		await level.get_tree().create_timer(1.0).timeout   # 재도전: 연출 생략, 곧 전투
 		p.locked = false
-	Game.say_toast("두억시니와의 싸움은 다음 마일스톤에서 이어진다.", Color(1.0, 0.7, 0.5))
+	_den3_fight(level, boss)
+
+
+## SC2-08: 전투 개시. 쓰러지면 입구 안쪽에서 다시 일어서고(레벨 재로드 없음) 두억시니 HP·페이즈·졸개가 초기화된다 (1장 CS-12 와 같은 규칙).
+func _den3_fight(level: Node, boss: Dueoksini) -> void:
+	var p: Node2D = level.get_node("Player")
+	boss.awaken()
+	level.hud.show_boss(boss, "두억시니")
+	Game.death_zone = "den3_boss"   # CS-07: 두억시니전 사망은 den3_boss 키로 따로 센다
+	p.spawn = level.lift(level.def["anchors"]["boss_respawn"])
+	boss.home_pos = boss.position
+	p.died.connect(_boss_player_died.bind(level, boss))
+	boss.phase_two.connect(_boss2_phase_two.bind(level, boss))
+	boss.knelt.connect(_boss2_knelt.bind(level), CONNECT_ONE_SHOT)
+	boss.defeated.connect(_boss2_defeated.bind(level), CONNECT_ONE_SHOT)
+
+
+## SC2-22
+func _boss2_phase_two(level: Node, boss: Dueoksini) -> void:
+	boss.state = "wait"
+	await level.talk([{"name": "두억시니", "text": "…비가… 또… 내린다…"}])
+	if boss.state == "wait":   # 한 방에 2페이즈와 무릎 꿇음을 넘었다면 쓰러진 보스는 그대로 둔다
+		boss.phase_shift()   # 열림 1.2초(×1.5) · 소리 +30 · 검은 비 시작
+
+
+## 무릎 꿇음: 노래로 거두라는 길잡이 (SC2-09 의 대사는 정화 순간)
+func _boss2_knelt(level: Node) -> void:
+	await level.get_tree().create_timer(0.8).timeout
+	level.hud.guide("song")
+
+
+## SC2-09·10: 낡은 절구로 돌아가며 한 마디, 처용의 독백, 이튿날 아침 화개 저자로 (SC2-11 이후는 다음 마일스톤)
+func _boss2_defeated(level: Node) -> void:
+	level.hud.guide("")
+	var pl: Node = level.get_node("Player")
+	for c in pl.died.get_connections():
+		pl.died.disconnect(c["callable"])
+	Game.set_flag("boss2_done")
+	Game.death_zone = ""
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().create_timer(2.0).timeout
+	await level.talk([
+		{"name": "두억시니", "text": "…고맙다. 검은 비가 내리던 날부터, 정신이 아니었다."},   # SC2-09
+		{"name": "처용", "text": "검은 비… 1장의 역병과 같은 냄새."},   # SC2-10
+	])
+	var door = level.get_meta("den3_door", null)
 	if is_instance_valid(door):
 		door.queue_free()
+	Game.checkpoint = "hwagae"
+	Game.save()
+	Game.change_level("hwagae", "fromBoss", "이튿날 아침", "")
