@@ -398,3 +398,4 @@
 - [지시] 09:57 — 에이전트 배정: Background agent "프로그래밍팀-통합배포" didn't finish before the previous session ended
 - [지시] 09:57 — 에이전트 배정: 6 background agents didn't finish before the previous session ended: "아트팀-인트로개선" (a857a242f69ac02d5), "아트팀-처용밝기조정" (a03fa1ebe223dd4f2), "프로그래밍팀-걷기애니메이션"
 - [결정] 10:02 전 팀 — VM 재부팅(09:53) 복구: 시스템 teardown 으로 중단된 에이전트 7개(인트로·처용밝기·걷기·에셋겹침·시점카메라·목표마커·통합배포)를 체크포인트에서 재개(사장님 중지 아님). 17분 점검 크론 재등록. 라이브 20261013030331 유지, ch2-m2-assets 는 main 머지 완료(재검증 재개).
+- [결정] 10:3x 시점카메라 — design/view-camera d991497 승인. 도깨비의세계 방향 확정: 1단계(A+ 가로확장 KEEP_HEIGHT+룩어헤드·데드존·전투프레이밍, 에셋0) 즉시 구현·이번 묶음배포 포함. 2단계(B2 640x360 정수3배, 지형 재굽기+HUD 확대)는 1장 폰확인 후 2장 신규맵부터 적용. Q4 어그로130 유지, Q5 palace 폭상한512+가장자리 연출, Q2 HUD는 1.33배 비정수 확대 대신 폰 좌우 여백 배치 우선.
