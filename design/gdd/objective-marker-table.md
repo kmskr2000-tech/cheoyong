@@ -109,7 +109,8 @@
 | `ch1.gyeongju.rest` | `sang_child` ∧ `!night` | "집에서 쉰다" | 집 (130,237) | interact | 미검증 | 혼례·아내 | 쉬기 → 혼례 몽타주 → 밤. 약방·잡담은 선택 |
 | `ch1.gyeongju.summoned` | `night` ∧ `summoned` ∧ `!briefed` | "관아로 간다" | 관아 문 (562,28) | exit | 미검증 | 역병(관아 사람이 말한 뒤라 허용), 폐가 | 문 열림과 같은 시점에 토스트 "관아로 가는 길이 열렸다." (신규, §4) |
 | `ch1.gyeongju.pyega_road` | `briefed` ∧ `!rescued` | "서쪽 폐가로 간다" | 서쪽 끝 (4,379) | exit | 미검증 | 넋, 역신 | 서쪽 길 열림 시 토스트 "서쪽 길이 열렸다." (신규) |
-| `ch1.gyeongju.rumor_rest` | `rumor` ∧ `!king_call` | "집에서 쉰다" | 집 (130,237) | interact | 미검증 | 왕, 입궐, 어사(임명 전) | **기존 (96,130) 대체 — 결함 D-1 수정** |
+| `ch1.gyeongju.rumor_hear` | `rumor` ∧ `!king_call` ∧ 처용탈 미획득(`"cheoyong" ∉ Game.tals`) | "마을 소문을 듣는다" | 마을 아낙 (318,213) | npc (`npc:villagerA`) | — | 왕, 입궐, 어사, 아내, 난영 | **신규(디렉터 결정 2026-10-13 ②)**: 선택 보상(SC1-21 처용탈)을 목표에 올림. 아낙·노인·나무꾼·사내·약방 주인 중 누구와 말해도 탈이 나오므로 마커는 스폰에서 가까운 아낙 한 명만 가리킨다 |
+| `ch1.gyeongju.rumor_rest` | `rumor` ∧ `!king_call` ∧ 처용탈 획득 후 | "집에서 쉰다" | 집 (130,237) | interact | 미검증 | 왕, 입궐, 어사(임명 전) | **기존 (96,130) 대체 — 결함 D-1 수정** |
 | (무문구) | `king_call` / `appointed` / 연출 중 | — | — | — | — | — | 자동 연출(내관·작별) |
 | (무문구) | `chapter1_done` | — | — | — | — | — | 예외 E-5 |
 
