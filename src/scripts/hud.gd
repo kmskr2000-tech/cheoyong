@@ -280,7 +280,7 @@ func _open_bag() -> void:
 	while true:
 		var status := "Lv.%d  덕망 %d/%d · 정기 %d · 엽전 %d냥" % [Game.lv, Game.deok, Game.need(Game.lv), Game.jeonggi, Game.money]
 		var i: int = await dialog.choose({"name": "행낭", "text": status},
-			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "안내 설정", "회상", "닫기"])
+			["약 꺼내기", "수련 (%d점)" % Game.skill_points, "요괴 도감 (%d/%d)" % [Game.dogam_count(), Bestiary.ENTRIES.size()], "지닌 것", "회상", "안내 설정", "닫기"])
 		if i == 0:
 			if await _bag_items(dialog):
 				break
@@ -291,10 +291,10 @@ func _open_bag() -> void:
 		elif i == 3:
 			await _bag_kept(dialog)
 		elif i == 4:
-			await _bag_guide_settings(dialog)
-		elif i == 5:
 			await _recall()
 			break
+		elif i == 5:
+			await _bag_guide_settings(dialog)
 		else:
 			break
 	get_tree().paused = false
