@@ -467,3 +467,4 @@
 - [지시] 15:52 — 에이전트 배정: 인트로 개선(asset/intro-polish, 8ba40c7)이 감사팀 순회 13을 통과해서 승인했고, 통합배포2에 머지를 이어서 지시했습니다. 배포는 하지 않았고, 라이브 20261013030331은 유지합니다.
 - [지시] 15:52 — 에이전트 배정: 15:52 기준 직전 점검(몇 분 전)과 같습니다. 에이전트 3개가 가동 중이고, 감사 기록은 인트로 순회 13이 마지막입니다. 적발이나 중단 권고는 없습니다.
 - [머지] 15:5x prog/walk-anim — main 반영(선형 커밋 f031724·0668b5d·d951eaf; 통합배포2가 머지 직후 rebase해 머지 커밋 평탄화, 내용·범위 동일 5파일 +74/-3, 히스토리 재작성 안 함). [충돌] asset/intro-polish — capture.gd 1곳(--burst vs --every 양쪽 보존으로 해소) → 통합배포3 재지시, rebase 금지 명시. smoke 확인은 락 대기열 17개로 생략됨 → 전부 머지 후 main에서 1회 일괄 회귀.
+- [머지] 15:5x asset/intro-polish — main 반영 3368e46(--no-ff, 부모 34962fd+8ba40c7, rebase 없음). capture.gd 충돌 1곳 --burst/--every 양쪽 보존. 문법 확인은 --script 단독 모드 autoload 한계(Identifier Game)로 불완전 → 전부 머지 후 main 일괄 회귀(smoke 포함)에서 확인. 남은 감사: objective-marker·overlap-fix(일괄검증), hero-glow·view-stage1(시점밝기검증).
