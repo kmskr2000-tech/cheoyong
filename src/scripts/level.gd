@@ -736,7 +736,7 @@ func _process(d: float) -> void:
 ## ae/as = 월드까지 닿는 찬 오라(에너지/크기), aek/ask = 어두운 맵 가산분, re/rs = 발밑 림라이트, he/hs = 처용 몸에만 닿는 빛.
 ## 측정용 `--glow=키:값,...` 로 덮어쓸 수 있다(캡처 전용, 플레이에는 영향 없음).
 func _glow_params() -> Dictionary:
-	var g := {"ae": 0.15, "aek": 0.0, "as": 0.4, "ask": 0.0, "re": 0.0, "rs": 0.4, "he": 1.6, "hs": 0.35}
+	var g := {"ae": 0.15, "aek": 0.0, "as": 0.4, "ask": 0.0, "re": 0.0, "rs": 0.4, "he": 1.8, "hs": 0.35, "hf": 1.41}
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--glow="):
 			for kv in a.get_slice("=", 1).split(","):
@@ -781,11 +781,11 @@ func _atmosphere() -> void:
 		rim.position = Vector2(0, -4)
 		rim.height = 12.0
 		$Player.add_child(rim)
-	if dark_k > 0.0 and gp.he > 0.0:   # 처용 몸에만 닿는 빛(광원 마스크 2): 주변 바닥은 밝히지 않고 처용 본체 대비만 올린다
+	if gp.he > 0.0:   # 처용 몸에만 닿는 빛(광원 마스크 2): 주변 바닥은 밝히지 않고 처용 본체 대비만 올린다
 		var hl := PointLight2D.new()
 		hl.texture = light_tex
 		hl.color = Color(0.75, 0.82, 1.0)
-		hl.energy = gp.he * dark_k
+		hl.energy = gp.he * (dark_k + gp.hf * (1.0 - dark_k))   # 밝은 맵(경주·화개 황혼 등)일수록 몸 전용광 보강: dark_k=1 은 그대로, 0.27 은 약 1.3배
 		hl.texture_scale = gp.hs
 		hl.range_item_cull_mask = 2
 		hl.position = Vector2(0, -16)
