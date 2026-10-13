@@ -263,6 +263,8 @@ func _main() -> void:
 		"ch2_m3": await sc_ch2_m3()
 		# ---- 2장 마일스톤 4 (SC2-11~14 이튿날 아침·오방탈·도깨비 상점·2절·감투 정화 속도, tests/chapter1_playthrough.sh ch2_m4)
 		"ch2_m4": await sc_ch2_m4()
+		# ---- 2장 마일스톤 5 (의뢰 A·C 정식 처리 SC2-23·24, tests/chapter1_playthrough.sh ch2_m5)
+		"ch2_m5": await sc_ch2_m5()
 		# ---- 2장 진입 검증(prog/ch2-enter): ch2_farewell·ch2_continue 는 --ch2 로, ch2_off_continue 는 인자 없이(꺼짐) 실행
 		"ch2_farewell": await sc_ch2_farewell()
 		"ch2_continue": await sc_ch2_continue()
@@ -2539,4 +2541,196 @@ func sc_ch2_m4() -> void:
 	await must(cx - half <= player().position.x - 20.0, "처용도 화면 왼쪽에서 20px 이상 안쪽에 남는다")
 	await must(boss.position.x <= lvl().lift(Vector2(460, 200)).x - 40.0, "보스 개시 위치가 예전(460)보다 안쪽")
 	await must(lvl().def["anchors"]["hall"] == Vector2(460, 200), "hall 앵커(길잡이 목표)·지형·소품은 그대로")
+	await done()
+
+
+# ================================================================ 2장 M5: 의뢰 A「길목의 범」·C「장터 털이범」 수주·진행·보고·보상 (SC2-23·24) + hwagae 소품 겹침 0건(overlap_check)
+const M5_FLAGS := ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided", "ch2_old_man", "shrine_seen"]
+
+
+func m5_boot(level_id: String, flags: Array, spawn := "start") -> void:
+	G.new_game()
+	G.flags["ch2_unlocked"] = 1
+	for f in flags:
+		G.flags[f] = 1
+	G.tal = "cheoyong"
+	G.tals = ["cheoyong"]
+	G.checkpoint = level_id
+	G.level_id = level_id
+	G.spawn_name = spawn
+	G.save()
+	await boot_level()
+
+
+## 요괴 한 마리를 쓰러뜨려 노래로 정화한다 (다른 요괴는 치워 둔다)
+func m5_tp_board() -> void:
+	player().position = lvl().lift(Vector2(430, 230)) + Vector2(-14, 6)
+	await tick(2)
+
+
+func m5_deok_total(lv: int, deok: int) -> int:
+	var t := deok
+	for l in range(1, lv):
+		t += G.need(l)
+	return t
+
+
+func m5_purify(kind: String) -> void:
+	var p := player()
+	for e in get_nodes_in_group("enemy"):
+		if is_instance_valid(e) and e.get("kind") != null and e.state != "downed":
+			e.remove_from_group("enemy")
+			e.queue_free()
+	await tick(2)
+	var foe = lvl().spawn_enemy(kind, lvl().lift(Vector2(330, 200)))
+	await tick(3)
+	foe.set_physics_process(false)
+	foe.take_hit(9999, Vector2.ZERO)
+	await tick(3)
+	p.position = foe.position + Vector2(-14, 4)
+	await tick(2)
+	await must(foe.state == "downed", "%s 쓰러짐" % kind)
+	p.sing()
+	await until(func(): return p.state == "move", "노래 끝", 900)
+	await tick(40)
+
+
+func sc_ch2_m5() -> void:
+	seed(20261013)
+	step("준비: 노인을 만난 뒤 밤의 화개 저자 → 게시판에서 의뢰 A·C 수주")
+	await m5_boot("hwagae", M5_FLAGS)
+	god = true
+	await tick(5)
+	await must(G.ch2_enabled(), "스위치 켜짐")
+	await must(G.flag("q_a") == 0 and G.flag("q_c") == 0, "의뢰 A·C 미수주")
+	var money0: int = G.money
+	await m5_tp_board()
+	await interact("board")
+	await m4_to_menu("게시판 메뉴")
+	await must(lvl().dialog._menu != null, "게시판 선택지가 열린다")
+	await m4_pick(0)   # 의뢰 A 수주
+	await must(G.flag("q_a") == 1 and G.flag("q_a_n") == 0, "의뢰 A 수주(q_a=1)")
+	await m4_to_menu("메뉴 재개")
+	await m4_pick(1)   # 의뢰 C 수주
+	await must(G.flag("q_c") == 1 and G.flag("q_c_n") == 0, "의뢰 C 수주(q_c=1)")
+	await m4_to_menu("메뉴 재개(2)")
+	await m4_pick(0)   # 이미 수주: 진행 안내 대사
+	await must(G.flag("q_a") == 1, "다시 골라도 상태 유지")
+	await m4_to_menu("메뉴 재개(3)")
+	await m4_pick(2)   # 물러난다
+	await until(func(): return not player().locked, "게시판 닫힘", 600)
+	await must(G.money == money0, "수주만으로 엽전은 변하지 않는다")
+	await must(save_flags().get("q_a", 0) == 1 and save_flags().get("q_c", 0) == 1, "수주 직후 세이브")
+
+	step("보고 전(미완료)에는 장사치·짐꾼이 평소 대사 — 보상 없음")
+	await tp_to_npc("sangin")
+	await interact("sangin")
+	pump = true
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "장사치 평소 대사", 800)
+	pump = false
+	await must(G.money == money0 and G.flag("q_a") == 1, "목표 전 보고는 보상이 없다")
+
+	step("정화 훅: 엉뚱한 맵·요괴·미수주는 세지 않는다")
+	root.get_node("Story").purified(lvl(), "sangun")   # hwagae 는 의뢰 A 의 맵이 아니다
+	await must(G.flag("q_a_n") == 0, "다른 맵의 정화는 세지 않는다")
+	G.flags["ch2_unlocked"] = 0
+	G.level_id = "jiri_path"
+	root.get_node("Story").purified(lvl(), "sangun")
+	await must(G.flag("q_a_n") == 0, "스위치 꺼짐이면 세지 않는다")
+	G.flags["ch2_unlocked"] = 1
+	root.get_node("Story").purified(lvl(), "dokkaebi_fire")
+	await must(G.flag("q_a_n") == 0, "목표 아닌 요괴(도깨비)는 의뢰 A 에 세지 않는다")
+	G.level_id = "hwagae"
+
+	step("의뢰 A: 산길에서 산군 2체 정화 → 1/2 → 2/2(보고 대기), 초과 정화는 더 세지 않는다")
+	G.save()
+	await m5_boot("jiri_path", M5_FLAGS + ["q_a_pre"])
+	G.flags["q_a"] = 1
+	G.flags["q_a_n"] = 0
+	god = true
+	await m5_purify("sangun")
+	await must(G.flag("q_a_n") == 1 and G.flag("q_a") == 1, "산군 1체: 1/2 (q_a_n=%d)" % G.flag("q_a_n"))
+	await m5_purify("sangun")
+	await must(G.flag("q_a_n") == 2 and G.flag("q_a") == 2, "산군 2체: 목표 달성 q_a=2")
+	await m5_purify("sangun")
+	await must(G.flag("q_a_n") == 2 and G.flag("q_a") == 2, "달성 뒤 더 정화해도 2/2 유지")
+
+	step("의뢰 C: 소굴 외곽에서 도깨비 3체(외눈박이·불도깨비 섞어) 정화")
+	await m5_boot("den1", M5_FLAGS + ["den_sight"])
+	G.flags["q_c"] = 1
+	G.flags["q_c_n"] = 0
+	god = true
+	await m5_purify("dokkaebi_oneeye")
+	await m5_purify("dokkaebi_fire")
+	await must(G.flag("q_c_n") == 2 and G.flag("q_c") == 1, "2/3 (q_c_n=%d)" % G.flag("q_c_n"))
+	await m5_purify("sangun")
+	await must(G.flag("q_c_n") == 2, "산군은 의뢰 C 에 세지 않는다")
+	await m5_purify("dokkaebi_fire")
+	await must(G.flag("q_c") == 2 and G.flag("q_c_n") == 3, "3/3: 목표 달성 q_c=2")
+
+	step("SC2-23 보고: 장사치(A) 엽전 40냥 · 덕망 70, 이어서 SC2-24 처용 독백(한 번만)")
+	await m5_boot("hwagae", M5_FLAGS)
+	G.flags["q_a"] = 2
+	G.flags["q_a_n"] = 2
+	G.flags["q_c"] = 2
+	G.flags["q_c_n"] = 3
+	god = true
+	G.money = 50
+	var lv0: int = G.lv
+	var deok0: int = G.deok
+	await tick(5)
+	await tp_to_npc("sangin")
+	await interact("sangin")
+	pump = true
+	await until(func(): return G.flag("q_a") == 3 and G.flag("night_curtain") == 1, "의뢰 A 보고 + SC2-24", 1500)
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "SC2-24 대사 끝", 1500)
+	pump = false
+	await must(G.money == 90, "엽전 +40냥 (%d)" % G.money)
+	await must(m5_deok_total(G.lv, G.deok) - m5_deok_total(lv0, deok0) == 70, "덕망 +70")
+	await must(G.flag("q_c") == 2, "의뢰 C 는 아직 보고 전")
+	await must(save_flags().get("q_a", 0) == 3 and save_flags().get("night_curtain", 0) == 1, "보고 직후 세이브")
+
+	step("보고(C): 털린 짐꾼 엽전 60냥 · 독백은 다시 나오지 않는다 · 재보고 불가")
+	await tp_to_npc("victim")
+	await interact("victim")
+	pump = true
+	await until(func(): return G.flag("q_c") == 3, "의뢰 C 보고", 1500)
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "대사 끝", 1500)
+	pump = false
+	await must(G.money == 150, "엽전 +60냥 (%d)" % G.money)
+	await tp_to_npc("sangin")
+	await interact("sangin")
+	pump = true
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "평소 대사", 800)
+	pump = false
+	await must(G.money == 150 and G.flag("q_a") == 3, "재보고로 보상이 중복되지 않는다")
+
+	step("이어하기: 보고 완료 세이브로 다시 들어와도 상태 유지, 게시판은 '완료' 표시")
+	G.save()
+	var fl: Dictionary = G.flags.duplicate()
+	await m5_boot("hwagae", M5_FLAGS + ["q_a_pre"])
+	G.flags["q_a"] = 3
+	G.flags["q_c"] = 3
+	await m5_tp_board()
+	await interact("board")
+	await m4_to_menu("게시판 메뉴(완료)")
+	var labels := []
+	for l in lvl().dialog._opts:
+		labels.append(l.text)
+	await must(labels.size() == 3 and "완료" in labels[0] and "완료" in labels[1], "게시판에 완료 표시 (%s)" % str(labels))
+	await m4_pick(0)
+	await m4_to_menu("메뉴 재개(완료 안내 뒤)")
+	await must(G.flag("q_a") == 3, "마친 의뢰는 다시 받을 수 없다")
+	await m4_pick(2)
+	await until(func(): return not player().locked, "닫힘", 600)
+	await must(fl.get("q_a", 0) == 3 and fl.get("q_c", 0) == 3, "플래그 보존")
+
+	step("노인을 만나기 전(ch2_old_man 없음): 게시판은 의뢰를 열지 않는다")
+	await m5_boot("hwagae", ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided"])
+	await m5_tp_board()
+	await interact("board")
+	pump = true
+	await until(func(): return not player().locked and not lvl().dialog.busy() and not m4_menu_open(), "방 대사 끝", 800)
+	pump = false
+	await must(G.flag("q_a") == 0 and G.flag("q_c") == 0, "의뢰 수주 불가")
 	await done()

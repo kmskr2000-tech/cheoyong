@@ -165,9 +165,9 @@ const DATA := {
 		"spawns": {"start": Vector2(312, 342), "fromPath": Vector2(706, 14), "fromBoss": Vector2(360, 320)},
 		# 등롱 8개·기와집은 그림에 이미 그려져 있어 소품으로 얹지 않는다(이중 표시 방지). burnt_stall 2개는 털린 좌판 자리(좌판 3·4 대신).
 		"props": [
-			["stall", 300, 296, [-20, WARM, 0.7, 0.8]], ["stall", 500, 190, null],
-			["tent", 252, 352, null], ["tent", 420, 347, null],
-			["burnt_stall", 345, 296, null], ["burnt_stall", 390, 290, null],
+			["stall", 320, 255, [-20, WARM, 0.7, 0.8]], ["stall", 500, 190, null],
+			["tent", 247, 350, null], ["tent", 429, 354, null],
+			["burnt_stall", 291, 286, null], ["burnt_stall", 374, 287, null],
 			["board", 430, 230, null],
 		],
 		# 그림에 그려진 등롱 위치 (x, fy)
