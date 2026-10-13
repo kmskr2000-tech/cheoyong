@@ -946,12 +946,15 @@ func _atmosphere() -> void:
 	var cm := CanvasModulate.new()
 	var night_col := Color(0.27, 0.3, 0.47) if Game.flag("rescued") else Color(0.2, 0.26, 0.42)  # 새벽 after the rescue
 	cm.color = def.get("ambient", Color(0.34, 0.37, 0.52) if dusk else night_col)
+	var morning: bool = def.get("time", "night") == "dusk" and Game.level_id == "hwagae" and Game.flag("boss2_done") == 1 and Game.ch2_enabled()   # 두억시니를 거둔 뒤 이튿날 아침의 화개 저자 (챕터2 M4): 따뜻하고 밝은 아침 빛
+	if morning:
+		cm.color = Color(0.80, 0.77, 0.74)
 	add_child(cm)
 	# the moon: a cold key light from the upper left that rakes across every normal map and casts
 	# long diagonal shadows from houses and trees
 	var moon := DirectionalLight2D.new()
-	moon.color = Color(0.6, 0.74, 1.0) # cold moon
-	moon.energy = 0.75
+	moon.color = Color(1.0, 0.9, 0.74) if morning else Color(0.6, 0.74, 1.0) # cold moon (아침엔 따뜻한 햇빛)
+	moon.energy = 0.55 if morning else 0.75
 	moon.height = 0.45
 	moon.rotation = deg_to_rad(35)
 	add_child(moon)

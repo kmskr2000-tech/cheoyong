@@ -261,6 +261,8 @@ func _main() -> void:
 		"ch2_m2": await sc_ch2_m2()
 		# ---- 2장 마일스톤 3 (두억시니전, tests/chapter1_playthrough.sh ch2_m3): 진입·군단 장갑·씻김 공명·은신·엄폐·2페이즈·패배 후 재시도·세이브 이어하기·격파
 		"ch2_m3": await sc_ch2_m3()
+		# ---- 2장 마일스톤 4 (SC2-11~14 이튿날 아침·오방탈·도깨비 상점·2절·감투 정화 속도, tests/chapter1_playthrough.sh ch2_m4)
+		"ch2_m4": await sc_ch2_m4()
 		# ---- 2장 진입 검증(prog/ch2-enter): ch2_farewell·ch2_continue 는 --ch2 로, ch2_off_continue 는 인자 없이(꺼짐) 실행
 		"ch2_farewell": await sc_ch2_farewell()
 		"ch2_continue": await sc_ch2_continue()
@@ -2270,3 +2272,271 @@ func cs_purge_minions(boss) -> void:
 			e.remove_from_group("downed")
 			e.queue_free()
 	boss.minions.clear()
+
+
+# ================================================================ 2장 M4: 이튿날 아침 화개 저자 (SC2-11~14) · 오방탈 · 도깨비 상점 · 감투 2번째 효과 · M3 후속(보스 프레이밍·행낭 문구)
+const M4_FLAGS := ["chapter1_done", "appointed", "rumor", "king_call", "flute", "ch2_start", "raided", "ch2_old_man", "village_seen",
+	"den_sight", "den_deep", "den2_seen", "den2_gate_cleared", "boss2_intro_seen", "boss2_done"]
+
+
+func m4_menu_open() -> bool:
+	return lvl() != null and lvl().dialog._choosing
+
+
+## 메뉴가 뜰 때까지 대사를 넘긴다
+func m4_to_menu(label: String) -> void:
+	pump = true
+	await until(func(): return m4_menu_open(), label, 2000)
+	pump = false
+	await tick(2)
+
+
+func m4_pick(i: int) -> void:
+	for k in i:
+		_tap("move_down")
+		await tick(1)
+	_tap("confirm")
+	await tick(3)
+
+
+func m4_boot_hwagae(flags: Array, tal_id: String, tals_list: Array) -> void:
+	G.new_game()
+	G.flags["ch2_unlocked"] = 1
+	for f in flags:
+		G.flags[f] = 1
+	G.tal = tal_id
+	G.tals = tals_list
+	G.accessories = [G.GAMTU_NAME]
+	G.checkpoint = "hwagae"
+	G.level_id = "hwagae"
+	G.spawn_name = "fromBoss"
+	G.save()
+	await boot_level()
+
+
+func sc_ch2_m4() -> void:
+	seed(20261013)
+	step("준비: 두억시니를 거둔 직후 세이브(boss2_done, 감투·처용탈 지님) → 화개 저자 이튿날 아침")
+	G.new_game()
+	G.flags["ch2_unlocked"] = 1
+	for f in M4_FLAGS:
+		G.flags[f] = 1
+	G.flags["night"] = 1
+	G.tal = "cheoyong"
+	G.tals = ["cheoyong"]
+	G.accessories = [G.GAMTU_NAME]
+	G.money = 100
+	G.checkpoint = "hwagae"
+	G.level_id = "hwagae"
+	G.spawn_name = "fromBoss"
+	await boot_level()
+	await must(G.ch2_enabled(), "ch2_enabled() 켜짐")
+	await tick(5)
+	await must(G.flag("night") == 0, "아침: night 플래그가 지워진다")
+	var cm: CanvasModulate = null
+	for c in lvl().get_children():
+		if c is CanvasModulate:
+			cm = c
+	await must(cm != null and cm.color.r > 0.7 and cm.color.b > 0.7, "아침 빛: 환경색이 밝고 따뜻하다 (%s)" % str(cm.color))
+	var jang = lvl().npc("dok_jangsu")
+	await must(jang.visible and jang.collision_layer == 1, "도깨비 장수가 나와 있다")
+	await must(lvl().npc("elder").visible, "노인은 그대로")
+	await must(not lvl().npc("sansin").visible, "산신령은 상점이 열리기 전엔 산에 있다")
+	await must(player().locked, "SC2-11 연출 동안 조작 잠김")
+	await must(G.flag("obang_given") == 0 and "obang" not in G.tals, "오방탈은 아직 없다")
+
+	step("SC2-11·12: 도깨비 장수의 답례(오방탈) → 상점 개장 · 산신령 이주 → SC2-13 2절 자막 → SC2-14 → 2장 끝")
+	pump = true
+	await until(func(): return G.flag("obang_given") == 1, "오방탈 지급 (SC2-11)", 2500)
+	await must("obang" in G.tals and G.tal == "cheoyong" and "cheoyong" in G.tals, "오방탈은 지급만 된다 — 처용탈 착용 유지")
+	await until(func(): return G.flag("dok_open") == 1, "도깨비 상점 개장 (SC2-12)", 1500)
+	await tick(2)
+	await must(lvl().npc("sansin").visible, "산신령이 저자로 내려온다 (정보상)")
+	await until(func(): return G.flag("verse2") == 1, "2절 자막 (SC2-13)", 4000)
+	await until(func(): return G.flag("chapter2_done") == 1, "2장 끝 (SC2-14)", 4000)
+	pump = false
+	await until(func(): return not player().locked, "조작 가능", 2000)
+	await tick(120)
+	await must(save_flags().get("chapter2_done", 0) == 1 and save_flags().get("dok_open", 0) == 1 and save_flags().get("obang_given", 0) == 1, "세이브에 chapter2_done·dok_open·obang_given")
+	await must(G.checkpoint == "hwagae", "체크포인트 hwagae")
+	await tick(60)
+	await must(lvl()._obj.get("target") == null, "2장 끝: 길잡이 목표 없음")
+
+	step("정화 속도 (오방탈은 지닌 것에서 바꿔 착용): 오방탈 +20%, 감투 +10%(도깨비 계열이 닿을 때만) — 배율과 실제 노래 시간")
+	G.tal = "obang"
+	await must(is_equal_approx(G.song_speed(false), 1.2) and is_equal_approx(G.song_speed(true), 1.3), "오방탈 1.2 / 오방탈+감투(도깨비) 1.3")
+	G.tal = "cheoyong"
+	await must(is_equal_approx(G.song_speed(true), 1.1) and is_equal_approx(G.song_speed(false), 1.0), "처용탈: 감투만 도깨비 상대 1.1, 아니면 1.0")
+	G.tal = "obang"
+	var p := player()
+	var foe = lvl().spawn_enemy("dokkaebi_fire", lvl().lift(Vector2(330, 300)))
+	var foe2 = lvl().spawn_enemy("jangsanbeom", lvl().lift(Vector2(300, 300)))
+	await tick(3)
+	foe.set_physics_process(false)
+	foe2.set_physics_process(false)
+	foe.take_hit(9999, Vector2.ZERO)
+	await tick(3)
+	p.position = foe.position + Vector2(-14, 4)
+	await tick(2)
+	await must(foe.state == "downed" and p._song_speed() > 1.29 and p._song_speed() < 1.31, "도깨비 계열이 닿으면 1.3 (%.2f)" % p._song_speed())
+	foe.remove_from_group("downed")
+	foe2.take_hit(9999, Vector2.ZERO)
+	await tick(3)
+	foe2.position = foe.position
+	await tick(1)
+	await must(p._song_speed() > 1.19 and p._song_speed() < 1.21, "산 계열(장산범)만이면 감투는 빠지고 오방탈 1.2 (%.2f)" % p._song_speed())
+	foe.add_to_group("downed")
+	# 실제 노래 시간 비교 (프레임 수): 처용탈 1.0 ↔ 오방탈+감투(도깨비) 1.3
+	foe2.remove_from_group("downed")
+	G.tal = "cheoyong"
+	G.accessories = []
+	p.position = foe.position + Vector2(-14, 4)
+	await tick(2)
+	var f0 := frame
+	p.sing()
+	await until(func(): return p.state == "move", "기본 노래 끝", 600)
+	var base_frames := frame - f0
+	foe.state = "downed"
+	foe.add_to_group("downed")
+	G.tal = "obang"
+	G.accessories = [G.GAMTU_NAME]
+	f0 = frame
+	p.sing()
+	await until(func(): return p.state == "move", "오방탈+감투 노래 끝", 600)
+	var fast_frames := frame - f0
+	await must(fast_frames < base_frames * 0.85 and fast_frames > base_frames * 0.65, "노래가 빨라진다: %d → %d 프레임 (이론 ×1/1.3)" % [base_frames, fast_frames])
+	for e in get_nodes_in_group("enemy"):
+		if is_instance_valid(e) and e.get("kind") != null:
+			e.remove_from_group("enemy")
+			e.remove_from_group("downed")
+			e.queue_free()
+	await tick(3)
+
+	step("도깨비 상점: 약방과 따로 센다 — 인삼 25푼, 학 피리는 준비 중(못 산다), 돈이 모자라면 거절")
+	G.tal = "obang"
+	G.accessories = [G.GAMTU_NAME]
+	G.money = 30
+	G.mats = {"도깨비 털": 3, "탁한 종기": 2}
+	G.titles = ["도깨비골의 노래꾼"]
+	G.items["insam"] = 2
+	await tp_to_npc("dok_jangsu")
+	await interact("dok_jangsu")
+	await m4_to_menu("상점 메뉴")
+	await m4_pick(0)   # 인삼정기탕 25푼
+	await must(G.money == 5 and int(G.items["insam"]) == 3, "인삼정기탕 구매: 엽전 30→5, 소지 2→3 (약방 30냥이 아니라 25푼)")
+	await m4_to_menu("메뉴 재개")
+	await m4_pick(0)   # 돈 부족
+	await must(G.money == 5 and int(G.items["insam"]) == 3, "돈이 모자라면 사지 못한다")
+	await m4_to_menu("메뉴 재개(거절 대사 뒤)")
+	G.money = 999
+	await m4_pick(3)   # 학 피리 (준비 중)
+	await must(G.money == 999 and not G.items.has("hak_flute"), "학 피리는 아직 팔지 않는다 (준비 중)")
+	await m4_to_menu("메뉴 재개(준비 중 대사 뒤)")
+	await m4_pick(4)   # 그만두겠소
+	await until(func(): return not player().locked, "상점 닫힘", 600)
+	await must(G.SHOP.size() == 3 and G.DOK_SHOP.size() == 4 and G.SHOP[0]["price"] == 30, "약방 SHOP 은 그대로(3종, 인삼 30)")
+
+	step("산신령 정보상: 대화 가능")
+	await tp_to_npc("sansin")
+	await interact("sansin")
+	pump = true
+	await until(func(): return not player().locked and not lvl().dialog.busy(), "산신령 대사 끝", 1200)
+	pump = false
+
+	step("행낭 '지닌 것': 감투 효과 문구 + 탈 바꾸기(오방탈 ↔ 처용탈)")
+	var hud = lvl().hud
+	G.accessories = [G.TEAR_NAME, G.GAMTU_NAME]   # 1장 보스 「역신의 눈물」+2장 감투를 둘 다 지닌 현실 조합
+	hud._bag_kept(lvl().dialog)
+	await until(func(): return m4_menu_open(), "지닌 것 열림", 300)
+	var body: String = lvl().dialog._body.text
+	await must("감투" in body and "정화 +10%" in body and lvl().dialog._body.get_line_count() <= 4, "감투 효과가 보이고 줄바꿈 포함 4줄(탈·장신구·재료·칭호) 이내 (%d줄)" % lvl().dialog._body.get_line_count())
+	if DisplayServer.get_name() != "headless":   # RENDER=xvfb 로 돌리면 480×270 화면을 남긴다 (레이아웃 눈 확인용)
+		await tick(10)
+		root.get_texture().get_image().save_png(OS.get_environment("M4_SHOT_DIR") + "/bag_%s.png" % ("full" if G.mats.size() > 0 else "min"))
+	await must("오방탈" in body and "정화 속도 +20%" in body, "탈 줄: 오방탈 (정화 속도 +20%)")
+	await m4_pick(0)   # 탈 바꾸기
+	await must(G.tal == "cheoyong", "탈 바꾸기: 처용탈로")
+	await tick(3)
+	await until(func(): return m4_menu_open(), "다시 열림", 300)
+	await must("처용탈" in lvl().dialog._body.text, "바뀐 탈이 지닌 것에 반영")
+	await m4_pick(1)   # 닫기
+	await tick(3)
+	await must(not m4_menu_open(), "닫힘")
+	G.tal = "obang"
+
+	step("1장 가드: 스위치 꺼짐이면 오방탈·감투 배율은 1.0, 아침 연출도 없다")
+	G.flags["ch2_unlocked"] = 0
+	await must(not G.ch2_enabled(), "스위치 꺼짐")
+	G.accessories = []
+	G.tal = "cheoyong"
+	await must(is_equal_approx(G.song_speed(true), 1.0) and is_equal_approx(player()._song_speed(), 1.0), "1장 장비로는 정화 속도 1.0 (불변)")
+	G.flags["ch2_unlocked"] = 1
+
+	step("이어하기(중간에 저장됨): obang_given·dok_open 까지 끝난 세이브 → 2절부터 이어지고 오방탈이 두 번 지급되지 않는다")
+	await m4_boot_hwagae(M4_FLAGS + ["obang_given", "dok_open"], "obang", ["cheoyong", "obang"])
+	await tick(5)
+	await must(lvl().npc("sansin").visible and lvl().npc("dok_jangsu").visible, "산신령·도깨비 장수가 처음부터 나와 있다")
+	pump = true
+	await until(func(): return G.flag("chapter2_done") == 1, "2절 → 2장 끝", 6000)
+	pump = false
+	await until(func(): return not player().locked, "조작 가능", 2000)
+	await tick(120)   # 마지막 페이드·토스트가 끝난 뒤
+	await must(G.tals == ["cheoyong", "obang"] and G.tal == "obang", "오방탈 중복 지급 없음")
+
+	step("2장을 끝낸 세이브 이어하기: 연출 없이 자유 이동, 상점은 열려 있다")
+	await m4_boot_hwagae(M4_FLAGS + ["obang_given", "dok_open", "verse2", "chapter2_done"], "obang", ["cheoyong", "obang"])
+	await tick(30)
+	await must(not player().locked, "연출 없이 조작 가능")
+	await must(lvl().npc("dok_jangsu").visible and lvl().npc("sansin").visible, "NPC 상주")
+	await must(G.flag("chapter2_done") == 1, "chapter2_done 유지")
+
+	step("SC2-12 산신령 이주: 상점이 열린 뒤 산길의 산신각에는 산신령이 없다 (열리기 전엔 있다)")
+	G.new_game()
+	G.flags["ch2_unlocked"] = 1
+	for f in M4_FLAGS:
+		G.flags[f] = 1
+	G.flags["shrine_seen"] = 1
+	G.checkpoint = "jiri_path"
+	G.level_id = "jiri_path"
+	G.spawn_name = "fromHwagae"
+	await boot_level()
+	await tick(5)
+	await must(lvl().npc("sansin").visible, "dok_open 전: 산신령은 산신각에 있다")
+	G.flags["dok_open"] = 1
+	G.level_id = "jiri_path"
+	await boot_level()
+	await tick(5)
+	await must(not lvl().npc("sansin").visible and lvl().npc("sansin").collision_layer == 0, "dok_open 후: 산신령은 산에 없다 (저자로 이주)")
+
+	step("M3 후속: 두억시니전 개시 직후 480폭 화면에서 보스가 잘리지 않는다 (보스 개시 위치 460→416; 카메라는 맵 왼쪽 끝 limit 에 막혀 밀 수 없다)")
+	current_scene.queue_free()   # 옛 레벨이 새 level_id 로 목표를 계산하지 않게 먼저 내린다
+	await tick(3)
+	G.new_game()
+	G.flags["ch2_unlocked"] = 1
+	for f in D3_FLAGS:
+		G.flags[f] = 1
+	G.flags["boss2_intro_seen"] = 1
+	G.checkpoint = "den3"
+	G.level_id = "den3"
+	G.spawn_name = "start"
+	await boot_level()
+	await free_player()
+	Input.action_press("move_right")
+	await until(func(): return d3_boss() != null, "gate 트리거 → 두억시니 등장", 900)
+	Input.action_release("move_right")
+	var boss = d3_boss()
+	await until(func(): return boss.state == "idle", "전투 개시(awaken)", 3000)
+	god = true
+	boss.set_physics_process(false)   # 위치를 고정해 프레이밍만 잰다
+	await tick(20)
+	var cam: Camera2D = player().get_node("Camera")
+	var half: float = root.get_visible_rect().size.x / cam.zoom.x * 0.5
+	var cx: float = cam.get_screen_center_position().x
+	var boss_half: float = 72.0 * 1.6 * 0.5   # dueoksini.gd D_CELL.x × D_SCALE / 2
+	var margin: float = (cx + half) - (float(boss.position.x) + boss_half)
+	print("  INFO 개시 직후 뷰 폭 %.0f, 카메라 중심 %.0f, 보스 x %.0f ± %.0f, 우측 여유 %.1f" % [half * 2.0, cx, boss.position.x, boss_half, margin])
+	await must(margin >= 0.0, "보스 전신이 화면 오른쪽 끝 안에 있다 (여유 %.1fpx)" % margin)
+	await must(cx - half <= player().position.x - 20.0, "처용도 화면 왼쪽에서 20px 이상 안쪽에 남는다")
+	await must(boss.position.x <= lvl().lift(Vector2(460, 200)).x - 40.0, "보스 개시 위치가 예전(460)보다 안쪽")
+	await must(lvl().def["anchors"]["hall"] == Vector2(460, 200), "hall 앵커(길잡이 목표)·지형·소품은 그대로")
+	await done()

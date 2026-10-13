@@ -684,7 +684,7 @@ func _defeat() -> void:
 	DFX.purify(get_parent(), global_position, 2.0)
 	if not Game.has_gamtu():
 		Game.accessories.append(Game.GAMTU_NAME)
-		Game.say_toast("장신구 「%s」을 얻었다 — %s" % [Game.GAMTU_NAME, Game.gamtu_desc()], Color(0.75, 0.85, 1.0))
+		Game.say_toast("장신구 「%s」을 얻었다 — %s" % [Game.GAMTU_NAME, Game.gamtu_short()], Color(0.75, 0.85, 1.0))
 	for e in get_tree().get_nodes_in_group("downed"):
 		e.purify()
 	defeated.emit()

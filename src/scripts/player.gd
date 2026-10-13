@@ -786,7 +786,7 @@ func _song(delta: float) -> void:
 	if _song_t <= 0.0:
 		_song_t = 0.2
 		_note()
-	if t >= SONG_TIME:
+	if t >= SONG_TIME / _song_speed():
 		# 오방색 ripples spread out and every 탁기-wreathed body nearby is sung clean
 		for i in 5:
 			_ripple(OBANG[i], i * 0.08)
@@ -811,6 +811,19 @@ func _song(delta: float) -> void:
 		arm.visible = false
 		state = "move"
 		sang.emit(n)
+
+
+## 정화 속도 배율: 오방탈 +20%, 도깨비 감투는 노래가 닿는 쓰러진 적에 도깨비 계열이 있을 때 +10% (2장 장비라 1장에서는 항상 1.0)
+func _song_speed() -> float:
+	if Game.tal != "obang" and not Game.has_gamtu():
+		return 1.0
+	var dok := false
+	for d in get_tree().get_nodes_in_group("downed"):
+		var k = d.get("kind")
+		if k != null and d.global_position.distance_to(global_position) < song_range() and Bestiary.entry(k)["family"] == "도깨비":
+			dok = true
+			break
+	return Game.song_speed(dok)
 
 
 ## 정화 보상 등급: "normal"/"elite", 보상 대상이 아니면 ""
