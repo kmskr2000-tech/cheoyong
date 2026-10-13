@@ -479,3 +479,6 @@
 - [승인] 16:0x prog/overlap-fix 04e2433(순회15)·prog/objective-marker 91b77b8(순회14) — 감사팀-일괄검증 4건 전부 PASS(걷기12·인트로13·목표마커14·겹침15). 디렉터 결정: F-3(2장에도 동일 길잡이) 수용, F-2 수용. 목표 문구 가시성 상향(OBJ_ALPHA 0.75→0.9, 글자 12→14). 도주 용이성(추격형 dog·pado·sangun 속도 +10~15%)은 폰 체감 후 판단. 머지 순서 overlap→objective(난영 좌표 (220,314) 통일), 통합배포4 지시. view-stage1은 감사(순회17) 통과 후 objective 뒤에 머지(충돌 4곳 해소안 적용).
 - [지시] 16:12 — 에이전트 배정: 프로그래밍팀 통합배포 머지(overlap·objective
 - [머지] 16:1x prog/overlap-fix f606629(충돌 없음)·prog/objective-marker 8ad7bf2(story.gd 충돌: 난영 길잡이 (236,309)→(220,314), rumor (130,237) 유지; 설계표·objective_via.sh 동일 좌표 정정)·소수정 f78cb25(OBJ_ALPHA 0.9·글자 14)·main 재머지 ce6b17a. hud_layout PASS(18자 최악 272px/띠 308px). rebase 미사용, 배포 안 함. 남은 머지: hero-glow·view-stage1(감사 순회16·17 대기) → 이후 main 일괄 회귀.
+- [지시] 16:17 — 에이전트 배정: Agent "감사팀 폰피드백 일괄 순회" finished · 58m 29s
+- [지시] 16:17 — 에이전트 배정: Agent "프로그래밍팀 통합배포 머지(overlap·objective)" finished · 6m 48s
+- [지시] 16:17 — 에이전트 배정: 에셋 겹침과 목표 마커 머지가 main에 들어갔습니다. 배포는 하지 않았고 rebase도 쓰지 않았습니다. 17시 보고까지 남은 것은 asset/hero-glow와 prog/view-stage1의 감사·머지, 그리고 main 일괄 회귀입니다.
