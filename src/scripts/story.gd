@@ -971,6 +971,7 @@ func _shrine(level: Node) -> void:
 			Game.set_flag("q_b")   # 의뢰 B 수주 (북쪽 산길 끝 버려진 마을)
 	else:
 		await level.talk([{"name": "산신령", "text": "산이 깊소. 서두르지 마오."}])
+	await _quest_monologue(level)   # SC2-24 보류분: 산신각 전에 의뢰를 보고했다면 여기서 한 번 (night_curtain 으로 중복 방지)
 
 
 # ================================================================ 2장 「도깨비골」 마일스톤 2 (design/levels/ch2-dokkaebigol.md §4.3~4.6, §9, §10)
@@ -1357,6 +1358,7 @@ func _quest_purified(kind: String) -> void:
 		Game.set_flag(q["count"], n)
 		if n >= q["need"]:
 			Game.set_flag(q["flag"], 2)
+			Game.save()   # 목표 달성 카운트가 사망/종료로 유실되지 않게 (감사 순회22 메모1)
 			Game.say_toast("의뢰 「%s」 목표 달성 — 화개 저자에서 %s에게 알리자." % [q["name"], q["who"]], Color(0.75, 0.9, 1.0))
 		else:
 			Game.say_toast("의뢰 「%s」 %d/%d" % [q["name"], n, q["need"]], Color(0.75, 0.9, 1.0))
@@ -1413,7 +1415,17 @@ func _quest_report(level: Node, id: String) -> void:
 	Game.money += int(q["money"])
 	Game.say_toast("의뢰 완료 — %s · 엽전 %d냥" % [q["name"], q["money"]], Color(0.75, 0.9, 1.0))
 	Game.add_deok(int(q["deok"]))
-	if not Game.flag("night_curtain") and Game.flag("shrine_seen"):
-		Game.set_flag("night_curtain")
-		await level.talk([{"name": "처용", "text": "…아버지의 당부는 노래로 이루라는 뜻이었다. 버려진 것도 노래하게 해야 한다."}])   # SC2-24
+	await _quest_monologue(level)
+	Game.save()
+
+
+## SC2-24: 처용의 독백. 의뢰를 하나라도 보고했고 산신각(SC2-16)을 본 뒤에 한 번만. 산신각 전에 보고했다면 보류했다가 산신각에서 낸다.
+## night_curtain 은 말하기 전에 세워 중복을 막고, 직후 저장해 이어하기에서도 다시 나오지 않게 한다.
+func _quest_monologue(level: Node) -> void:
+	if not Game.ch2_enabled() or Game.flag("night_curtain") or not Game.flag("shrine_seen"):
+		return
+	if Game.flag("q_a") < 3 and Game.flag("q_c") < 3:
+		return
+	Game.set_flag("night_curtain")
+	await level.talk([{"name": "처용", "text": "…아버지의 당부는 노래로 이루라는 뜻이었다. 버려진 것도 노래하게 해야 한다."}])   # SC2-24
 	Game.save()
