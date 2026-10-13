@@ -178,6 +178,9 @@ const DATA := {
 			["jumo", "npc_villager_f", 190, 262, "주모"],
 			["victim", "npc_sick", 290, 335, "털린 짐꾼"],
 			["elder", "npc_elder", 580, 120, "노인", "hidden"],
+			# 챕터2 M4: SC2-11 도깨비 장수(보스 격파 뒤 이튿날 아침) · SC2-12 산신령 정보상(상점이 열린 뒤 산에서 내려온다). 전용 스프라이트 전까지 사람 시트를 쓴다(story.gd 가 도깨비 빛깔을 입힌다).
+			["dok_jangsu", "npc_dolsoe", 470, 325, "도깨비 장수", "hidden"],
+			["sansin", "npc_sansin", 470, 262, "산신령", "hidden"],
 		],
 		"interact": [["board", 430, 230, "의뢰 게시판"]],
 		"enemies": [],
@@ -266,6 +269,6 @@ const DATA := {
 		"enemies": [],
 		"triggers": [[Rect2(70, 170, 40, 60), "gate"]],
 		"exits": [[Rect2(0, 176, 6, 48), "den2", "fromDen3"]],
-		"anchors": {"door": Rect2(26, 170, 16, 60), "hall": Vector2(460, 200), "exit": Vector2(14, 200), "boss": Vector2(460, 200), "boss_respawn": Vector2(120, 200)},
+		"anchors": {"door": Rect2(26, 170, 16, 60), "hall": Vector2(460, 200), "exit": Vector2(14, 200), "boss": Vector2(416, 200), "boss_respawn": Vector2(120, 200)},
 	},
 }

@@ -465,6 +465,8 @@ func _bag_kept(dialog: DialogBox) -> void:
 		for a in Game.accessories:
 			acc.append(a + (" (%s)" % Game.tear_desc() if a == Game.TEAR_NAME else ""))
 		lines.append("장신구: " + ", ".join(acc))
+		if Game.has_gamtu():   # 2장 「도깨비 감투」: 효과 문구를 지닌 것에 보인다 (M3 후속)
+			lines.append("  감투: " + Game.gamtu_desc().replace(" · ", "\n        "))
 	var m := []
 	for k in Game.mats:
 		m.append("%s ×%d" % [k, int(Game.mats[k])])
@@ -485,8 +487,15 @@ func _bag_kept(dialog: DialogBox) -> void:
 			shown.append("tal_" + k)
 	for i in shown.size():
 		_item_icon(cl, Vector2(150 + i * 26, 26), "res://assets/ui/icons/%s.png" % shown[i]).visible = true
-	await dialog.choose({"name": "지닌 것", "text": "\n".join(lines)}, ["닫기"])
+	var swap: bool = Game.tals.size() > 1   # 탈을 둘 이상 지녔을 때(2장 오방탈 이후)만 바꿀 수 있다
+	var pick: int = await dialog.choose({"name": "지닌 것", "text": "\n".join(lines)}, ["탈 바꾸기", "닫기"] if swap else ["닫기"])
 	cl.queue_free()
+	if swap and pick == 0:
+		var nxt: int = (Game.tals.find(Game.tal) + 1) % Game.tals.size()
+		Game.tal = Game.tals[nxt]
+		Game.progress_changed.emit()
+		Game.say_toast("%s을 썼다 — %s" % [Game.TALS[Game.tal]["name"], Game.TALS[Game.tal]["desc"]], Color(1.0, 0.7, 0.55))
+		await _bag_kept(dialog)
 
 
 func _gauge(root: Control, at: Vector2, w: float, fill: String) -> TextureRect:

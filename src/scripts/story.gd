@@ -816,6 +816,7 @@ func _objective_ch2(level: Node):
 	var f := func(k): return Game.flag(k)
 	match Game.level_id:
 		"hwagae":
+			if f.call("boss2_done"): return null if f.call("chapter2_done") else Vector2(470, 325)   # M4: 도깨비 장수
 			if not f.call("raided"): return Vector2(345, 250) if f.call("ch2_start") else null
 			if not f.call("ch2_old_man"): return Vector2(385, 173)
 			return level.def["anchors"]["exit"]
@@ -852,6 +853,9 @@ func _hwagae_enter(level: Node) -> void:
 	Game.set_flag("flute")
 	Game.checkpoint = "hwagae"
 	var elder: Npc = level.npc("elder")
+	if Game.flag("boss2_done") and Game.ch2_enabled():
+		_hwagae_morning(level)   # 챕터2 M4: 두억시니를 거둔 이튿날 아침 (SC2-11~14)
+		return
 	if Game.flag("ch2_old_man"):
 		level._exit(level.def["gates"]["path"])
 		elder.set_present(true)
@@ -921,7 +925,12 @@ func _ch2_interact(level: Node, id: String) -> void:
 			else:
 				await level.talk([{"name": "노인", "text": "산으로 가려거든 길목의 장승을 조심하게."}])
 		"sansin":
-			await _shrine(level)
+			if Game.level_id == "hwagae":
+				await _sansin_broker(level)
+			else:
+				await _shrine(level)
+		"dok_jangsu":
+			await _dok_shop(level)
 		"shrine":
 			await _shrine(level)
 		_:
@@ -1197,6 +1206,121 @@ func _boss2_defeated(level: Node) -> void:
 	var door = level.get_meta("den3_door", null)
 	if is_instance_valid(door):
 		door.queue_free()
+	Game.flags.erase("night")   # hwagae 가 아침 빛으로 다시 열린다 (level.gd _atmosphere: boss2_done)
 	Game.checkpoint = "hwagae"
 	Game.save()
 	Game.change_level("hwagae", "fromBoss", "이튿날 아침", "")
+
+
+# ================================================================ 2장 「도깨비골」 마일스톤 4 (design/levels/ch2-dokkaebigol.md §10 SC2-11~14, §8 장비)
+const DOK_TINT := Color(0.62, 0.86, 1.0)   # 도깨비 장수: 사람 시트에 푸른 도깨비 빛깔을 입힌 임시 모습 (production/qa/ch2-m4-asset-needs.md)
+const VERSE2_HOLD := 2.4
+
+
+## 이튿날 아침의 화개 저자. 진행은 플래그로 이어진다: obang_given(SC2-11) → dok_open(SC2-12) → verse2(SC2-13) → chapter2_done(SC2-14).
+## 이어하기로 중간에 들어와도 빠진 단계부터 다시 시작한다. 마친 뒤에는 자유 이동이고 도깨비 상점이 열려 있다.
+func _hwagae_morning(level: Node) -> void:
+	Game.flags.erase("night")
+	level._exit(level.def["gates"]["path"])
+	level.npc("elder").set_present(true)
+	var jang: Npc = level.npc("dok_jangsu")
+	jang.sprite.modulate = DOK_TINT
+	jang.set_present(true)
+	if Game.flag("dok_open"):
+		level.npc("sansin").set_present(true)
+	if Game.flag("chapter2_done"):
+		return
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	await level.get_tree().create_timer(0.8).timeout
+	if not is_instance_valid(level):
+		return
+	if not Game.flag("obang_given"):
+		await level.talk([
+			{"name": "도깨비 장수", "text": "…노래하는 이여. 간밤에 두억시니가 울음을 그쳤다네."},
+			{"name": "도깨비 장수", "text": "은혜는 갚는다. 우리 장터에서 물건을 팔게 해주게."},   # SC2-11
+			{"name": "도깨비 장수", "text": "이건 답례일세. 오방의 빛깔을 새긴 탈이지."},
+		])
+		Game.give_tal("obang")   # 오방탈: 정화 속도 +20% (바로 쓴다 — 지닌 것 에서 처용탈과 바꿀 수 있다)
+		Game.set_flag("obang_given")
+		Game.save()
+	if not Game.flag("dok_open"):
+		Game.set_flag("dok_open")
+		Game.say_toast("도깨비 상점이 열렸다.", Color(0.6, 0.9, 1.0))   # SC2-12
+		var sansin: Npc = level.npc("sansin")
+		sansin.set_present(true)
+		Game.say_toast("산신령이 저자로 내려와 정보를 판다.", Color(0.94, 0.85, 0.55))
+		Game.save()
+		await level.get_tree().create_timer(1.2).timeout
+		if not is_instance_valid(level):
+			return
+	if not Game.flag("verse2"):
+		await _verse2()   # SC2-13
+		if not is_instance_valid(level):
+			return
+		Game.set_flag("verse2")
+		Game.save()
+	await level.talk([{"name": "도깨비들", "text": "노래하는 자여, 잘 가게!"}])   # SC2-14
+	if not is_instance_valid(level):
+		return
+	await Game.fade(1.0, 1.0)
+	if not is_instance_valid(level):
+		return
+	await Game.card("2장 「도깨비골」", "끝", 1.8)
+	if not is_instance_valid(level):
+		return
+	Game.set_flag("chapter2_done")
+	Game.save()
+	await Game.fade(0.0, 0.8)
+	if not is_instance_valid(level):
+		return
+	Game.say_toast("3장은 준비 중입니다")
+	if is_instance_valid(p):
+		p.locked = false
+
+
+## SC2-13: 2절 가사와 자막 (설계서 §10)
+func _verse2() -> void:
+	Audio.override("title")   # 1절과 같은 선율이 이어진다 (SC1-25)
+	await Game.fade(1.0, 1.4)
+	for line in ["산그늘 깊은 골짝에\n버려진 것들의 울음",
+			"쓰이다 잊힌 손길마다\n노래로 돌려보내노라"]:
+		await Game.card("", line, VERSE2_HOLD)
+	await Game.card("2절", "버려진 것들의 구절", 2.6)
+	Audio.override("")
+	await Game.fade(0.0, 1.0)
+
+
+## SC2-12 이후 산신령 — 화개 저자의 정보상 (정보 내용은 3장 이후 채운다: 지금은 안내 한마디)
+func _sansin_broker(level: Node) -> void:
+	await level.talk([{"name": "산신령", "text": "산이 시끄러워 저자로 내려왔소. 길손이 오가는 소문은 내가 먼저 듣지."},
+		{"name": "산신령", "text": "서쪽 길은 아직 닫혀 있소. 때가 되면 일러 주리다."}])
+
+
+## 도깨비 상점 (SC2-12 이후). 약방(_shop)과 같은 틀, 상품은 Game.DOK_SHOP.
+func _dok_shop(level: Node) -> void:
+	if not Game.flag("dok_open"):
+		await level.talk([{"name": "도깨비 장수", "text": "…"}])
+		return
+	await level.talk([{"name": "도깨비 장수", "text": "에누리는 없고, 덤은 있지. 무엇을 드릴까?"}])
+	var p: Node2D = level.get_node("Player")
+	p.locked = true
+	while true:
+		var opts := []
+		for it in Game.DOK_SHOP:
+			opts.append("%s  %d푼" % [it["name"], it["price"]] if it["price"] > 0 else "%s  (준비 중)" % it["name"])
+		opts.append("그만두겠소")
+		var i: int = await level.dialog.choose({"name": "도깨비 장수", "text": "엽전 %d푼이 있구려." % Game.money}, opts)
+		if i >= Game.DOK_SHOP.size():
+			break
+		var it: Dictionary = Game.DOK_SHOP[i]
+		if it["price"] <= 0:
+			await level.talk([{"name": "도깨비 장수", "text": "그건 아직 다듬는 중이라네. 피리가 영글면 다시 오게."}])
+		elif Game.money < it["price"]:
+			await level.talk([{"name": "도깨비 장수", "text": "값이 모자라네."}])
+		else:
+			Game.money -= it["price"]
+			Game.items[it["id"]] = int(Game.items.get(it["id"], 0)) + 1
+			Game.say_toast("%s — %s" % [it["name"], it["desc"]])
+		p.locked = true
+	p.locked = false
