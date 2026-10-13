@@ -1798,6 +1798,7 @@ func sc_ch2_m2() -> void:
 	G.save()
 
 	step("두억시니의 방 (SC2-06·07): 입구에서 오른쪽으로 걸어 gate 트리거, 체크포인트 den3")
+	god = true   # M3: gate 뒤에는 실제 두억시니전이 시작된다 — 이 시나리오는 연출·체크포인트만 본다
 	await goto_exit(1, "den3")
 	await must(G.checkpoint == "den2", "연출 전 체크포인트는 den2")
 	await must(G.flag("boss2_intro_seen") == 0, "boss2_intro_seen = 0")
@@ -1891,8 +1892,12 @@ func sc_ch2_m3() -> void:
 	for i in pts.size():
 		await tp(pts[i])
 		await must(not p.test_move(p.global_transform, Vector2.ZERO), "소환점 %d %s 에 서도 끼지 않는다" % [i, str(pts[i])])
+		var inward: Vector2 = (lvl().lift(Vector2(320, 200)) - p.position).normalized() * 24.0
+		await must(not p.test_move(p.global_transform, inward), "소환점 %d 에서 의식대 쪽 24px 이동이 막히지 않는다" % i)
 		for pil in [Vector2(180, 126), Vector2(460, 126), Vector2(180, 274), Vector2(460, 274), Vector2(320, 200)]:
 			await must(pts[i].distance_to(pil) >= 30.0, "소환점 %d ↔ 기둥·절구 %s ≥ 30 (%.0f)" % [i, str(pil), pts[i].distance_to(pil)])
+	await tp(Vector2(240, 200))   # 음성 대조: 의식대 절구(320,200) 쪽으로 걸으면 막혀야 아래 '막히지 않는다' 검사가 의미가 있다
+	expect(p.test_move(p.global_transform, Vector2(140, 0)), "대조군: 절구 방향 이동은 막힘으로 보고된다")
 	await tp(Vector2(52, 200))   # gate 트리거(x70~110) 앞
 
 	step("SC2-06·07: 입구에서 오른쪽으로 걸어 gate → 두억시니 등장·대사·체크포인트 den3 → 전투 개시")
