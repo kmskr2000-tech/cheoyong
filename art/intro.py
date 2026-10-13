@@ -56,31 +56,52 @@ yy, xx = np.mgrid[0:H, 0:W]
 DEEP = ramp('#010208', '#02050e', '#040a18', '#071226', '#0b1c36', '#122a4a', '#1c3c60')
 
 
-def _hall(m, win, cx, base, bw, bh, rw, rh):
-    """one hall: body, windows, and a hip roof whose eaves curl up at the ends."""
+def _hall(m, body, pane, cx, base, bw, bh, rw, rh):
+    """one hall: body, lit panes between pillars, and a hip roof whose eaves curl up at the ends.
+    m = everything solid; body = wall block only (so roofs and walls can be lit differently); pane = the glowing gaps between pillars."""
     X = np.arange(m.shape[1])[None, :]; Y = np.arange(m.shape[0])[:, None]
-    m |= (np.abs(X - cx) < bw) & (Y > base - bh) & (Y <= base)
+    wall = (np.abs(X - cx) < bw) & (Y > base - bh) & (Y <= base)
+    m |= wall; body |= wall
     u = np.abs(X - cx) / rw
     top = base - bh - rh
     y_top = top + rh * 0.85 * np.clip((u - 0.3) / 0.7, 0, 1) ** 1.2
     y_eave = base - bh + 2 - 6 * u ** 4
     m |= (u <= 1) & (Y >= y_top) & (Y <= y_eave)
-    for k in range(int(-bw + 6), int(bw - 4), 7):          # a row of dim windows
-        win |= (X >= cx + k) & (X < cx + k + 3) & (Y > base - bh + 4) & (Y < base - bh + 9)
+    k = (X - (cx - bw)) % 7                                    # pillar rhythm: 2px dark post, 5px lit pane
+    pane |= wall & (k >= 2) & (Y > base - bh + 4) & (Y < base - 1) & (np.abs(X - cx) < bw - 2)
 
 
 def palace_silhouette(w, h):
-    m = np.zeros((h, w), bool); win = np.zeros((h, w), bool)
+    m = np.zeros((h, w), bool); body = np.zeros((h, w), bool); pane = np.zeros((h, w), bool)
     X = np.arange(w)[None, :]; Y = np.arange(h)[:, None]
     base = 178
     m |= Y > base + 14 - 22 * np.exp(-((X - 300) / 150.0) ** 2) + np.sin(X * 0.035) * 5 + np.sin(X * 0.11) * 2  # seabed mound
-    _hall(m, win, 300, base - 8, 46, 22, 66, 26)
-    _hall(m, win, 300, base - 56, 28, 12, 42, 18)                       # upper storey of the main hall
-    _hall(m, win, 210, base - 2, 26, 14, 38, 16)
-    _hall(m, win, 390, base - 2, 26, 14, 38, 16)
-    _hall(m, win, 150, base + 2, 16, 10, 24, 10)
-    _hall(m, win, 450, base + 2, 16, 10, 24, 10)
-    return m, win & m
+    # 기단: a stepped stone terrace under the great hall, with a centre stair
+    for i, (hw, y) in enumerate(((92, base - 4), (84, base - 8), (76, base - 12))):
+        m |= (np.abs(X - 300) < hw) & (Y >= y) & (Y <= base + 2)
+        body |= (np.abs(X - 300) < hw) & (Y >= y) & (Y < y + 1)
+    _hall(m, body, pane, 300, base - 12, 46, 22, 68, 26)                # the great hall
+    _hall(m, body, pane, 300, base - 60, 28, 12, 44, 18)                # upper storey of the main hall
+    _hall(m, body, pane, 300, base - 90, 12, 8, 24, 12)                 # a small belvedere on top
+    # a three-storey pagoda on the left, a bell tower on the right
+    _hall(m, body, pane, 196, base - 2, 15, 16, 32, 12)
+    _hall(m, body, pane, 196, base - 30, 12, 12, 26, 10)
+    _hall(m, body, pane, 196, base - 54, 9, 10, 20, 9)
+    _hall(m, body, pane, 404, base - 2, 22, 14, 36, 14)
+    _hall(m, body, pane, 404, base - 28, 12, 10, 24, 10)
+    _hall(m, body, pane, 124, base + 2, 16, 10, 26, 10)
+    _hall(m, body, pane, 468, base + 2, 14, 10, 24, 10)
+    # covered corridors tying the halls together, and the palace wall with a gate
+    for (x0, x1) in ((214, 252), (348, 386), (140, 180), (420, 456)):
+        m |= (X > x0) & (X < x1) & (Y > base - 8) & (Y <= base + 1) ; body |= (X > x0) & (X < x1) & (Y > base - 8) & (Y <= base + 1)
+        m |= (X > x0 - 2) & (X < x1 + 2) & (Y > base - 11) & (Y <= base - 8)
+        pane |= (X > x0 + 2) & (X < x1 - 2) & (Y > base - 6) & (Y < base) & (((X - x0) % 6) >= 2)
+    wallm = (Y > base + 6) & (Y <= base + 18) & (np.abs(X - 300) > 36) & (((X // 5) % 3 != 0) | (Y > base + 8))
+    m |= wallm; body |= wallm & (Y < base + 8)
+    gate = (np.abs(X - 300) <= 36) & (Y > base + 2) & (Y <= base + 18)
+    m |= gate; body |= gate
+    pane |= gate & (np.abs(X - 300) < 4) & (Y > base + 9)                     # the lit gateway
+    return m, body, pane & m
 
 
 def shot_sea():
@@ -94,21 +115,48 @@ def shot_sea():
         px, py = rng.integers(0, W), rng.integers(0, H - 30)
         rgb[py, px] = hx('#2c4e70') if rng.random() > 0.3 else hx('#4a7a98')
     save('intro_sea', rgb)
-    far, win = palace_silhouette(W, H)
+    far, bodym, pane = palace_silhouette(W, H)
     # edge light: roofs catch the pearl glow on their upper rims, walls fall into the dark below
     up = far & ~np.roll(far, 1, 0)
     up2 = far & ~np.roll(far, 2, 0) & ~up
+    side = far & ~np.roll(far, 1, 1) & ~up
     tone = np.clip((1 - (yy - 100) / 120.0), 0, 1)
-    col = np.zeros((H, W, 3)) + hx('#0a1c34') * (0.55 + 0.45 * tone[..., None])
-    col[up] = hx('#3a7a9c')
+    col = np.zeros((H, W, 3)) + hx('#06142a') * (0.55 + 0.45 * tone[..., None])
+    col[bodym] = hx('#0c2442') * (0.7 + 0.5 * tone[bodym][:, None])          # walls: a shade brighter than the roofs
+    col[side] = hx('#1c4a6c')
     col[up2] = hx('#1e4c70')
-    lit = win & (noise((H, W), 9, 3) > 0.3)
-    col[lit] = np.where((noise((H, W), 4, 8)[lit] > 0.55)[:, None], hx('#e8b868'), hx('#6ab4c8'))   # warm lamps and pearl-light in the windows
-    spire = np.zeros((H, W), bool)                      # a hanging-bell finial on the great roof
-    spire |= (np.abs(xx - 300) < 1) & (yy > 92) & (yy < 112)
-    spire |= (np.hypot(xx - 300, yy - 90) < 3)
+    col[up] = hx('#4a96b8')
+    # roof tiles: faint horizontal courses so the big roofs read as roofs, not blobs
+    tiles = far & ~bodym & (yy % 3 == 0) & ~up & ~up2 & (yy < 176)
+    col[tiles] = col[tiles] * 1.0 + np.array([6, 18, 28])
+    # lit panes between the pillars: warm gold toward the centre of the palace, cool pearl-blue at the edges; fogged with distance from the great hall
+    nz = noise((H, W), 4, 8)
+    warm = np.clip(1.2 - np.abs(xx - 300) / 120.0, 0, 1)
+    pcol = np.where((nz > 0.5 - warm * 0.35)[..., None], hx('#e8b868'), hx('#6ab4c8'))
+    pcol = pcol * (0.5 + 0.4 * np.clip((yy - 70) / 90.0, 0, 1))[..., None]
+    lit = pane & (noise((H, W), 9, 3) > 0.12)
+    col[lit] = pcol[lit]
+    col[pane & ~lit] = hx('#12365a')
+    # lanterns hanging under the eaves of every roof (warm 2px dots), and the great bell
+    lanterns = np.zeros((H, W), bool)
+    for yb, xs in ((190 - 12 - 22 + 2 - 2, range(240, 362, 11)), (178 - 60 - 12 + 2, range(276, 326, 11)), (178 - 2 - 16 + 2, range(172, 222, 12)), (178 - 2 - 14 + 2, range(376, 436, 12))):
+        for x in xs:
+            for dy in (1, 2, 3, 4):
+                if dy < 5 and 0 <= yb + dy < H:
+                    lanterns[yb + dy, x] = True
+    lanterns &= ~far | (bodym & False)
+    lan_m = far & False
+    for yb, xs in ((178 - 12 - 22 + 2, range(240, 362, 11)), (178 - 60 - 12 + 2, range(276, 326, 11)), (178 - 2 - 16 + 2, range(172, 222, 12)), (178 - 2 - 14 + 2, range(376, 436, 12))):
+        for x in xs:
+            col[yb + 3: yb + 5, x:x + 2] = hx('#f0b860'); col[yb + 2, x:x + 1] = hx('#6a4a22')
+            lan_m[yb + 2: yb + 5, x:x + 2] = True
+    spire = np.zeros((H, W), bool)                      # a hanging-bell finial on the belvedere
+    spire |= (np.abs(xx - 300) < 1) & (yy > 62) & (yy < 82)
+    spire |= (np.hypot(xx - 300, yy - 60) < 3)
     col[spire] = hx('#c8a050')
-    save('intro_sea_far', col, ((far | spire) * 235).astype(np.uint8))
+    bell = np.hypot(xx - 404, yy - 156) < 4
+    col[bell & (yy > 154)] = hx('#c8a050')
+    save('intro_sea_far', col, (np.maximum(far | spire, lan_m | (bell & (yy > 154))) * 250).astype(np.uint8))
     # mid layer: coral reef and tall sea-fans lit by bioluminescent pearls, between the palace and the kelp
     mid = np.zeros((H, W), bool)
     rng = np.random.default_rng(12)
@@ -145,6 +193,47 @@ def shot_sea():
     fup = fg & ~np.roll(fg, 1, 0) | (fg & ~np.roll(fg, 1, 1))
     fcol[fup] = hx('#0c2a40')                          # a thin rim of palace-light on the kelp edges
     save('intro_sea_fg', fcol, (fg * 255).astype(np.uint8))
+
+
+def fauna():
+    """intro_jelly.png: a small glowing moon-jelly (16x22); intro_fish.png: a fish silhouette lit along the back (14x7)."""
+    jw, jh = 16, 22
+    jy, jx = np.mgrid[0:jh, 0:jw]
+    bell = (((jx - 7.5) / 7.0) ** 2 + ((jy - 7.0) / 6.5) ** 2 <= 1) & (jy <= 8)
+    col = np.zeros((jh, jw, 3)); a = np.zeros((jh, jw))
+    col[bell] = dither(1.2 + (jy[bell] / 8.0) * 2.6, ramp('#d8f0f8', '#8ac8e0', '#5a98c8', '#3a68a8', '#2a4488'))[:, :3] if False else hx('#5a98c8')
+    t = np.clip(jy / 8.0, 0, 1)
+    c0, c1 = hx('#c8f0f8'), hx('#4a6ac0')
+    for yv in range(jh):
+        for xv in range(jw):
+            if bell[yv, xv]:
+                col[yv, xv] = c0 * (1 - t[yv, xv]) + c1 * t[yv, xv]
+                a[yv, xv] = 0.85 if yv > 0 else 0.5
+    rng = np.random.default_rng(4)
+    for k, x0 in enumerate((4, 7, 10, 12)):                     # trailing tentacles
+        for yv in range(8, jh):
+            xv = int(round(x0 + math.sin(yv * 0.7 + k) * 1.2))
+            if 0 <= xv < jw:
+                col[yv, xv] = hx('#7ab0e0') if yv % 2 else hx('#4a7ac0'); a[yv, xv] = 0.7 * (1 - (yv - 8) / 16.0)
+    for yv in (4, 5):                                           # bright core
+        col[yv, 7] = hx('#fff0d8'); a[yv, 7] = 1.0
+    img = np.zeros((jh, jw, 4), np.uint8); img[..., :3] = col; img[..., 3] = (a * 255).astype(np.uint8)
+    Image.fromarray(img).save(OUT / 'intro_jelly.png')
+    pat = ["..........#..#",
+           "...######..###",
+           ".###########.#",
+           "##############",
+           ".###########.#",
+           "....#####..###",
+           "..........#..#"]
+    fh, fw = len(pat), len(pat[0])
+    fm = np.array([[c == '#' for c in r] for r in pat])
+    img = np.zeros((fh, fw, 4), np.uint8)
+    img[fm] = (*hx('#16405e').astype(np.uint8), 255)
+    back = fm & ~np.roll(fm, 1, 0)
+    img[back] = (*hx('#3a88aa').astype(np.uint8), 255)
+    img[3, 2] = (*hx('#c8e8f0').astype(np.uint8), 255)           # eye (head on the left)
+    Image.fromarray(img).save(OUT / 'intro_fish.png')
 
 
 def shot_hall():
@@ -205,5 +294,5 @@ def title_bg():
 
 
 if __name__ == '__main__':
-    shot_sea(); shot_hall(); shot_night(); title_bg()
+    shot_sea(); fauna(); shot_hall(); shot_night(); title_bg()
     print('intro:', ', '.join(p.name for p in sorted(OUT.glob('*.png'))))

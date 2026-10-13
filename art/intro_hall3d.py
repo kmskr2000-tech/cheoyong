@@ -40,6 +40,8 @@ RAMPS = {
     'coral2':  ramp('#04100e', '#0a2420', '#123c36', '#1e5a4e', '#34806c', '#5aa890'),
     'carpet':  ramp('#0c0614', '#180a26', '#2a1238', '#401c50', '#5a2a66', '#7a4082'),
     'stone':   ramp('#05080e', '#0c121c', '#161e2c', '#222c3e', '#323e54', '#46546c'),
+    'flame':   ramp('#5a2a10', '#a8541c', '#e8902c', '#ffd070', '#fff0b0'),
+    'board':   ramp('#0c0610', '#1c0c18', '#2c1420', '#40202c', '#583040'),
     'pearl':   ramp('#1e2c38', '#344e5e', '#527684', '#7a9ea6', '#a6c6c8', '#cce4e0'),
 }
 FOG = hx('#071426')
@@ -81,6 +83,7 @@ def _plane(o, d, axis, v, sign):
 
 PILLARS = [(sx * 3.3, z) for z in (4.8, 7.6, 10.4, 13.2) for sx in (-1, 1)] + [(sx * 5.6, z) for z in (5.0, 9.0, 13.0) for sx in (-1, 1)]
 CORALS = [(sx * 4.4, z, int(z * 3)) for z in (6.2, 9.0, 12.0) for sx in (-1, 1)] + [(sx * 6.4, z, int(z * 5)) for z in (7.0, 11.0) for sx in (-1, 1)]
+BRAZIERS = [(sx * 2.0, z) for z in (6.4, 8.0) for sx in (-1, 1)]
 LANTERNS = [(sx * 2.1, 3.9, z) for z in (5.0, 8.0, 11.0) for sx in (-1, 1)]
 
 
@@ -112,8 +115,14 @@ def scene(o, d, depth=0):
         lo, hi = (-hw, 0.0, z0), (hw, y, 14.6)
         t = _box(o, d, lo, hi)
         take(t, 'dais', lambda p, lo=lo, hi=hi: _box_normal(p, lo, hi))
-    lo, hi = (-1.5, 0.66, 10.6), (1.5, 1.25, 12.8)
+    lo, hi = (-1.62, 0.66, 10.6), (1.62, 1.0, 12.8)           # lacquered bed frame
+    take(_box(o, d, lo, hi), 'pillar', lambda p: _box_normal(p, lo, hi))
+    lo, hi = (-1.66, 0.94, 10.56), (1.66, 1.04, 12.84)       # gold trim round the frame
+    take(_box(o, d, lo, hi), 'gold', lambda p: _box_normal(p, lo, hi))
+    lo, hi = (-1.54, 1.0, 10.7), (1.54, 1.25, 12.7)          # mattress
     take(_box(o, d, lo, hi), 'bed', lambda p: _box_normal(p, lo, hi))
+    lo, hi = (-1.62, 1.04, 12.7), (1.62, 2.5, 12.86)           # carved head-board: gives the lying king a lit backdrop
+    take(_box(o, d, lo, hi), 'board', lambda p: _box_normal(p, lo, hi))
     for (px, pz) in ((-1.7, 10.4), (1.7, 10.4), (-1.7, 13.0), (1.7, 13.0)):
         take(_cyl(o, d, px, pz, 0.07, 0.66, 3.4), 'gold', lambda p, px=px, pz=pz: np.stack([p[:, 0] - px, np.zeros(len(p)), p[:, 2] - pz], -1) / 0.07)
     lo, hi = (-1.9, 3.35, 10.2), (1.9, 3.6, 13.2)
@@ -138,6 +147,10 @@ def scene(o, d, depth=0):
         for j in range(6):
             c = np.array([sx, 5.9 - j * 0.28, z])
             take(_sph(o, d, c, 0.09), 'pearl', lambda p, c=c: (p - c) / 0.09)
+    for (bx, bz) in BRAZIERS:      # bronze braziers burning pearl-oil: the warm accents flanking the way to the bed
+        take(_cyl(o, d, bx, bz, 0.09, 0, 0.8), 'gold', lambda p, bx=bx, bz=bz: np.stack([p[:, 0] - bx, np.zeros(len(p)), p[:, 2] - bz], -1) / 0.09)
+        take(_cyl(o, d, bx, bz, 0.3, 0.8, 0.95), 'gold', lambda p, bx=bx, bz=bz: np.stack([p[:, 0] - bx, np.zeros(len(p)), p[:, 2] - bz], -1) / 0.3)
+        take(_sph(o, d, np.array([bx, 1.12, bz]), 0.22), 'flame', lambda p, c=np.array([bx, 1.12, bz]): (p - c) / 0.22)
     for (cx, cz) in PILLARS:       # bracket sets under the eaves
         take(_cyl(o, d, cx, cz, 0.44, 5.35, 5.8), 'dan_r', lambda p, cx=cx, cz=cz: np.stack([p[:, 0] - cx, np.zeros(len(p)), p[:, 2] - cz], -1) / 0.44)
     for (lx, ly, lz) in LANTERNS:
@@ -189,7 +202,7 @@ def shade(mat, p, nrm, d):
         mm = m[f]; mm[run] = 'carpet'; mm[edge] = 'gold'; m[f] = mm
         tone[np.where(f)[0][edge]] = 3.2
     f = m == 'floor'
-    for name, base, k in (('pillar', 2.0, 3.0), ('coral', 1.4, 3.4), ('coral2', 1.4, 3.4), ('stone', 1.4, 2.6), ('dan_r', 1.4, 2.4), ('dais', 1.4, 2.4), ('bed', 1.6, 2.8), ('drape', 1.2, 2.4), ('gold', 1.6, 3.2)):
+    for name, base, k in (('pillar', 2.0, 3.0), ('coral', 1.4, 3.4), ('coral2', 1.4, 3.4), ('stone', 1.4, 2.6), ('dan_r', 1.4, 2.4), ('dais', 1.4, 2.4), ('bed', 1.6, 2.8), ('drape', 1.2, 2.4), ('gold', 1.6, 3.2), ('board', 1.0, 1.0)):
         s = m == name
         tone[s] = base + lam[s] * k + glow[s] * 0.9
     s = m == 'pillar'
@@ -223,6 +236,16 @@ def shade(mat, p, nrm, d):
             fsh = ((z[la] - fz_) / 0.9) ** 2 + ((y[la] - fy_) / 0.22) ** 2 < 1
             tone[la] = np.where(fsh & win, 0.8, tone[la])
         mm = m[la]; mm[~win] = 'wall'; m[la] = mm
+    bd = m == 'board'
+    if bd.any():   # head-board: gold frame, a lacquer panel with a coiling-cloud lattice and a pearl in the middle
+        fr = (np.abs(x[bd]) > 1.5) | (y[bd] > 2.38) | (y[bd] < 1.14)
+        cloud = np.sin(x[bd] * 9.0 + np.sin(y[bd] * 7.0) * 1.3) * np.sin(y[bd] * 8.0 + 1.0)
+        pr = np.exp(-(x[bd] ** 2 + (y[bd] - 1.85) ** 2) / 0.05) * 4.0
+        tone[bd] = 1.2 + np.clip(cloud, 0, 1) * 1.1 + pr + glow[bd] * 0.9
+        mm = m[bd]; mm[fr] = 'gold'; mm[pr > 1.5] = 'pearl'; m[bd] = mm
+        tone[np.where(bd)[0][fr]] = 3.0
+    fl = m == 'flame'
+    tone[fl] = 2.2 + lam[fl] * 1.8
     pe = m == 'pearl'
     tone[pe] = 2.8 + lam[pe] * 1.6
     g = m == 'gold'
@@ -278,6 +301,9 @@ def render():
     c0 = np.array([0.0, 1.6, 11.0])    # warm lamplight over the sick-bed (the one warm note in the cold hall)
     dd2 = ((p - c0) ** 2).sum(-1)
     rgb += np.array([70, 40, 12]) * np.exp(-dd2 / 12.0)[:, None] * 0.95
+    for (bx, bz) in BRAZIERS:          # brazier firelight spilling on pillars and floor
+        db = ((p - np.array([bx, 1.1, bz])) ** 2).sum(-1)
+        rgb += np.array([90, 46, 12]) * np.exp(-db / 5.0)[:, None] * 0.8
     rng = np.random.default_rng(21)    # drifting motes baked as single bright pixels, brighter when nearer
     for _ in range(170):
         mx, my = rng.integers(0, W), rng.integers(0, H)

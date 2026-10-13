@@ -235,12 +235,15 @@ func _fade_out(t := 1.0) -> void:
 func _shot_sea() -> void:
 	_new_shot()
 	_layer("res://assets/intro/intro_sea.png")
+	_glow(Vector2(318, 140), Color(0.25, 0.55, 0.7, 0.5), 260.0, 0.3)   # pearl-light pooled behind the drowned palace: it reads as a silhouette against the halo
 	var far := _layer("res://assets/intro/intro_sea_far.png", Vector2(-10, 0))
-	_glow(Vector2(318, 150), Color(0.25, 0.55, 0.7, 0.5), 230.0, 0.3)   # pearl-light pooled around the drowned palace
-	_glow(Vector2(300, 98), Color(1.0, 0.75, 0.4, 0.45), 40.0, 0.5)      # the bell finial's lamp
+	_glow(Vector2(312, 168), Color(1.0, 0.72, 0.38, 0.30), 150.0, 0.35)  # lamplight spilling out of the great hall's open panes
+	_glow(Vector2(300, 66), Color(1.0, 0.75, 0.4, 0.45), 40.0, 0.5)      # the belvedere finial's lamp
+	_glow(Vector2(394, 154), Color(1.0, 0.75, 0.4, 0.3), 26.0, 0.6)      # the bell tower
 	var mid := _layer("res://assets/intro/intro_sea_mid.png", Vector2(-20, 0))
 	mid.scale = Vector2(1.08, 1.0)
 	_shafts(_shot)
+	_fauna()
 	_taki(_shot, Vector2(260, 60))
 	_motes(_shot, Vector2(250, 8), Vector2(240, 250), Color(0.5, 0.8, 0.95, 0.5), 28, -1.0, 7.0)   # plankton drifting up
 	_motes(_shot, Vector2(260, 30), Vector2(240, 80), Color(0.65, 0.3, 0.85, 0.55), 10, -0.3, 5.0)  # 귀화 sparks in the tainted water
@@ -256,14 +259,55 @@ func _shot_sea() -> void:
 	await _fade_out()
 
 
+func _breathe(k: float, king: Sprite2D) -> void:
+	king.scale.y = k
+	king.position.y = 82.0 + 27.0 * (1.0 - k)
+
+
+## 샷1 생물: 용궁 앞을 가로지르는 물고기 떼, 천천히 떠오르는 해파리 (shot 노드에 묶인 트윈 — 컷과 함께 사라지고 길이는 그대로)
+func _fauna() -> void:
+	var fish_tex: Texture2D = load("res://assets/intro/intro_fish.png")
+	for i in 7:
+		var f := Sprite2D.new()
+		f.texture = fish_tex
+		# 그림은 머리가 왼쪽: 오른쪽 → 왼쪽으로 헤엄친다(머리가 진행방향)
+		f.modulate = Color(1, 1, 1, 0.9)
+		var y0 := 150.0 + float(i % 3) * 7.0 + float(i) * 1.5
+		f.position = Vector2(520.0 + i * 15.0, y0)
+		_shot.add_child(f)
+		var tw := f.create_tween().set_parallel()
+		tw.tween_property(f, "position:x", -60.0 + i * 15.0, 14.0 + float(i % 2) * 2.0)
+		tw.tween_property(f, "position:y", y0 - 10.0 + float(i % 3) * 5.0, 14.0).set_trans(Tween.TRANS_SINE)
+	var jelly_tex: Texture2D = load("res://assets/intro/intro_jelly.png")
+	for pos in [Vector2(96, 218), Vector2(168, 240), Vector2(402, 232)]:
+		var j := Sprite2D.new()
+		j.texture = jelly_tex
+		j.position = pos
+		j.scale = Vector2.ONE * (0.9 + randf() * 0.5)
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		j.material = add
+		_shot.add_child(j)
+		var tw := j.create_tween().set_parallel()
+		tw.tween_property(j, "position:y", pos.y - 120.0, 10.0).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(j, "position:x", pos.x + 14.0, 10.0).set_trans(Tween.TRANS_SINE)
+		var pulse := j.create_tween().set_loops()
+		pulse.tween_property(j, "modulate:a", 0.55, 1.1).set_trans(Tween.TRANS_SINE)
+		pulse.tween_property(j, "modulate:a", 1.0, 1.1).set_trans(Tween.TRANS_SINE)
+		var halo := _glow(pos, Color(0.4, 0.7, 1.0, 0.10), 30.0, 0.4)
+		halo.reparent(j, false)
+		halo.position = Vector2(0, 0)
+
+
 ## 2–3: 병석의 용왕. 세 아들. 맏형의 봉쇄론. 용왕의 유언과 용패.
 func _shot_hall() -> void:
 	_new_shot()
 	_layer("res://assets/intro/intro_hall.png")
-	var king := _sprite("res://assets/sprites/npc_dragonking.png", Vector2(240, 114))   # on the canopied bed
-	king.rotation = -PI / 2
-	king.offset = Vector2(0, -12)
-	king.modulate = Color(0.82, 0.86, 0.92)
+	# 용왕은 서 있는 NPC 시트를 눕혀 쓰지 않고, 침상에 누운 전용 그림(art/intro_king.py)을 쓴다
+	var king := _layer("res://assets/intro/intro_king.png", Vector2(200, 82))   # 머리는 왼쪽 베개, 발은 오른쪽 — 침상 윗면에 얹힘
+	var breath := king.create_tween().set_loops()   # 느린 숨결: 가슴이 오르내림(바닥선 고정)
+	breath.tween_method(_breathe.bind(king), 1.0, 1.035, 2.2).set_trans(Tween.TRANS_SINE)
+	breath.tween_method(_breathe.bind(king), 1.035, 1.0, 2.6).set_trans(Tween.TRANS_SINE)
 	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(200, 168))   # 맏형 해강
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
@@ -278,6 +322,7 @@ func _shot_hall() -> void:
 		_shot.move_child(g, 1)
 	_motes(_shot, Vector2(240, 10), Vector2(240, 270), Color(0.6, 0.85, 1.0, 0.5), 34, -1.0, 9.0)   # bubbles rising through the hall
 	_motes(_shot, Vector2(30, 6), Vector2(240, 108), Color(0.62, 0.3, 0.82, 0.6), 12, -1.0, 6.0)    # 탁기 curling off the king's bed
+	_shafts(_shot)   # 수면에서 내려오는 빛줄기가 정전 위로도 천천히 흔들린다
 	_push(24.0, 1.06)
 	await _fade_in()
 	await dialog.say([
@@ -300,7 +345,7 @@ func _shot_hall() -> void:
 	var scale_ := Sprite2D.new()
 	scale_.texture = load("res://assets/ui/icons/item_dragonseal.png")   # 용인: the dragon's teardrop seal
 	scale_.scale = Vector2(0.7, 0.7)
-	scale_.position = king.position + Vector2(-8, -10)
+	scale_.position = Vector2(200, 82) + Vector2(49, 18)   # 용왕의 손(이불 위에 얹은 팔 끝)
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	scale_.material = add
