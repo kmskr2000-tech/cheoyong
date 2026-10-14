@@ -5,6 +5,7 @@ extends Node2D
 ## Never shows 난영, 역신, 왕 or the appointment. Skippable (건너뛰기 / menu).
 
 const CREAM := Color(0.93, 0.88, 0.76)
+const PLAYER := preload("res://scripts/player.gd")
 var dialog: DialogBox
 var _sub: Label
 var _skip: Label
@@ -115,6 +116,32 @@ func _sprite(path: String, at: Vector2, region := Rect2()) -> Sprite2D:
 			s.frame = 1
 	s.position = at
 	s.offset = Vector2(0, -20)
+	_shot.add_child(s)
+	return s
+
+
+## 인게임 처용 걷기 프레임(player.gd SHEET 와 같은 칸)을 재사용하는 AnimatedSprite2D. 위(up)로 걷는 컷이라 flip 은 쓰지 않는다.
+func _walker(at: Vector2) -> AnimatedSprite2D:
+	var tex: Texture2D = Tex.lit("res://assets/sprites/cheoyong.png")
+	var frames := SpriteFrames.new()
+	frames.remove_animation("default")
+	for anim in PLAYER.SHEET:
+		if anim != "up_idle" and anim != "up_walk":
+			continue
+		frames.add_animation(anim)
+		frames.set_animation_loop(anim, true)
+		frames.set_animation_speed(anim, 8.0)
+		for i in PLAYER.SHEET[anim]:
+			var a := AtlasTexture.new()
+			a.atlas = tex
+			a.region = Rect2(i * PLAYER.FRAME.x, 0, PLAYER.FRAME.x, PLAYER.FRAME.y)
+			frames.add_frame(anim, a)
+	var s := AnimatedSprite2D.new()
+	s.sprite_frames = frames
+	s.position = at
+	s.offset = Vector2(0, -20)
+	s.speed_scale = 92.0 / 72.0   # 인게임 걷기 속도 비율
+	s.play("up_idle")
 	_shot.add_child(s)
 	return s
 
@@ -311,7 +338,7 @@ func _shot_hall() -> void:
 	var b1 := _sprite("res://assets/sprites/npc_brother1.png", Vector2(200, 168))   # 맏형 해강
 	var b2 := _sprite("res://assets/sprites/npc_brother2.png", Vector2(280, 168))   # 둘째 해명
 	b2.frame = 3   # the brothers turn in toward the bed
-	var me := _sprite("res://assets/sprites/cheoyong.png", Vector2(240, 226), Rect2(64, 0, 64, 64))  # back view (up_idle)
+	var me := _walker(Vector2(240, 226))   # 걷기 모션이 있는 처용 (뒷모습 up_idle 로 시작)
 	var lamps: Array[Sprite2D] = []
 	for pg in [Vector2(164, 117), Vector2(316, 117)]:
 		lamps.append(_glow(pg, Color(0.45, 0.75, 0.85, 0.36), 60.0, 0.35))     # the great pearls on their pedestals
@@ -332,9 +359,11 @@ func _shot_hall() -> void:
 	])
 	if _done: return
 	# the king turns his head; 처용 steps up to the bed
+	me.play("up_walk")   # 이동하는 동안만 걷기 사이클, 도착하면 다시 선 자세
 	var tw := create_tween()
 	tw.tween_property(me, "position", Vector2(240, 176), 1.4)
 	await tw.finished
+	me.play("up_idle")
 	await dialog.say([
 		{"name": "용왕", "text": "인간 세상의 액이 깊어진다."},
 		{"name": "용왕", "text": "해강은 힘이 세고, 해명은 지혜롭다."},
