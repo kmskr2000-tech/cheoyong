@@ -98,6 +98,7 @@ const DATA := {
 		"name": "개운포",
 		"ground": "beach_w",
 		"view": "wide",
+		"ambient": Color(0.46, 0.50, 0.68),   # 와이드 뷰: 넓은 화면에서도 인물·소품이 읽히도록 밤 환경광을 한 단계 올림
 		"spawns": {"start": Vector2(300, 768)},
 		"props": [
 			["boat", 524, 848, null], ["cairn", 344, 822, null], ["netrack", 184, 736, null],

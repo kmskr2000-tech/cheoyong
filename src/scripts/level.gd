@@ -1012,6 +1012,8 @@ func _atmosphere() -> void:
 	if morning:
 		fm.set_shader_parameter("tint", Color(0.9, 0.82, 0.7))   # 찬 안개 → 따뜻한 아침 안개
 		fm.set_shader_parameter("density", 0.3)
+	if View.hud_scale > 1:
+		fm.set_shader_parameter("density", 0.32)   # 와이드: 넓게 보이는 땅이 안개에 묻히지 않게
 	fog.material = fm
 	add_child(fog)
 	# ash / spores drifting down across the view
