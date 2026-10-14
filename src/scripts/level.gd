@@ -21,6 +21,7 @@ var interact_points: Array = [] # [{pos, id, label}]
 func _ready() -> void:
 	View.set_fixed(false)
 	def = Levels.DATA[Game.level_id]
+	View.set_wide(def.get("view", "") == "wide")   # prog/view-overhaul: 와이드 뷰는 이 필드가 켜진 맵(현재 beach)만
 	meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/levels/%s.json" % def["ground"]))
 	light_tex = _radial(256)
 	_ground()
@@ -378,7 +379,7 @@ const GUIDE_HANDOFF := TALK_RANGE + 6.0     # H: 이 안이면 빛 조각·빛�
 const GUIDE_MOTES := 3
 const GUIDE_PERIOD := 1.6
 const GUIDE_FAR := 240.0                    # 이 거리 이상이면 크고(1.4) 밝게(0.95)
-const GUIDE_VIEW_Y := 135.0                   # 빛기둥 시야 절반 높이(높이는 270 고정). 절반 폭은 View.size.x * 0.5 (가로 확장 대응)
+const GUIDE_VIEW_Y := 135.0                   # (구) 빛기둥 시야 절반 높이 — 이제 View.world().y * 0.5 를 쓴다
 const BEACON_PERIOD := 1.4
 const OBJ_EVAL_EVERY := 0.25
 var _motes: Array = []
@@ -519,7 +520,7 @@ func _update_guide(d: float) -> void:
 	# 빛기둥: 대상이 카메라 시야 안일 때만, 문구와 같은 숨김 규칙(튜토리얼 점등·보스 체력바·대화…)을 따른다
 	var cam: Camera2D = p.get_node_or_null("Camera")
 	var center: Vector2 = cam.get_screen_center_position() if cam else p.global_position
-	var in_view := absf(goal.x - center.x) < View.size.x * 0.5 and absf(goal.y - center.y) < GUIDE_VIEW_Y
+	var in_view := absf(goal.x - center.x) < View.world().x * 0.5 and absf(goal.y - center.y) < View.world().y * 0.5
 	var show_beacon: bool = in_view and hud != null and hud.objective_gate() and Hud.objective_mode() != "off"   # 설정 "끔" 이면 문구도 빛기둥도 없다 (§5-16)
 	_beacon_fade = move_toward(_beacon_fade, 1.0 if show_beacon else 0.0, d / 0.25)
 	if _beacon_fade <= 0.01:
@@ -897,7 +898,7 @@ func _frame_offset(p: Node2D) -> Vector2:
 
 func _on_view_changed(vs: Vector2) -> void:
 	if _ash:
-		_ash.emission_rect_extents.x = vs.x * 0.5 + 40.0   # 넓어진 뷰 전체에 먼지가 흐르게
+		_ash.emission_rect_extents.x = View.world().x * 0.5 + 40.0   # 넓어진 뷰 전체에 먼지가 흐르게
 
 
 func _process(d: float) -> void:
@@ -1016,8 +1017,8 @@ func _atmosphere() -> void:
 	ash.lifetime = 7.0
 	ash.preprocess = 7.0
 	ash.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	ash.emission_rect_extents = Vector2(View.size.x * 0.5 + 40.0, 20)
-	ash.position = Vector2(0, 150)
+	ash.emission_rect_extents = Vector2(View.world().x * 0.5 + 40.0, 20)
+	ash.position = Vector2(0, 150.0 * View.hud_scale)
 	ash.direction = Vector2(0.15, -1)
 	ash.spread = 20.0
 	ash.gravity = Vector2(0, -3)
