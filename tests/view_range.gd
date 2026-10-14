@@ -47,9 +47,11 @@ func _main() -> void:
 			V.force_window(Vector2i(w * 4, 1080))
 			await process_frame
 			await process_frame
-			var want_w: int = mini(w, maxi(480, map_w))
+			var wide: bool = lv.def.get("view", "") == "wide"   # prog/view-overhaul: 와이드 맵은 뷰포트 높이 540·폭 960~맵 폭(짝수)
+			var want_w: int = (clampi(w * 2, 960, maxi(960, map_w)) & ~1) if wide else mini(w, maxi(480, map_w))
+			var want_h: int = 540 if wide else 270
 			var vp := root.get_visible_rect().size
-			_ck("%s/%d 뷰포트 %dx270" % [m, w, want_w], int(vp.x) == want_w and int(vp.y) == 270, str(vp))
+			_ck("%s/%d 뷰포트 %dx%d" % [m, w, want_w, want_h], int(vp.x) == want_w and int(vp.y) == want_h, str(vp))
 			var xf := root.get_screen_transform()
 			_ck("%s/%d 정수 배율" % [m, w], is_equal_approx(xf.x.x, roundf(xf.x.x)), str(xf.x.x))
 			for d in DIRS:
@@ -60,7 +62,8 @@ func _main() -> void:
 				var r := Rect2(c - vp / 2.0, vp)
 				var ok: bool = r.position.x >= cam.limit_left - 0.01 and r.end.x <= cam.limit_right + 0.01 and r.position.y >= cam.limit_top - 0.01 and r.end.y <= cam.limit_bottom + 0.01
 				_ck("%s/%d 방향 %s 맵 밖 빈 공간 없음" % [m, w, d], ok, "view=%s limit=[%d..%d]x[%d..%d]" % [r, cam.limit_left, cam.limit_right, cam.limit_top, cam.limit_bottom])
-		_ck("%s 카메라 범위가 480x270 이상" % m, map_w >= 480 and rng_h >= 270, "%dx%d" % [map_w, rng_h])
+		var wide_m: bool = lv.def.get("view", "") == "wide"
+		_ck("%s 카메라 범위가 뷰포트 이상" % m, map_w >= (960 if wide_m else 480) and rng_h >= (540 if wide_m else 270), "%dx%d" % [map_w, rng_h])
 		# 룩어헤드: 입력 해제 후 0.5초(30프레임) 안에 오프셋 ≤ 2px (AC1-6)
 		V.force_window(Vector2i(960, 540))
 		await process_frame

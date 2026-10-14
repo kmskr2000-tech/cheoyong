@@ -27,11 +27,13 @@ var _knot_frames: Array[AtlasTexture] = []
 
 
 func _on_view(_s: Vector2) -> void:
+	View.fit_layer(self)
 	_root.position.x = View.pad()
 
 
 func _ready() -> void:
 	layer = 20
+	View.fit_layer(self)
 	process_mode = Node.PROCESS_MODE_ALWAYS  # the 행낭 menu runs while the game is paused
 	var font := _pixel_font("res://assets/fonts/Galmuri11.ttf")
 	var bold := _pixel_font("res://assets/fonts/Galmuri11-Bold.ttf")

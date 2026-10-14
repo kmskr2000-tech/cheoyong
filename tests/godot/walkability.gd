@@ -23,7 +23,7 @@ const ROUTES := {
 	"den1": [Vector2(30, 181), Vector2(222, 181), Vector2(225, 90), Vector2(420, 56), Vector2(500, 185), Vector2(772, 200)],
 	"den2": [Vector2(24, 200), Vector2(215, 190), Vector2(320, 230), Vector2(430, 200), Vector2(452, 200)],
 	"den3": [Vector2(40, 200), Vector2(320, 235), Vector2(320, 330), Vector2(460, 200)],
-	"beach": [Vector2(205, 427), Vector2(380, 405), Vector2(492, 443), Vector2(300, 132), Vector2(120, 155)],
+	"beach": [Vector2(410, 854), Vector2(760, 810), Vector2(984, 886), Vector2(600, 264), Vector2(240, 310)],
 }
 # --live: 요괴를 살려 둔 채 '실제 보행 경로'로 연출 지점·상호작용 지점까지 걸어가며 어그로(state != idle)가 한 번도 없는지 본다 (god/tp 로 가려지는 문제 방지).
 # 키 "<맵>:<스폰>" → 걸어갈 footprint 지점들(빈 배열 = 스폰에서 2초 가만히). 마지막 지점에서도 2초 버틴다. 트리거·출구는 꺼 둔다(장면 전환·대사 없이 거리만 본다).

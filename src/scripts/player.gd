@@ -301,7 +301,7 @@ func _roll_input(dir: Vector2) -> void:
 
 
 func _move(dir: Vector2) -> void:
-	velocity = dir * SPEED * (0.5 if slow_t > 0.0 else 1.0) * (1.25 if haste_t > 0.0 else 1.0) * (1.2 if height_t > 0.0 else 1.0) + _pull_vel()
+	velocity = dir * SPEED * View.move_scale() * (0.5 if slow_t > 0.0 else 1.0) * (1.25 if haste_t > 0.0 else 1.0) * (1.2 if height_t > 0.0 else 1.0) + _pull_vel()
 	_slide()
 	if dir != Vector2.ZERO:
 		_face(dir)
@@ -1232,7 +1232,7 @@ func _start_roll(dir: Vector2, dash := false) -> void:
 
 func _roll(delta: float) -> void:
 	var k := clampf(t / ROLL_TIME, 0.0, 1.0)
-	velocity = roll_dir * ROLL_SPEED * (1.3 if Game.has_skill("nabi") else 1.0) * (2.0 if _dash else 1.0) * (1.0 - k * 0.6)
+	velocity = roll_dir * ROLL_SPEED * View.move_scale() * (1.3 if Game.has_skill("nabi") else 1.0) * (2.0 if _dash else 1.0) * (1.0 - k * 0.6)
 	_slide()
 	# 춤 구르기: one full turn on the spot of the step, the robe flaring (rendered, art/hero.py)
 	var rrow := "right" if facing == "left" else facing   # 구르기: 드라이브 '달리기' 컷을 낮게 몰아친다

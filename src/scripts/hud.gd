@@ -23,6 +23,7 @@ var _charge_ring: Line2D     # CS-08: 베기 버튼 둘레 충전 링 (0.35 지�
 var _charge_mark: Line2D
 var _sin_last := 0.0
 var _touch_root: Control
+var _root_ctl: Control
 var _right: Node2D           # 우측 앵커 터치 요소(버튼·링·부적 이름표): x 를 View.extra() 만큼 민다
 var _base: TextureRect
 var _knob: TextureRect
@@ -32,7 +33,9 @@ var _stick_origin := Vector2.ZERO
 
 func _ready() -> void:
 	layer = 15
+	View.fit_layer(self)   # 와이드 맵에서는 HUD 레이어를 2배로 키워 480x270 좌표계 그대로 쓴다
 	var root := Control.new()
+	_root_ctl = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
@@ -159,6 +162,12 @@ func _on_view(_s: Vector2) -> void:
 
 
 func _layout() -> void:
+	View.fit_layer(self)
+	# 스케일된 CanvasLayer 안의 FULL_RECT 컨트롤은 뷰포트 크기(스케일 전)로 잡히므로 HUD 좌표계 크기로 직접 맞춘다
+	for c in [_root_ctl, _touch_root]:
+		if c != null:
+			c.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			c.size = View.size
 	var ex := View.extra()
 	_right.position.x = ex
 	_toast.size.x = View.size.x
@@ -474,6 +483,7 @@ func _bag_kept(dialog: DialogBox) -> void:
 	# icons of what he carries, laid over the pause screen above the dialog
 	var cl := CanvasLayer.new()
 	cl.layer = 30
+	View.fit_layer(cl)
 	cl.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(cl)
 	var shown: Array = []
@@ -769,7 +779,7 @@ func _input(event: InputEvent) -> void:
 
 ## screen (window) pixels → the 480x270 UI space
 func _to_ui(p: Vector2) -> Vector2:
-	return get_viewport().get_screen_transform().affine_inverse() * p
+	return get_viewport().get_screen_transform().affine_inverse() * p / float(View.hud_scale)
 
 
 func _set_dir(v: Vector2) -> void:

@@ -6,12 +6,23 @@ extends Node
 
 signal changed(size: Vector2)
 
+## 넓은 뷰(와이드) 모드 — prog/view-overhaul. Levels.DATA 의 "view": "wide" 인 맵에서만 켠다.
+## 월드를 hud_scale 배(=2) 크게 다시 굽고, 뷰포트는 높이 540(처용 36px = 6.7%)으로 잡아 한 화면에 훨씬 넓은 땅을 보여 준다.
+## HUD·대화창은 CanvasLayer.scale = hud_scale 로 현행 480x270 좌표계 그대로 쓴다(그래서 size 는 계속 HUD 좌표계 크기).
+const WIDE_H := 540
+const WIDE_MIN_W := 960
+const WIDE_MAX_W := 1280
+## 와이드 맵에서 걷기·구르기 속도 배율: 화면이 2배 넓어져 같은 속도가 화면 대비 절반으로 느려 보이는 것을 보정
+const WIDE_MOVE := 1.35
+
 const BASE := Vector2i(480, 270)
 const MAX_W := 640
 
 ## 현재 논리 뷰포트 크기 (changed 신호로 갱신)
 var size := Vector2(BASE)
 var _fixed := false
+var _wide := false
+var hud_scale := 1       # 1 = 현행, 2 = 와이드(뷰포트 = size * 2)
 var _cap := MAX_W
 var _fixed_n := 0          # 겹치는 fixed 요청(회상 중 인트로 등)
 var _force_window := Vector2i.ZERO   # 테스트용: 창 크기 흉내
@@ -25,6 +36,26 @@ func _ready() -> void:
 			var w := a.get_slice("=", 1).split("x")
 			force_window(Vector2i(int(w[0]), int(w[1])))
 	apply()
+
+
+## 월드가 보이는 뷰포트 크기(와이드에서는 size 의 hud_scale 배)
+func world() -> Vector2:
+	return size * float(hud_scale)
+
+
+func move_scale() -> float:
+	return WIDE_MOVE if hud_scale > 1 else 1.0
+
+
+## 레벨이 와이드 모드인지 알린다 (level.gd _ready, set_cap 이전)
+func set_wide(on: bool) -> void:
+	_wide = on
+	apply()
+
+
+## HUD/대화창 같은 CanvasLayer 를 현재 hud_scale 로 맞춘다
+func fit_layer(cl: CanvasLayer) -> void:
+	cl.scale = Vector2(hud_scale, hud_scale)
 
 
 ## 우측·중앙 정렬에 쓰는 값: 480 기준 화면과의 폭 차이
@@ -51,7 +82,7 @@ func set_fixed(on: bool) -> void:
 
 ## 맵 폭 상한 (V-P5). 맵 폭이 480 보다 작으면 480 으로 취급한다.
 func set_cap(map_w: float) -> void:
-	_cap = clampi(int(map_w), BASE.x, MAX_W)
+	_cap = clampi(int(map_w), BASE.x, WIDE_MAX_W if _wide else MAX_W) & ~(1 if _wide else 0)
 	apply()
 
 
@@ -60,9 +91,13 @@ func force_window(sz: Vector2i) -> void:
 	apply()
 
 
+## 실제 뷰포트(content_scale_size) 크기
 func target_size(window_px: Vector2i) -> Vector2i:
 	if _fixed or _fixed_n > 0 or window_px.x <= 0 or window_px.y <= 0:
 		return BASE
+	if _wide:
+		var ww := int(floor(float(WIDE_H) * window_px.x / window_px.y)) & ~1   # 짝수: HUD 좌표계(= 폭/2)가 정수가 되게
+		return Vector2i(clampi(ww, WIDE_MIN_W, maxi(WIDE_MIN_W, _cap)), WIDE_H)
 	var w := int(floor(float(BASE.y) * window_px.x / window_px.y))
 	return Vector2i(clampi(w, BASE.x, maxi(BASE.x, _cap)), BASE.y)
 
@@ -73,10 +108,13 @@ func apply() -> void:
 	var win := get_tree().root
 	var px: Vector2i = _force_window if _force_window != Vector2i.ZERO else win.size
 	var t := target_size(px)
+	var hs := 2 if t.y == WIDE_H else 1
 	if win.content_scale_size != t:
 		win.content_scale_size = t
 	if _force_window != Vector2i.ZERO and win.size != _force_window and not DisplayServer.get_name() == "headless":
 		win.size = _force_window
-	if Vector2(t) != size:
-		size = Vector2(t)
+	var hud_size := Vector2(t) / float(hs)   # HUD 좌표계 = 뷰포트 / hud_scale
+	if hs != hud_scale or hud_size != size:
+		hud_scale = hs
+		size = hud_size
 		changed.emit(size)

@@ -21,6 +21,7 @@ var interact_points: Array = [] # [{pos, id, label}]
 func _ready() -> void:
 	View.set_fixed(false)
 	def = Levels.DATA[Game.level_id]
+	View.set_wide(def.get("view", "") == "wide")   # prog/view-overhaul: 와이드 뷰는 이 필드가 켜진 맵(현재 beach)만
 	meta = JSON.parse_string(FileAccess.get_file_as_string("res://assets/levels/%s.json" % def["ground"]))
 	light_tex = _radial(256)
 	_ground()
@@ -58,6 +59,8 @@ func _ready() -> void:
 		_blob(npc, 9)
 		if n.size() > 5 and n[5] == "hidden":
 			npc.set_present(false)
+		if n.size() > 5 and n[5] == "static":
+			npc.talkable = false   # 와이드 뷰 배경 주민
 	for it in def.get("interact", []):
 		var ip := {"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]}
 		if it.size() > 4 and it[4] == "glint":
@@ -378,7 +381,7 @@ const GUIDE_HANDOFF := TALK_RANGE + 6.0     # H: 이 안이면 빛 조각·빛�
 const GUIDE_MOTES := 3
 const GUIDE_PERIOD := 1.6
 const GUIDE_FAR := 240.0                    # 이 거리 이상이면 크고(1.4) 밝게(0.95)
-const GUIDE_VIEW_Y := 135.0                   # 빛기둥 시야 절반 높이(높이는 270 고정). 절반 폭은 View.size.x * 0.5 (가로 확장 대응)
+const GUIDE_VIEW_Y := 135.0                   # (구) 빛기둥 시야 절반 높이 — 이제 View.world().y * 0.5 를 쓴다
 const BEACON_PERIOD := 1.4
 const OBJ_EVAL_EVERY := 0.25
 var _motes: Array = []
@@ -519,7 +522,7 @@ func _update_guide(d: float) -> void:
 	# 빛기둥: 대상이 카메라 시야 안일 때만, 문구와 같은 숨김 규칙(튜토리얼 점등·보스 체력바·대화…)을 따른다
 	var cam: Camera2D = p.get_node_or_null("Camera")
 	var center: Vector2 = cam.get_screen_center_position() if cam else p.global_position
-	var in_view := absf(goal.x - center.x) < View.size.x * 0.5 and absf(goal.y - center.y) < GUIDE_VIEW_Y
+	var in_view := absf(goal.x - center.x) < View.world().x * 0.5 and absf(goal.y - center.y) < View.world().y * 0.5
 	var show_beacon: bool = in_view and hud != null and hud.objective_gate() and Hud.objective_mode() != "off"   # 설정 "끔" 이면 문구도 빛기둥도 없다 (§5-16)
 	_beacon_fade = move_toward(_beacon_fade, 1.0 if show_beacon else 0.0, d / 0.25)
 	if _beacon_fade <= 0.01:
@@ -859,12 +862,14 @@ func _update_camera(d: float) -> void:
 		return
 	var locked: bool = $Player.locked
 	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var want := dir * CAM_LOOK
+	var vs := float(View.hud_scale)   # 와이드(2배 시야)에서는 카메라 노브도 같은 배율로
+	var want := dir * CAM_LOOK * vs
 	if not locked:
-		want += _frame_offset(p)
+		want += _frame_offset(p) * vs
 	# 데드존: 포커스가 처용을 ±16px 이내로 따라간다. 멈춰 서 있으면 천천히 가운데로 돌아온다.
 	var diff := target - _cam_focus
-	_cam_focus += diff - diff.clamp(Vector2(-CAM_DEADZONE, -CAM_DEADZONE), Vector2(CAM_DEADZONE, CAM_DEADZONE))
+	var dz := CAM_DEADZONE * vs
+	_cam_focus += diff - diff.clamp(Vector2(-dz, -dz), Vector2(dz, dz))
 	_cam_still = _cam_still + d if dir.length() < 0.1 else 0.0
 	if _cam_still > 0.4:
 		_cam_focus = _cam_focus.lerp(target, 1.0 - pow(1.0 - 0.06, d * 60.0))
@@ -897,7 +902,7 @@ func _frame_offset(p: Node2D) -> Vector2:
 
 func _on_view_changed(vs: Vector2) -> void:
 	if _ash:
-		_ash.emission_rect_extents.x = vs.x * 0.5 + 40.0   # 넓어진 뷰 전체에 먼지가 흐르게
+		_ash.emission_rect_extents.x = View.world().x * 0.5 + 40.0   # 넓어진 뷰 전체에 먼지가 흐르게
 
 
 func _process(d: float) -> void:
@@ -1007,6 +1012,8 @@ func _atmosphere() -> void:
 	if morning:
 		fm.set_shader_parameter("tint", Color(0.9, 0.82, 0.7))   # 찬 안개 → 따뜻한 아침 안개
 		fm.set_shader_parameter("density", 0.3)
+	if View.hud_scale > 1:
+		fm.set_shader_parameter("density", 0.32)   # 와이드: 넓게 보이는 땅이 안개에 묻히지 않게
 	fog.material = fm
 	add_child(fog)
 	# ash / spores drifting down across the view
@@ -1016,8 +1023,8 @@ func _atmosphere() -> void:
 	ash.lifetime = 7.0
 	ash.preprocess = 7.0
 	ash.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	ash.emission_rect_extents = Vector2(View.size.x * 0.5 + 40.0, 20)
-	ash.position = Vector2(0, 150)
+	ash.emission_rect_extents = Vector2(View.world().x * 0.5 + 40.0, 20)
+	ash.position = Vector2(0, 150.0 * View.hud_scale)
 	ash.direction = Vector2(0.15, -1)
 	ash.spread = 20.0
 	ash.gravity = Vector2(0, -3)
@@ -1058,6 +1065,9 @@ func _atmosphere() -> void:
 	var pm := ShaderMaterial.new()
 	pm.shader = load("res://shaders/post.gdshader")
 	post.material = pm
+	pm.set_shader_parameter("lod_add", float(View.hud_scale - 1))
+	if View.hud_scale > 1:
+		pm.set_shader_parameter("tilt", 0.28)   # 넓은 뷰에서는 먼 마을까지 또렷하게(번짐 약화)   # 와이드: 뷰포트가 2배라 같은 번짐 폭을 내려면 mip 한 단계 더
 	_post_mat = pm
 	if morning:   # 이튿날 아침의 화개 저자 (M6 연출 보강): 해질녘처럼 보이지 않게 등롱·횃불 점광원을 꺼 가깝게 약화하고 후처리 색조를 따뜻하게. 밤 상태는 이 분기를 타지 않아 그대로.
 		for l in flicker:
