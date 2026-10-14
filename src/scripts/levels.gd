@@ -90,30 +90,47 @@ const DATA := {
 		"anchors": {"boss": Vector2(640, 220), "door": Rect2(536, 109, 12, 152), "door_x": 536.0, "kicked": Vector2(518, 213), "boss_goal": Vector2(600, 213), "boss_respawn": Vector2(556, 192)},
 	},
 	# 개운포 — 백사장과 해안 마을 (SC1-01~07). 처용이 바다에서 뭍으로 올라오는 곳.
-	# 좌표는 그림(art/collision_author.py)에 맞춘 값: 남쪽 넓은 백사장이 싸움터, 서쪽 모래띠로 올라가면 해안 마을 앞이다.
+	# 와이드 뷰(prog/view-overhaul): 지형을 정확히 2배로 다시 구운 "beach_w"(art/beach_wide.py)를 쓴다. 옛 beach 좌표는 전부 x2 한 값이고,
+	# 뷰포트는 높이 540(View.WIDE_H)이라 한 화면에 이 땅이 훨씬 넓게 보인다. "view": "wide" 인 맵만 와이드 모드(다른 맵은 현행 480x270).
+	# 남쪽 넓은 백사장이 싸움터, 서쪽 모래띠로 올라가면 해안 마을 앞이다.
 	"beach": {
 		"music": "night", "amb": "waves",
 		"name": "개운포",
-		"ground": "beach",
-		"spawns": {"start": Vector2(150, 384)},
+		"ground": "beach_w",
+		"view": "wide",
+		"spawns": {"start": Vector2(300, 768)},
 		"props": [
-			["boat", 262, 424, null], ["cairn", 172, 411, null], ["netrack", 92, 368, null],
-			["lantern", 272, 128, [-34, WARM, 1.1, 1.0]], ["lantern", 326, 128, [-34, WARM, 1.1, 1.0]],
+			["boat", 524, 848, null], ["cairn", 344, 822, null], ["netrack", 184, 736, null],
+			["lantern", 544, 256, [-34, WARM, 1.1, 1.0]], ["lantern", 652, 256, [-34, WARM, 1.1, 1.0]],
+			# 와이드 뷰 장식: 백사장·서쪽 모래띠·마을 앞 (걷는 길 가장자리에만 둔다)
+			["boat", 848, 886, null], ["jars", 604, 888, null], ["netrack", 300, 790, null], ["cairn", 972, 888, null],
+			["lantern", 500, 816, [-34, WARM, 0.9, 0.9]], ["lantern", 884, 850, [-34, WARM, 0.9, 0.9]],
+			["chotdae", 224, 716, null], ["chotdae", 700, 890, null],
+			["pine", 40, 700, null], ["pine", 60, 560, null], ["pine", 44, 420, null],
+			["lantern", 100, 420, [-34, WARM, 0.8, 0.8]], ["netrack", 130, 500, null], ["jars", 84, 566, null], ["cairn", 112, 372, null],
+			["stall", 440, 306, [-20, WARM, 0.7, 0.8]], ["tent", 372, 294, null], ["jars", 330, 306, null],
+			["lantern", 300, 270, [-34, WARM, 1.0, 1.0]], ["lantern", 400, 266, [-34, WARM, 1.0, 1.0]],
+			["boat", 560, 312, null],
 		],
 		# 그림 속 마을 창(오두막 등불)에 얹는 빛: [x, y, 색, 세기, 크기]
-		"lights": [[232, 101, WARM, 0.8, 0.5], [290, 104, WARM, 0.8, 0.5], [338, 91, WARM, 0.7, 0.45], [196, 96, WARM, 0.6, 0.4]],
+		"lights": [[464, 202, WARM, 0.8, 0.5], [580, 208, WARM, 0.8, 0.5], [676, 182, WARM, 0.7, 0.45], [392, 192, WARM, 0.6, 0.4],
+			[760, 216, WARM, 0.6, 0.4], [880, 244, WARM, 0.5, 0.4]],
 		"npcs": [
-			["fisherA", "npc_fisher", 470, 437, "어부", "hidden"],
-			["fisherB", "npc_villager_f", 448, 443, "아낙", "hidden"],
-			["fisherC", "npc_dolsoe", 426, 437, "어부", "hidden"],
-			["suryeong", "npc_suryeong", 492, 443, "수령", "hidden"],
+			["fisherA", "npc_fisher", 940, 874, "어부", "hidden"],
+			["fisherB", "npc_villager_f", 896, 886, "아낙", "hidden"],
+			["fisherC", "npc_dolsoe", 852, 874, "어부", "hidden"],
+			["suryeong", "npc_suryeong", 984, 886, "수령", "hidden"],
+			# 와이드 뷰 장식 주민(말을 걸 수 없는 배경 인물): 이야기와 무관
+			["bgA", "npc_fisher", 336, 280, "어부", "static"], ["bgB", "npc_villager_f", 468, 308, "아낙", "static"],
+			["bgC", "npc_child", 396, 306, "아이", "static"], ["bgD", "npc_dolsoe", 96, 456, "어부", "static"],
+			["bgE", "npc_elder", 264, 804, "노인", "static"], ["bgF", "npc_villager_f", 640, 872, "아낙", "static"],
 		],
-		"interact": [["flute", 205, 427, "대나무 피리", "glint"]],
-		"crabs": [Vector2(250, 407), Vector2(300, 420), Vector2(180, 400), Vector2(390, 424), Vector2(330, 440)],
+		"interact": [["flute", 410, 854, "대나무 피리", "glint"]],
+		"crabs": [Vector2(500, 814), Vector2(600, 840), Vector2(360, 800), Vector2(780, 848), Vector2(660, 880), Vector2(240, 770), Vector2(880, 870)],
 		"enemies": [],
 		"exits": [],
 		# story.gd 가 쓰는 자리: 요괴가 올라오는 곳, 싸움 시작 구역
-		"anchors": {"yokai": Vector2(380, 405), "fight": Rect2(300, 360, 120, 88), "fight_player": Vector2(340, 424)},
+		"anchors": {"yokai": Vector2(760, 810), "fight": Rect2(600, 720, 240, 176), "fight_player": Vector2(680, 848)},
 	},
 	# 경주 변두리 (서라벌 외곽) — SC1-08~11
 	# 그림(우물 광장·기와집·돌담·등롱길)에 맞춘 좌표. 서쪽 길 끝 = 폐가로, 북동 관아 문 = 관아로 (gates).

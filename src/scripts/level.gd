@@ -59,6 +59,8 @@ func _ready() -> void:
 		_blob(npc, 9)
 		if n.size() > 5 and n[5] == "hidden":
 			npc.set_present(false)
+		if n.size() > 5 and n[5] == "static":
+			npc.talkable = false   # 와이드 뷰 배경 주민
 	for it in def.get("interact", []):
 		var ip := {"pos": lift(Vector2(it[1], it[2])), "id": it[0], "label": it[3]}
 		if it.size() > 4 and it[4] == "glint":

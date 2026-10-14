@@ -759,7 +759,7 @@ func objective_info(level: Node) -> Dictionary:
 	match Game.level_id:
 		"beach":
 			if not f.call("flute"):
-				return _obj("ch1.beach.flute", "반짝이는 것을 줍는다", Vector2(205, 427), "interact", "", [], "fallback")   # 바이블 SC1-01 무음: 폴백 때만
+				return _obj("ch1.beach.flute", "반짝이는 것을 줍는다", Vector2(410, 854), "interact", "", [], "fallback")   # 바이블 SC1-01 무음: 폴백 때만
 			if not f.call("beach_done") and level.get_node_or_null("Gaetgwi"):
 				return _obj("ch1.beach.yokai", "요괴를 정화한다", level.def["anchors"]["yokai"], "node", "node:Gaetgwi")
 			return _obj("ch1.beach.scene")
