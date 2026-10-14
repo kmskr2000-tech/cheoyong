@@ -706,3 +706,4 @@
 - [지시] 19:37 — 에이전트 배정: 변동 없음. 프로그래밍팀-뷰개편이 11분 전에 push했고(CLAUDE.md에 와이드 뷰 메모 추가), 최종 실행이 godot.lock 아래서 7분 넘게 돌고 있어 정상입니다. 감사 적발은 없습니다.
 - [지시] 19:37 — 에이전트 배정: 변동 없음. 프로그래밍팀-뷰개편은 마지막 push가 12분 전이고, 실행이 godot.lock 아래서 8분째 돌고 있으며 미커밋 변경도 2건 있어 정상 진행 중입니다. 감사 적발은 없습니다.
 - [지시] 19:37 — 에이전트 배정: Reading ~/workspace/goals/rpg/dev/wt-view-overhaul/production/qa/view-overhaul/compare_wide_2556x1179.png · 3s
+- [완료] 19:35 프로그래밍팀-뷰개편 — prog/view-overhaul(5dbde3d) 백사장 한정 와이드 뷰(논리 540·정수2배·처용 6.7%) 완료 보고. 테스트 smoke boss/kneel만 타임아웃 경계(main도 169s), 나머지 PASS. 밀도·톤 부분 달성. 사장님 폰 확인·지시 대기, 다른 맵 미착수, 머지·배포 보류
