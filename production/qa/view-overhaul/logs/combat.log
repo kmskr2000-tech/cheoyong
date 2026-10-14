@@ -1,0 +1,12 @@
+PASS cs_parry (9 steps, 39 checks, 15s)
+PASS cs_charge (14 steps, 54 checks, 10s)
+PASS cs_guard (7 steps, 26 checks, 14s)
+PASS cs_targeting (5 steps, 20 checks, 8s)
+PASS cs_economy (5 steps, 19 checks, 19s)
+PASS cs_boss (11 steps, 51 checks, 15s)
+PASS cs_deaths (1 steps, 10 checks, 8s)
+PASS cs_wave (1 steps, 7 checks, 11s)
+PASS cs_aura (1 steps, 21 checks, 10s)
+PASS cs_tutorial (1 steps, 9 checks, 11s)
+PASS cs_cover (1 steps, 7 checks, 7s)
+logs: /tmp/tmp.6nTGzgB5Gk
