@@ -3,6 +3,7 @@ shader_type canvas_item;
 // tilt-shift depth of field, bloom, split-tone colour grade, top haze, aerial perspective and vignette.
 // Blur comes from the screen texture's mipmaps, so it is cheap enough for phones.
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
+uniform float lod_add = 0.0;         // 와이드 뷰(뷰포트 2배): mip 단계 보정 (번짐 폭을 화면 비율로 유지)
 uniform float tilt = 0.4;            // depth-of-field strength (0 = off)
 uniform float focus_y = 0.56;        // screen height that stays sharp (the hero's row)
 uniform float bloom = 0.9;
@@ -20,12 +21,12 @@ vec3 bright(vec3 c) { return max(c - bloom_threshold, vec3(0.0)) / (1.0 - bloom_
 void fragment() {
 	vec2 uv = SCREEN_UV;
 	float d = abs(uv.y - focus_y);
-	float lod = smoothstep(0.26, 0.6, d) * 2.0 * tilt;
+	float lod = smoothstep(0.26, 0.6, d) * (2.0 * tilt + lod_add * step(0.001, tilt));
 	vec3 c = textureLod(screen_tex, uv, lod).rgb;
 	// bloom: wide soft halo from two blurred mip levels
 	// (bloom == 0 이면 표본 두 개를 건너뜀 — 화질 폴백용. 기본값 0.9 에서는 결과가 이전과 같다)
 	if (bloom > 0.0) {
-		vec3 b = bright(textureLod(screen_tex, uv, 2.5).rgb) * 0.6 + bright(textureLod(screen_tex, uv, 4.0).rgb) * 0.9;
+		vec3 b = bright(textureLod(screen_tex, uv, 2.5 + lod_add).rgb) * 0.6 + bright(textureLod(screen_tex, uv, 4.0 + lod_add).rgb) * 0.9;
 		c += b * bloom;
 	}
 	// split-tone grade: shadows sink into deep navy, highlights go pale moon-silver

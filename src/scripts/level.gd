@@ -862,12 +862,14 @@ func _update_camera(d: float) -> void:
 		return
 	var locked: bool = $Player.locked
 	var dir := Vector2.ZERO if locked else Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	var want := dir * CAM_LOOK
+	var vs := float(View.hud_scale)   # 와이드(2배 시야)에서는 카메라 노브도 같은 배율로
+	var want := dir * CAM_LOOK * vs
 	if not locked:
-		want += _frame_offset(p)
+		want += _frame_offset(p) * vs
 	# 데드존: 포커스가 처용을 ±16px 이내로 따라간다. 멈춰 서 있으면 천천히 가운데로 돌아온다.
 	var diff := target - _cam_focus
-	_cam_focus += diff - diff.clamp(Vector2(-CAM_DEADZONE, -CAM_DEADZONE), Vector2(CAM_DEADZONE, CAM_DEADZONE))
+	var dz := CAM_DEADZONE * vs
+	_cam_focus += diff - diff.clamp(Vector2(-dz, -dz), Vector2(dz, dz))
 	_cam_still = _cam_still + d if dir.length() < 0.1 else 0.0
 	if _cam_still > 0.4:
 		_cam_focus = _cam_focus.lerp(target, 1.0 - pow(1.0 - 0.06, d * 60.0))
@@ -1061,6 +1063,7 @@ func _atmosphere() -> void:
 	var pm := ShaderMaterial.new()
 	pm.shader = load("res://shaders/post.gdshader")
 	post.material = pm
+	pm.set_shader_parameter("lod_add", float(View.hud_scale - 1))   # 와이드: 뷰포트가 2배라 같은 번짐 폭을 내려면 mip 한 단계 더
 	_post_mat = pm
 	if morning:   # 이튿날 아침의 화개 저자 (M6 연출 보강): 해질녘처럼 보이지 않게 등롱·횃불 점광원을 꺼 가깝게 약화하고 후처리 색조를 따뜻하게. 밤 상태는 이 분기를 타지 않아 그대로.
 		for l in flicker:
