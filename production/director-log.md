@@ -739,3 +739,6 @@
 - [지시] 21:22 — 에이전트 배정: 통합배포3이 godot.lock을 잡고 Godot 테스트를 돌리는 중이라 정상 진행입니다. 아직 main push와 배포는 없고, 라이브는 20261014200021입니다. 재개한 지 약 6분이어서 재촉하지 않았습니다. 다른 가동
 - [지시] 21:27 — 에이전트 배정: 변동 없음. 통합배포3이 Godot 테스트를 돌리는 중(godot.lock 보유)이고, 아직 push나 배포는 없습니다. 라이브는 20261014200021입니다. 재개한 지 약 8분이라 재촉하지 않았고, 15분을 넘기면 점검합니다. 다른
 - [배포] 21:40 view-overhaul — 사장님 지시로 prog/view-overhaul 머지(e18ca48, main f380b56)+테스트 배포, 라이브 20261014213436. intro_walk/hud_layout/view_range 504/smoke title·intro·beach PASS. 롤백=git revert -m 1 e18ca48 후 재배포. 실기기 성능 미검증, 사장님 폰 확인 요청
+- [지시] 21:37 — 에이전트 배정: 진행 중입니다. 통합배포3이 방금 origin/main을 동기화하는 머지 커밋(f380b56)을 push했고, 지금 gh와 배포 단계가 godot.lock을 잡고 있습니다. 라이브는 아직 20261014200021입니다. 다음 점검에서 새 버전과
+- [지시] 21:37 — 에이전트 배정: 배포가 진행 중입니다. 라이브 URL이 일시적으로 404(GitHub Pages가 gh-pages를 새로 올리는 동안의 현상)이고, git-remote-http push가 한창입니다. 아직 version.json이 없어 새 버전은 확인되지 않았습니다.
+- [지시] 21:37 — 에이전트 배정: Agent "view-overhaul 머지·테스트배포" finished · 17m 37s
