@@ -110,7 +110,7 @@ const DATA := {
 			["lantern", 100, 420, [-34, WARM, 0.8, 0.8]], ["netrack", 130, 500, null], ["jars", 84, 566, null], ["cairn", 112, 372, null],
 			["stall", 440, 306, [-20, WARM, 0.7, 0.8]], ["tent", 372, 294, null], ["jars", 330, 306, null],
 			["lantern", 300, 270, [-34, WARM, 1.0, 1.0]], ["lantern", 400, 266, [-34, WARM, 1.0, 1.0]],
-			["boat", 560, 312, null],
+			["boat", 560, 312, null], ["stall", 612, 848, [-20, WARM, 0.7, 0.8]], ["jars", 780, 832, null], ["cairn", 900, 862, null],
 		],
 		# 그림 속 마을 창(오두막 등불)에 얹는 빛: [x, y, 색, 세기, 크기]
 		"lights": [[464, 202, WARM, 0.8, 0.5], [580, 208, WARM, 0.8, 0.5], [676, 182, WARM, 0.7, 0.45], [392, 192, WARM, 0.6, 0.4],
@@ -124,6 +124,9 @@ const DATA := {
 			["bgA", "npc_fisher", 336, 280, "어부", "static"], ["bgB", "npc_villager_f", 468, 308, "아낙", "static"],
 			["bgC", "npc_child", 396, 306, "아이", "static"], ["bgD", "npc_dolsoe", 96, 456, "어부", "static"],
 			["bgE", "npc_elder", 264, 804, "노인", "static"], ["bgF", "npc_villager_f", 640, 872, "아낙", "static"],
+			["bgG", "npc_fisher", 344, 762, "어부", "static"], ["bgH", "npc_child", 568, 824, "아이", "static"], ["bgI", "npc_elder", 724, 838, "노인", "static"],
+			["bgJ", "npc_villager_f", 204, 714, "아낙", "static"], ["bgK", "npc_villager_f", 100, 540, "아낙", "static"], ["bgL", "npc_dolsoe", 150, 342, "어부", "static"],
+			["bgM", "npc_seokgu", 308, 290, "장사치", "static"],
 		],
 		"interact": [["flute", 410, 854, "대나무 피리", "glint"]],
 		"crabs": [Vector2(500, 814), Vector2(600, 840), Vector2(360, 800), Vector2(780, 848), Vector2(660, 880), Vector2(240, 770), Vector2(880, 870)],

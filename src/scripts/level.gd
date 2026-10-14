@@ -1063,7 +1063,9 @@ func _atmosphere() -> void:
 	var pm := ShaderMaterial.new()
 	pm.shader = load("res://shaders/post.gdshader")
 	post.material = pm
-	pm.set_shader_parameter("lod_add", float(View.hud_scale - 1))   # 와이드: 뷰포트가 2배라 같은 번짐 폭을 내려면 mip 한 단계 더
+	pm.set_shader_parameter("lod_add", float(View.hud_scale - 1))
+	if View.hud_scale > 1:
+		pm.set_shader_parameter("tilt", 0.28)   # 넓은 뷰에서는 먼 마을까지 또렷하게(번짐 약화)   # 와이드: 뷰포트가 2배라 같은 번짐 폭을 내려면 mip 한 단계 더
 	_post_mat = pm
 	if morning:   # 이튿날 아침의 화개 저자 (M6 연출 보강): 해질녘처럼 보이지 않게 등롱·횃불 점광원을 꺼 가깝게 약화하고 후처리 색조를 따뜻하게. 밤 상태는 이 분기를 타지 않아 그대로.
 		for l in flicker:
