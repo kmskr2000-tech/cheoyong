@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>오프라인</title>
+		<style>
+html { background-color: #05060c; color: #ccd; }
+body { font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; margin: 2rem; text-align: center; }
+h1 { color: #e8c870; }
+button { display: block; padding: 1rem 2rem; margin: 3rem auto 0; }
+		</style>
+	</head>
+	<body>
+		<h1>오프라인입니다</h1>
+		<p>처음 실행할 때는 인터넷 연결이 필요합니다.</p>
+		<p>연결한 뒤 아래 버튼을 눌러 주세요.</p>
+		<button type="button">다시 시도</button>
+		<script>
+document.querySelector('button').addEventListener('click', () => { window.location.reload(); });
+		</script>
+	</body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="theme-color" content="#05060c">
+<link rel="icon" href="data:,">
+<title>신 처용가</title>
+<style>html,body{margin:0;height:100%;background:#05060c;color:#ccd;font:16px sans-serif;display:flex;align-items:center;justify-content:center}a{color:#e8c870}</style></head>
+<body><p id="m">불러오는 중…</p>
+<script>
+// 항상 최신 버전 폴더로 보낸다 (version.json은 no-store). 이 루트 페이지는 서비스 워커 범위 밖이라 캐시에 막히지 않는다.
+// 오프라인/장애 시: 마지막으로 성공한 버전 -> 이 배포 시점 버전 순으로 폴백.
+var FALLBACK="20261014213436", LS="cheoyong.lastV";
+function last(){try{return localStorage.getItem(LS)}catch(e){return null}}
+function go(v){try{localStorage.setItem(LS,v)}catch(e){} location.replace("./"+v+"/"+location.search+location.hash);}
+// 구버전 폴더에 남은 서비스 워커 등록을 정리한다(캐시는 새 버전 SW가 활성화될 때 Godot가 지움).
+function cleanup(v){
+  if(!navigator.serviceWorker||!navigator.serviceWorker.getRegistrations) return Promise.resolve();
+  var p=navigator.serviceWorker.getRegistrations().then(function(rs){return Promise.all(rs.filter(function(r){var b=location.pathname.replace(/[^\/]*$/,"");return r.scope.indexOf(location.origin+b)===0&&/\/\d{14}\/$/.test(r.scope)&&r.scope.indexOf("/"+v+"/")<0}).map(function(r){return r.unregister()}))}).catch(function(){});
+  return Promise.race([p,new Promise(function(r){setTimeout(r,1000)})]);
+}
+var ctl=window.AbortController?new AbortController():null, tm=setTimeout(function(){ctl&&ctl.abort()},4000);
+fetch("version.json?t="+Date.now(),{cache:"no-store",signal:ctl?ctl.signal:undefined}).then(function(r){return r.json()}).then(function(j){clearTimeout(tm);if(!/^\d{14}$/.test(j.v))throw 0;return cleanup(j.v).then(function(){go(j.v)})}).catch(function(){go(last()||FALLBACK)});
+</script>
+<noscript><p><a href="./20261014213436/">게임 열기</a></p></noscript></body></html>

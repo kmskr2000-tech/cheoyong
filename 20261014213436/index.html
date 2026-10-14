@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ko">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, viewport-fit=cover">
+		<meta name="theme-color" content="#05060c">
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="mobile-web-app-capable" content="yes">
+		<title>신 처용가</title>
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+body {
+	color: #ccd;
+	background-color: #05060c;
+	overflow: hidden;
+	touch-action: none;
+}
+
+#canvas {
+	display: block;
+}
+
+#canvas:focus {
+	outline: none;
+}
+
+#status {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	background: radial-gradient(ellipse at 50% 40%, #121a33 0%, #05060c 70%);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans', sans-serif;
+	visibility: hidden;
+}
+
+#status h1 {
+	margin: 0 0 1.2rem;
+	font-size: 1.9rem;
+	font-weight: 700;
+	letter-spacing: 0.35em;
+	text-indent: 0.35em;
+	color: #e8c870;
+	text-shadow: 0 0 18px rgba(232, 200, 112, 0.35);
+}
+
+#bar-wrap {
+	display: none;
+	width: min(70%, 22rem);
+}
+
+#bar {
+	height: 6px;
+	border-radius: 3px;
+	background: #1b2038;
+	overflow: hidden;
+}
+
+#bar-fill {
+	height: 100%;
+	width: 0%;
+	background: linear-gradient(90deg, #b08a3a, #e8c870);
+}
+
+#bar-fill.indeterminate {
+	width: 35%;
+	animation: slide 1.2s ease-in-out infinite;
+}
+
+@keyframes slide {
+	0% { margin-left: -35%; }
+	100% { margin-left: 100%; }
+}
+
+#msg {
+	margin: 0.8rem 0 0;
+	font-size: 0.85rem;
+	color: #aab;
+	text-align: center;
+	min-height: 1.2em;
+}
+
+#hint {
+	margin: 0.5rem 1.5rem 0;
+	font-size: 0.75rem;
+	color: #667;
+	text-align: center;
+	min-height: 1em;
+}
+
+#status-notice {
+	display: none;
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	line-height: 1.3;
+	margin: 0 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}
+
+#ver {
+	position: absolute;
+	right: 0.6rem;
+	bottom: 0.4rem;
+	font: 0.65rem monospace;
+	color: #445;
+	z-index: 2;
+	pointer-events: none;
+}
+
+#update-banner {
+	display: none;
+	position: absolute;
+	left: 50%;
+	top: 0.6rem;
+	transform: translateX(-50%);
+	padding: 0.5rem 1rem;
+	background: #e8c870;
+	color: #05060c;
+	border: 0;
+	border-radius: 0.4rem;
+	font-size: 0.85rem;
+	z-index: 3;
+}
+
+#retry {
+	display: none;
+	margin-top: 1rem;
+	padding: 0.6rem 1.6rem;
+	background: #e8c870;
+	color: #05060c;
+	border: 0;
+	border-radius: 0.4rem;
+	font-size: 1rem;
+}
+		</style>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+		<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+<link rel="manifest" href="index.manifest.json">
+
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			이 게임은 JavaScript가 필요합니다.
+		</noscript>
+
+		<div id="status">
+			<h1>신 처용가</h1>
+			<div id="bar-wrap"><div id="bar"><div id="bar-fill" class="indeterminate"></div></div></div>
+			<p id="msg"></p>
+			<p id="hint"></p>
+			<div id="status-notice"></div>
+			<button id="retry" type="button">다시 시도</button>
+		</div>
+
+		<div id="ver"></div>
+		<button id="update-banner" type="button">새 버전이 있어요 — 눌러서 업데이트</button>
+
+		<script src="index.js"></script>
+		<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":false,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":13394864,"index.wasm":43699190},"focusCanvas":true,"gdextensionLibs":[],"serviceWorker":"index.service.worker.js"};
+const GODOT_THREADS_ENABLED = false;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const barWrap = document.getElementById('bar-wrap');
+	const barFill = document.getElementById('bar-fill');
+	const msgEl = document.getElementById('msg');
+	const hintEl = document.getElementById('hint');
+	const statusNotice = document.getElementById('status-notice');
+	const retryBtn = document.getElementById('retry');
+	retryBtn.addEventListener('click', () => window.location.reload());
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		barWrap.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		retryBtn.style.display = mode === 'notice' ? 'block' : 'none';
+		if (mode === 'notice') {
+			msgEl.textContent = '';
+			hintEl.textContent = '';
+		}
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		text.split('\n').forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('알 수 없는 오류가 발생했습니다.');
+		}
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		displayFailureNotice('이 브라우저에서는 실행할 수 없습니다.\n필요한 기능이 없습니다:\n' + missing.join('\n'));
+		return;
+	}
+
+	// 첫 방문(서비스 워커 제어 전)에만 "오래 걸린다"는 안내를 보여준다. 이후엔 캐시에서 열린다.
+	const firstVisit = !(navigator.serviceWorker && navigator.serviceWorker.controller);
+	hintEl.textContent = firstVisit ? '처음 한 번만 오래 걸려요. 다음부터는 기기에 저장돼 빨리 열립니다.' : '';
+	msgEl.textContent = '불러오는 중…';
+	setStatusMode('progress');
+
+	const withTimeout = (p, ms) => Promise.race([p, new Promise((res) => setTimeout(res, ms))]);
+
+	// 배포 버전 표시: 주소의 /<14자리>/ 폴더가 곧 배포 버전이다(로컬/비버전 경로면 표시 안 함).
+	const curVer = (location.pathname.match(/\/(\d{14})\//) || [])[1] || '';
+	if (curVer) {
+		document.getElementById('ver').textContent = 'v' + curVer;
+	}
+
+	// 실행 중 새 배포 감지: 앱이 다시 앞으로 나올 때(홈 화면 웹앱은 새로고침 없이 재개됨) version.json을 확인해 배너를 띄운다.
+	// 플레이 중 강제 새로고침은 진행을 날릴 수 있어 배너 탭으로만 갱신한다. 시작 시점 갱신은 아래 versionGuard가 자동 처리.
+	function watchNewVersion() {
+		if (!curVer) {
+			return;
+		}
+		const banner = document.getElementById('update-banner');
+		banner.addEventListener('click', () => location.replace('../' + location.search + location.hash));
+		document.addEventListener('visibilitychange', () => {
+			if (document.visibilityState !== 'visible' || !navigator.onLine) {
+				return;
+			}
+			fetch('../version.json?t=' + Date.now(), { cache: 'no-store' }).then((r) => r.json()).then((j) => {
+				if (/^\d{14}$/.test(j.v) && j.v > curVer) {
+					banner.style.display = 'block';
+				}
+			}).catch(() => {});
+		});
+	}
+	watchNewVersion();
+
+	// (1) 버전 가드: 이 페이지가 /<버전>/ 폴더이고 루트 version.json이 "더 새로운" 버전을 가리키면 루트 로더로 보낸다.
+	//     (홈 화면에 구버전 주소가 저장됐거나 북마크한 경우 구버전에 갇히지 않게 한다. 절대 다운그레이드하지 않는다.)
+	function versionGuard() {
+		const m = location.pathname.match(/\/(\d{14})\/(?:index\.html)?$/);
+		if (!m || !navigator.onLine) {
+			return Promise.resolve(false);
+		}
+		return withTimeout(fetch('../version.json?t=' + Date.now(), { cache: 'no-store' })
+			.then((r) => r.json())
+			.then((j) => /^\d{14}$/.test(j.v) && j.v > m[1])
+			.catch(() => false), 1500).then((newer) => {
+			if (newer === true) {
+				location.replace('../' + location.search + location.hash);
+				return true;
+			}
+			return false;
+		});
+	}
+
+	// (2) 서비스 워커를 시작 전에 등록·활성화하고 이 페이지를 즉시 제어하게 한다.
+	//     그래야 첫 방문에서 내려받는 wasm/pck가 바로 Cache Storage에 저장된다(안 하면 3번째 방문부터 캐시 적중).
+	//     실패·지연해도 게임은 그대로 시작한다.
+	function claimServiceWorker() {
+		const swUrl = GODOT_CONFIG['serviceWorker'];
+		if (!swUrl || !('serviceWorker' in navigator) || navigator.serviceWorker.controller) {
+			return Promise.resolve();
+		}
+		return withTimeout(navigator.serviceWorker.register(swUrl).then(() => navigator.serviceWorker.ready).then((reg) => {
+			if (navigator.serviceWorker.controller || !reg.active) {
+				return;
+			}
+			const changed = new Promise((res) => navigator.serviceWorker.addEventListener('controllerchange', res, { once: true }));
+			reg.active.postMessage('claim');
+			return withTimeout(changed, 1500);
+		}).catch((e) => console.warn('service worker setup failed', e)), 3000);
+	}
+
+	const MB = 1048576;
+	function start() {
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					const ratio = Math.min(current / total, 1);
+					barFill.classList.remove('indeterminate');
+					barFill.style.width = (ratio * 100).toFixed(1) + '%';
+					if (ratio >= 1) {
+						msgEl.textContent = '게임을 준비하는 중…';
+					} else {
+						msgEl.textContent = '불러오는 중 ' + Math.floor(ratio * 100) + '%  (' + (current / MB).toFixed(1) + ' / ' + (total / MB).toFixed(1) + ' MB)';
+					}
+				} else {
+					barFill.classList.add('indeterminate');
+					barFill.style.width = '';
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+		}, displayFailureNotice);
+	}
+
+	versionGuard().then((redirected) => (redirected ? null : claimServiceWorker().then(start)));
+}());
+		</script>
+	</body>
+</html>
+
