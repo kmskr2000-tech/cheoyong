@@ -18,6 +18,7 @@
 
 ## 엔진·구조
 - Godot 4.4, GL Compatibility, 논리 높이 270 고정·정수 배율 픽셀 퍼펙트(가로는 기기 비율대로 480~640, 480 폭 기기에서는 480x270; `src/scripts/view.gd`, design/gdd/view-camera.md 1단계). 프로젝트는 `src/`(= Godot 코드 루트, `project.godot` 위치. 템플릿 규약, ADR-001).
+- **와이드 뷰(prog/view-overhaul, 현재 beach 만)**: `Levels.DATA[맵]["view"]=="wide"` 이면 `View.set_wide(true)` → 뷰포트 높이 540(정수 2배, 폰 2556x1179 → 1170x540), 처용 36px = 화면 높이 6.7%. 월드는 2배로 다시 구운 지형(`art/beach_wide.py` → `beach_w`, 좌표는 옛 beach x2), HUD·대화창은 `CanvasLayer.scale=View.hud_scale`(=2)로 480x270 좌표계 그대로(`View.size`는 HUD 좌표계, `View.world()`가 실제 뷰포트). 이동 속도 `View.move_scale()`(1.35), post 셰이더 `lod_add`. 인트로·타이틀·회상은 `fixed`/`lock_base` 로 480x270 유지. 다른 맵 확장은 사장님 확인 후.
 - 흐름: `title.tscn` → `intro.tscn`(인트로 샷 1~4) → `level.tscn`(모든 레벨 공용, `Levels.DATA[Game.level_id]`).
 - 스토리 비트는 전부 `scripts/story.gd`(오토로드 Story): `on_enter` / `interact` / `trigger` / `objective`(용패 길잡이). 진행은 `Game.flags`.
 - 레벨 데이터 `scripts/levels.gd`: props(5번째 칸 = 표시 조건 플래그), npcs(6번째 칸 "hidden"), interact, triggers, vents, exits, ambient.
