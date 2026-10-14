@@ -266,3 +266,11 @@
 - (b) 회귀: smoke_godot 13/13 PASS(로그 끝 ERR_CANT_OPEN 13줄은 기존 리소스 로드 로그로 FAIL 아님 — 기준선 비교는 생략), save_check 42 checks PASS, art_walk 12맵 PASS, chapter1_playthrough 6세트(chain 135 checks 등) PASS. 인트로 진입 테스트 = smoke intro PASS + --intro 3600프레임 캡처 SCRIPT ERROR/Parse Error 0.
 - (c) 육안(--fixed-fps 60, --every=15, --seq=confirm 탭): 전/후 암전 프레임이 동일(420·1275·1590·2025·2040) → 인트로 길이·타이밍 불변 확인. 샷1: 전=뿌연 단일 덩어리 → 후=3층 본전·탑·종루·회랑·창불, 후광 앞 실루엣, 해파리/물고기 읽힘(개선 뚜렷). 샷2-3: 전=회전 스프라이트가 뭉개진 덩어리 → 후=침상 윗면에 누운 용왕(머리 왼쪽 베개·뿔·수염·이불·팔), 회전 아티팩트 없음, 침상·헤드보드와 정합, 화로 빛·빛줄기 추가. 용패 컷(--seq 로 대사 넘김): 시작 좌표(200+49,82+18)가 스프라이트 HAND(47,17)=용왕 손(파란 소매 끝 살색)과 일치, 손에서 출발해 처용 쪽으로 이동 확인. 숨결 트윈: 가슴 ±1px 이내(바닥선 고정), 육안으로 거슬리지 않음.
 - CONCERNS(비차단): ① 숨결이 소수 스케일·위치(NEAREST)라 행 복제 미세 일렁임 가능 — 프레임 샘플에선 눈에 띄지 않음. ② 해파리 크기 `randf()` 전역 RNG 사용(결정론 테스트에 영향은 없었으나 시드 의존 테스트가 인트로를 거치면 소모량 변화). 
+
+## 순회 25 intro-walk-view (2026-10-14, 1회성) — prog/intro-walk-view a5138e6 (worktree dev/wt-introwalk detached, 기준선 origin/main 8550410, merge-base 2cc3e4b)
+**판정: PASS**
+- (1) 범위/회귀: `git diff origin/main...origin/prog/intro-walk-view` = 5파일(intro.gd +31/-1, tests/godot/intro_walk.gd 신규, qa png 3). view.gd·카메라·폭 확장·다른 컷·story/대사 diff 0. intro.gd 변경은 `PLAYER` preload, `_walker()`(AnimatedSprite2D, player.gd SHEET 의 up_idle/up_walk 만 사용, speed_scale 92/72), `_shot_hall` 의 처용 스프라이트 교체(위치 (240,226)·이동 트윈 (240,176) 1.4s 불변)와 이동 전 `play("up_walk")`/도착 후 `play("up_idle")` 뿐. 대사 문자열·타이밍·skip 로직 불변. 경미: `_walker` 는 up_* 외 애니를 만들지 않아 flip 불필요(주석과 일치).
+- (2) 테스트 유효성: intro.tscn 을 confirm 탭으로 실제 재생하며 AnimatedSprite2D(up_walk 보유)를 찾아 이동 구간(y<y0-1 & >177)에서 animation==up_walk 이고 프레임 종류 ≥3, 도착 후 up_idle 복귀를 요구 → 기준선(정적 Sprite2D)에서는 노드를 못 찾아 timeout FAIL 이 되므로 의미 있는 검증. 약점(비차단): 종료 조건 `idle_after or moved and ... != up_walk` 의 우선순위가 느슨하고, 걷기 속도/뷰 폭은 검증하지 않음.
+- (3) 육안 walk_0/1/2.png(md5 3종 상이): 레드 카펫 위 처용 뒷모습, 프레임마다 다리 간격·몸 높이가 달라지고 위치는 위로 이동(y≈226→≈205 구간) — 걷기 사이클 확인. 용왕·형제·진주등·HUD(건너뛰기) 정상, 480x270 구도 변화 없음.
+- (4) 재실행(godot.lock 직렬, 4.4.1, `--import` 후): intro_walk `INTRO_WALK PASS frames=[1,2,3,0] samples=26` / dialog_queue q1~q6 PASS / smoke_godot title·intro·beach·pyega PASS(앞 4건 확인, 로그 ERR_CANT_OPEN 은 기존 ALSA/리소스 소음). SCRIPT/Parse ERROR 0. (godot 은 PATH 에 없어 GODOT=~/workspace/tools/godot-4.4.1/... 사용.)
+- 적발: FAIL 없음. 비차단 메모 2건(테스트 종료 조건 우선순위, 속도/폭 미검증). 수정·머지·배포 없음.
