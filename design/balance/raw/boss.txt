@@ -1,4 +1,0 @@
-RES boss pol=reader miss=0.0 charge=false win=0/2 deaths/clear=0.00 t_total=-1 t_p1=-1 t_p2=-1
-RES boss pol=tap miss=1.0 charge=false win=0/2 deaths/clear=0.00 t_total=-1 t_p1=-1 t_p2=-1
-RES boss pol=reader miss=0.5 charge=false win=0/2 deaths/clear=0.00 t_total=-1 t_p1=-1 t_p2=-1
-SCN_RESULT boss PASS (0 steps, known-bugs 0)

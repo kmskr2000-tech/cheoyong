@@ -1,56 +1,18 @@
-# 신 처용가 — 작업 기준
+# 신 처용가 — 작업 기준 (2026-10-20 리셋, 2.5D 웹 RPG)
 
-## 스토리·세계관
-- **`docs/story-bible.md`가 모든 스토리·대사·장면 구성의 최우선 기준이다.** 기획안·기존 웹판(`src/`)과 충돌하면 바이블을 따른다.
-- 장면은 바이블의 장면 ID(SC1-01 …)로 구현하고, 코드·커밋에도 그 ID를 남긴다.
-- 대사 톤: 가벼운 시대극(~하오/~소/~오). 처용은 한 문장, 말이 적다. 감정은 노래·춤으로.
-- 전투 철학: 처용은 죽이지 않고 **정화**한다(쓰러진 요괴의 탁기를 처용가로 걷어냄). 보스는 '처치'가 아니라 '무릎 꿇는다'.
-- 1장 복선 "왕이… 오신다", 인트로 자막 "노래가 완성되면 —"은 반드시 살린다.
+- 설계 기준: `docs/game-design.md`. 코드 구조: `docs/architecture.md`.
+- 이전 Godot/웹판은 git 기록(리셋 이전 커밋)에만 있다.
+- 대사 톤: 가벼운 시대극(~하오/~소/~오). 처용은 한 문장, 말이 적다.
+- 처용은 죽이지 않고 정화한다. 보스는 무릎 꿇는다.
 
-## 성장 시스템
-- **`docs/growth-system.md`가 성장·경제·장비 설계의 기준이다.** 정화 → 정기(精氣)+덕망 → 레벨(자동 성장, 위쳐식)·스킬 트리·마스터리(사용 횟수)·장비(피리 5단계·탈 6종·부적·장신구+세트 효과).
-- 재화 3종 분리: **엽전 = 상점 구매 전용**, **정기 = 강화·부적·퇴치향 제작**(상점에서 안 씀), **덕망 = 레벨업 전용**.
-- 요괴 도감(정화 시 자동 등록, 설화 원전 한 줄)과 퇴치향(요괴 계열별 특효, 30타)은 바이블 부록 E의 요괴 계열과 맞춘다.
+## 그래픽
+- 인물·요괴·지형: PixelLab API로 새로 생성(`.mcp.json`, env `PIXELLAB_API_KEY`). 환경 네트워크에 `api.pixellab.ai` 허용 필요.
 
-## 플랫폼
-- **모바일 게임(가로 화면).** 모든 UI·조작은 터치 우선: 왼쪽 플로팅 조이스틱, 오른쪽 버튼. 키보드는 개발 편의용.
-- 튜토리얼은 BotW식: "○○를 눌러보세요" 텍스트 금지, **빛나는 버튼은 한 번에 하나**, 상호작용은 "다가가면 버튼이 빛난다"로 통일.
-
-## 엔진·구조
-- Godot 4.4, GL Compatibility, 논리 높이 270 고정·정수 배율 픽셀 퍼펙트(가로는 기기 비율대로 480~640, 480 폭 기기에서는 480x270; `src/scripts/view.gd`, design/gdd/view-camera.md 1단계). 프로젝트는 `src/`(= Godot 코드 루트, `project.godot` 위치. 템플릿 규약, ADR-001).
-- **와이드 뷰(prog/view-overhaul, 현재 beach 만)**: `Levels.DATA[맵]["view"]=="wide"` 이면 `View.set_wide(true)` → 뷰포트 높이 540(정수 2배, 폰 2556x1179 → 1170x540), 처용 36px = 화면 높이 6.7%. 월드는 2배로 다시 구운 지형(`art/beach_wide.py` → `beach_w`, 좌표는 옛 beach x2), HUD·대화창은 `CanvasLayer.scale=View.hud_scale`(=2)로 480x270 좌표계 그대로(`View.size`는 HUD 좌표계, `View.world()`가 실제 뷰포트). 이동 속도 `View.move_scale()`(1.35), post 셰이더 `lod_add`. 인트로·타이틀·회상은 `fixed`/`lock_base` 로 480x270 유지. 다른 맵 확장은 사장님 확인 후.
-- 흐름: `title.tscn` → `intro.tscn`(인트로 샷 1~4) → `level.tscn`(모든 레벨 공용, `Levels.DATA[Game.level_id]`).
-- 스토리 비트는 전부 `scripts/story.gd`(오토로드 Story): `on_enter` / `interact` / `trigger` / `objective`(용패 길잡이). 진행은 `Game.flags`.
-- 레벨 데이터 `scripts/levels.gd`: props(5번째 칸 = 표시 조건 플래그), npcs(6번째 칸 "hidden"), interact, triggers, vents, exits, ambient.
-- 이전 웹판(JS Canvas)은 `legacy-web/`(`index.html`, `src/`)로 옮겼다. 참고용 원본이며 새 작업은 Godot(`src/`)에서 한다. 레포 루트 `index.html`은 `legacy-web/`로 보내는 임시 안내 페이지다(Godot 웹 빌드 배포 전까지).
-
-## 아트 파이프라인 (코드 생성 + 사용자 제공 AI 도트 세트의 정규화 임포트)
-- 외부 세트(`files/game-assets`)는 사용자 승인으로 사용 가능(2026-10-12). `art/import_external.py`로 정규화한 뒤에만 `src/assets`에 넣는다. 판정·한계는 `design/art/asset-integration.md`. 상업 이용 약관 확인은 출시 전 사용자 몫.
-- `art/src/*.py` 도트 격자 → `python3 art/build.py` (처용 팔 컷아웃)
-- `art/hero.py` 처용: 작은 3D 인형(타원체·원뿔대)을 레이캐스트로 바로 도트화 → `cheoyong.png` 22프레임(정면·3/4·옆·뒤·걷기·공격). 차분한 6단 팔레트, 셀아웃 외곽선
-- `art/people.py` NPC 16명: 같은 렌더러에 사람마다 스펙(색·갓/사모·수염·치마·흉배·지팡이·키) → `npc_*.png` 5프레임
-- `art/boss3d.py` 역신: 같은 렌더러로 사람의 3배 넘는 크기(120x164 셀, 발 158행), 변장 프레임은 사람 크기
-- `art/vox.py` 복셀 3D → 사선 3/4 도트 (건물·석등·장승·석축·돌담 등, 노멀맵 포함)
-- `art/ground3d.py` 높이 지도 → 레벨 지형 한 장 (윗면·절벽 옆면·물·충돌). 카메라는 비스듬히 내려다봄: 깊이 축소 `K=0.75`(vox.py도 같은 값), 단 높이 26px. 게임 좌표는 전부 발밑(footprint) 좌표로 쓰고 `level.lift()`가 화면 좌표로 바꾼다(사각형은 `lift_size`)
-- `art/props.py` 손그림 소품, `art/enemies.py` 적·보스, `art/fx.py` 이펙트, `art/ui.py` UI
-- `art/normals.py` 노멀맵, `art/tiles.py` 지형 텍스처·팔레트
-- `art/monsters.py` 설화 요괴, `art/intro.py` 인트로·타이틀 배경 그림
-- `art/sound.py` 소리 전부 합성(대금·피리·장구·징·풍경, A 계면조) → `src/assets/audio`. 재생은 오토로드 `Audio`(레벨 `music`/`amb`, 요괴가 쫓아오면 전투곡, 보스는 override)
-- 화풍: 시오브스타즈식 3/4 탑다운 + 옥토파스식 HD-2D 후처리(심도·블룸·색보정). 색조는 어두운 푸른 밤, 따뜻한 등불·보랏빛 귀화가 포인트.
+## 실행·빌드·검증
+- 개발: `npx http-server . -p 8080` → `http://localhost:8080/src/index.html`
+- 단일 HTML 빌드: `node tools/build.mjs` → `dist/index.html`
+- 스모크 테스트: `node tests/smoke.mjs` (Playwright, 스크린샷 `tests/out/`)
+- URL 테스트 훅: `?debug=1`, `?at=x,y`(타일), `?flags=a,b`, `?quest=n`
 
 ## 작업 방식
-- 작업은 `main`에서 새 브랜치를 따서 하고, 끝나면 커밋·푸시한다.
-- **PR을 만들면 확인을 묻지 말고 바로 머지한다**(merge 커밋 방식). 머지 후 다음 작업은 다시 `main`에서 새 브랜치로.
-
-## 웹 빌드 (시험판)
-- `src/export_presets.cfg` "Web"(스레드 없음) → `godot --headless --path src --export-release Web ../build/web/index.html`. 템플릿은 `~/.local/share/godot/export_templates/4.4.1.stable/web_nothreads_release.zip`(전체 tpz에서 이 파일만 받아 둠)
-- 아티팩트는 파일당 15MB 제한: wasm을 4조각으로 나누고 페이지의 fetch 심이 다시 이어 붙인다(모든 조각 확장자 .wasm)
-
-## 검증
-- 화면 확인: `xvfb-run` + `godot -- --capture=out.png --frames=N [--at=x,y] [--hold=action] [--seq=action:frame,...]`
-  - 캡처 중엔 60fps 고정(프레임 ≈ 초×60). `--seq`는 실제 입력 이벤트를 보내므로 대화(confirm)도 넘길 수 있다.
-  - 바로 진입: `--level=<id> [--spawn=<name>] [--flags=a,b]`, 타이틀 `--title`, 인트로 `--intro`.
-  - 테스트 훅: `--test-enemies`(또는 `--test-enemies=키,키` 요괴 소환), `--beach-fight`(SC1-05), `--boss`, `--boss-weak`, `--boss-kneel`(SC1-19부터), `--sin=100`(신명), `--skills=id,id`·`--sp=N`(수련), `--touch`(터치 버튼 표시), `--test-charge`(베기 1.5초 눌러 강 베기), `--test-parry`(구르기 직후 인공 접촉 → 받아넘기기), `--stats`(사망 카운터 출력).
-  - 전투 전략 시나리오(헤드리스, 타이밍 검증): `tests/combat_strategy.sh [cs_parry|cs_charge|cs_guard|cs_targeting|cs_economy|cs_boss|cs_deaths|cs_wave|cs_aura|cs_tutorial|cs_cover]`. 전투 상수 정본은 `src/scripts/combat_tuning.gd`.
-  - 결과 줄에 남은 적·쓰러진 적·레벨·플래그·플레이어/보스 상태가 찍힌다.
-- 캡처 결과(남은 적 수 등)를 근거로 동작을 확인한 뒤에만 완료라고 보고한다.
+- `main`에서 브랜치 → 커밋·푸시 → PR → 바로 머지(merge 커밋).
