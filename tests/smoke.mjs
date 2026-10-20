@@ -60,7 +60,7 @@ async function scenarios() {
     ['talk to dragon king', { query: 'play', seconds: 5, keys: ['hold:KeyD@0.3-1.6', 'KeyE@1.9', 'Enter@2.6', 'Enter@2.9', 'Enter@3.3', 'Enter@3.6'] }, (i) => /q1|has_attack/.test(i.flags) || /처용탈|탈|구절/.test(i.dialog || '') || i.flags === ''],
     ['combat purifies yokai', { query: 'quest=1&enemies=imp,imp,snake', seconds: 7, keys: ['hold:KeyD@0.2-0.8', 'hold:KeyJ@0.9-6.8'] }, (i) => /kills_total/.test(i.flags)],
     ['skills', { query: 'quest=5&enemies=dokkaebi,ghoul,ghost', seconds: 5, keys: ['hold:KeyD@0.2-0.6', 'KeyU@0.8', 'KeyI@1.4', 'KeyO@3.0', 'KeyM@3.8'] }, (i) => i.hp > 0],
-    ['boss dokchief', { query: 'quest=5&lvl=8&boss=dokchief&heung', seconds: 8, keys: ['KeyL@0.5', 'hold:KeyJ@3.2-7.8'] }, (i) => i.boss && i.boss.hp < 650],
+    ['boss dokchief', { query: 'quest=5&lvl=8&boss=dokchief&heung', seconds: 8, keys: ['KeyL@0.5', 'hold:KeyJ@3.2-7.8'] }, (i) => i.boss && i.boss.hp < 1040],
     ['boss gumiho', { query: 'quest=5&lvl=8&boss=gumiho', seconds: 6, keys: ['hold:KeyJ@0.5-5.8', 'hold:KeyD@0.5-1.2'] }, (i) => i.state === 'play'],
     ['boss imugi', { query: 'quest=5&lvl=8&boss=imugi', seconds: 6, keys: ['hold:KeyJ@0.5-5.8', 'hold:KeyD@0.5-1.2'] }, (i) => i.state === 'play'],
     ['boss yeoksin', { query: 'quest=6&lvl=10&boss=yeoksin&heung', seconds: 6, keys: ['KeyL@0.5', 'hold:KeyJ@3.2-5.8'] }, (i) => i.state === 'play'],

@@ -18,3 +18,19 @@ html = html.replace(/<script src="(js\/[^"]+)"><\/script>/g, (_, f) => `<script>
 fs.mkdirSync(path.join(root, 'dist'), { recursive: true });
 fs.writeFileSync(path.join(root, 'dist', 'index.html'), html);
 console.log('dist/index.html', (html.length / 1024 / 1024).toFixed(2), 'MB');
+
+// --artifact <path>: same page without the document wrapper (the artifact host adds its own)
+const ai = process.argv.indexOf('--artifact');
+if (ai > 0) {
+  let body = html
+    .replace(/<!doctype html>\s*/i, '')
+    .replace(/<html[^>]*>|<\/html>|<head>|<\/head>|<body>|<\/body>/gi, '')
+    .replace(/<meta charset="utf-8">\s*/i, '')
+    .replace(/<meta name="viewport"[^>]*>\s*/i, '');
+  body = body.replace('<title>신 처용가 — 탈과 노래</title>', '<title>신 처용가</title>');
+  body = body.replace('html, body { margin: 0; height: 100%;', ':root { color-scheme: dark; background: #05060f; } html, body { margin: 0; height: 100%;');
+  const t = body.match(/<title>.*?<\/title>/)[0];
+  body = t + '\n' + body.replace(t, '');
+  fs.writeFileSync(process.argv[ai + 1], body);
+  console.log(process.argv[ai + 1], (body.length / 1024 / 1024).toFixed(2), 'MB');
+}
