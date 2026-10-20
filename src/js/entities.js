@@ -456,8 +456,8 @@
       super(x, y);
       this.type = type; this.def = ENEMIES[type];
       const lv = o.level || 1;
-      this.maxHp = Math.round(this.def.hp * (1 + (lv - 1) * 0.25)); this.hp = this.maxHp;
-      this.atkV = this.def.atk * (1 + (lv - 1) * 0.15);
+      this.maxHp = Math.round(this.def.hp * (1 + (lv - 1) * 0.25) * (this.def.boss ? 1.6 : 1)); this.hp = this.maxHp;
+      this.atkV = this.def.atk * (1 + (lv - 1) * 0.15) * 1.2;
       this.r = this.def.r; this.lvl = lv; this.home = { x, y }; this.zone = o.zone; this.state = 'idle'; this.stateT = Math.random();
       this.wanderT = 0; this.sprite = type; this.aura = Math.random() * 6;
       this.spawnT = 0.6; this.cool = 0.5 + Math.random();
