@@ -1,0 +1,23 @@
+{
+ "id": "9454b5cf-933f-4c49-b40b-df9bbdd184fb",
+ "anims": {
+  "attack": {
+   "group": "5c23dc0e-5f4b-46fc-b7b0-31ebb0b1937a",
+   "dirs": [
+    "east",
+    "north",
+    "south"
+   ]
+  },
+  "walk": {
+   "group": null,
+   "dirs": [
+    "east",
+    "north",
+    "north-east",
+    "south",
+    "south-east"
+   ]
+  }
+ }
+}

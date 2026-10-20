@@ -1,0 +1,45 @@
+{
+  "group_id": "52aa1c11-e3e3-483a-b406-fe2832984236",
+  "states": [
+    {
+      "character": {
+        "id": "afc01603-72c7-4aae-a0a4-a3234a0f6029",
+        "name": "Idle",
+        "prompt": "Korean Silla dynasty folklore, dark fantasy night, Korean village woman with a water jar on her head, dark blue skirt and white jeogori",
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-20T08:59:03.218059+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "breathing_idle": {
+            "south": [
+              "Idle/animations/breathing_idle/south/frame_000.png",
+              "Idle/animations/breathing_idle/south/frame_001.png",
+              "Idle/animations/breathing_idle/south/frame_002.png",
+              "Idle/animations/breathing_idle/south/frame_003.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-20T09:03:11.924226"
+}

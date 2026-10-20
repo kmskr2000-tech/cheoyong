@@ -1,0 +1,11 @@
+{
+ "id": "b652bf98-28a5-4bd0-9dd3-58675c6c99b8",
+ "anims": {
+  "walk": {
+   "group": "45a58183-06eb-46dd-a111-c91ebd3c4b4f",
+   "dirs": [
+    "south"
+   ]
+  }
+ }
+}

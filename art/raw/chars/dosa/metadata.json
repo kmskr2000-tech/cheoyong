@@ -1,0 +1,45 @@
+{
+  "group_id": "086a9843-2d11-4572-95d3-028a9c180f02",
+  "states": [
+    {
+      "character": {
+        "id": "7a70df75-e808-4876-8dfc-944b4fa51c2a",
+        "name": "Idle",
+        "prompt": "Korean Silla dynasty folklore, dark fantasy night, Taoist sage hermit, tall thin old man with long white beard, wide black gat hat, white flowing robe, holding a white feather fan",
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-20T08:58:59.921971+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "breathing_idle": {
+            "south": [
+              "Idle/animations/breathing_idle/south/frame_000.png",
+              "Idle/animations/breathing_idle/south/frame_001.png",
+              "Idle/animations/breathing_idle/south/frame_002.png",
+              "Idle/animations/breathing_idle/south/frame_003.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-20T09:05:39.251374"
+}

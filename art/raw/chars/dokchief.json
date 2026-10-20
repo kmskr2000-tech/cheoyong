@@ -1,0 +1,11 @@
+{
+ "id": "fda03441-9bd3-4914-9b9f-11ccebb9a367",
+ "anims": {
+  "walk": {
+   "group": "abaee092-e1f3-4b93-8c6c-b6a77e1b8f32",
+   "dirs": [
+    "south"
+   ]
+  }
+ }
+}

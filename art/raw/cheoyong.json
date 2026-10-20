@@ -1,0 +1,36 @@
+{
+ "id": "4dc0f36b-08eb-4f1d-919c-703418bd14ed",
+ "name": "cheoyong",
+ "state_name": "Idle",
+ "prompt": "Cheoyong, Korean Silla dynasty dragon prince hero, wearing a red-cheeked carved wooden Cheoyong mask with a peony-flower black hat (samo with flowers), flowing white and deep blue hanbok robe with long sleeves, red sash, holding a small bamboo flute at belt, calm heroic stance",
+ "size": {
+  "width": 96,
+  "height": 96
+ },
+ "directions": 8,
+ "created_at": "2026-10-20T08:15:29.624753+00:00",
+ "updated_at": "2026-10-20T08:18:25.349979+00:00",
+ "animation_count": 0,
+ "template_id": "mannequin",
+ "view": "low top-down",
+ "status": "completed",
+ "rotation_urls": {
+  "south": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/south.png?t=1792484305",
+  "west": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/west.png?t=1792484305",
+  "east": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/east.png?t=1792484305",
+  "north": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/north.png?t=1792484305",
+  "south-east": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/south-east.png?t=1792484305",
+  "north-east": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/north-east.png?t=1792484305",
+  "north-west": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/north-west.png?t=1792484305",
+  "south-west": "https://backblaze.pixellab.ai/file/pixellab-characters/39b41203-9fb3-4fb3-a141-7195125da446/4dc0f36b-08eb-4f1d-919c-703418bd14ed/rotations/south-west.png?t=1792484305"
+ },
+ "style_settings": {
+  "generation_mode": "pixen_v3"
+ },
+ "guidance": null,
+ "ai_freedom": null,
+ "tags": [],
+ "group_id": "82ed0b6f-9373-4c03-bb5d-6b0be51c282d",
+ "skeletons": null,
+ "animations": []
+}

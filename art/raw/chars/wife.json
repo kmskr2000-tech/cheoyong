@@ -1,0 +1,11 @@
+{
+ "id": "faf08284-dc88-4437-96c4-a597dbdf1ee1",
+ "anims": {
+  "idle_anim": {
+   "group": null,
+   "dirs": [
+    "south"
+   ]
+  }
+ }
+}

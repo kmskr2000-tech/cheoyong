@@ -1,0 +1,53 @@
+{
+  "group_id": "fbf7e3ee-2514-4564-86d8-5edea758ca86",
+  "states": [
+    {
+      "character": {
+        "id": "937571b2-2e4b-42e2-9b20-0757b86f5f04",
+        "name": "Idle",
+        "prompt": "Korean Silla dynasty folklore, dark fantasy night, young Silla hwarang warrior, black hat with a feather, blue and white tunic, leather belt, sword at the hip, standing guard",
+        "size": {
+          "width": 96,
+          "height": 96
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "low top-down",
+        "created_at": "2026-10-20T08:50:05.412834+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {
+          "breathing_idle": {
+            "south": [
+              "Idle/animations/breathing_idle/south/frame_000.png",
+              "Idle/animations/breathing_idle/south/frame_001.png",
+              "Idle/animations/breathing_idle/south/frame_002.png",
+              "Idle/animations/breathing_idle/south/frame_003.png"
+            ]
+          },
+          "breathing_idle-390816d9": {
+            "south": [
+              "Idle/animations/breathing_idle-390816d9/south/frame_000.png",
+              "Idle/animations/breathing_idle-390816d9/south/frame_001.png",
+              "Idle/animations/breathing_idle-390816d9/south/frame_002.png",
+              "Idle/animations/breathing_idle-390816d9/south/frame_003.png"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-20T08:57:14.393481"
+}
