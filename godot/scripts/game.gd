@@ -1,4 +1,4 @@
-# Game: world state, spawning, bosses, cutscenes, saving, and the world layers (2.5D y-sort + dusk lighting).
+# Game: world state, spawning, bosses, cutscenes, saving, and the world view (HD-2D: 3D terrain + billboards, 2D overlays on top).
 extends Node
 
 signal dialog_done
@@ -44,10 +44,11 @@ var dot: Texture2D
 var dissolved = {}
 
 # nodes
-var camera: Camera2D
+var view: View3D
 var world_root: Node2D
 var light_rect: ColorRect
 var light_mat: ShaderMaterial
+var tilt: ColorRect
 var overlay  # draw layer on the light canvas (screen flash, death fade)
 
 func _ready() -> void:
@@ -82,10 +83,21 @@ func _layer(parent: Node, fn: Callable, add := false) -> Node2D:
 	return n
 
 func _build_nodes() -> void:
+	view = View3D.new()
+	add_child(view)
+	view.setup(world)
+	# screen-space overlays over the 3D view: tilt-shift blur first, then ground marks, particles, bars, texts
+	var tc = CanvasLayer.new(); tc.layer = 1
+	add_child(tc)
+	tilt = ColorRect.new()
+	tilt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tm = ShaderMaterial.new(); tm.shader = load("res://shaders/tiltshift.gdshader")
+	tilt.material = tm
+	tc.add_child(tilt)
+	var wc = CanvasLayer.new(); wc.layer = 2
+	add_child(wc)
 	world_root = Node2D.new()
-	add_child(world_root)
-	world_root.add_child(world.build_tilemap())
-	_layer(world_root, _draw_water)
+	wc.add_child(world_root)
 	_layer(world_root, _draw_flat)
 	_layer(world_root, _draw_ground_add, true)
 	_layer(world_root, _draw_sprites)
@@ -93,10 +105,6 @@ func _build_nodes() -> void:
 	_layer(world_root, _draw_glow_add, true)
 	_layer(world_root, func(ci): fx.draw_texts(ci, Assets.font_dmg))
 	_layer(world_root, _draw_guide)
-	camera = Camera2D.new()
-	camera.anchor_mode = Camera2D.ANCHOR_MODE_FIXED_TOP_LEFT
-	world_root.add_child(camera)
-	camera.make_current()
 	var lc = CanvasLayer.new(); lc.layer = 5
 	add_child(lc)
 	light_rect = ColorRect.new()
@@ -478,87 +486,69 @@ func update_cam(dt: float) -> void:
 	cam += (w - cam) * (1 - exp(-k * dt))
 	clamp_cam()
 
-func _process(_dt: float) -> void:
-	if player == null: return
-	var sh = fx.shake
-	camera.position = (cam + Vector2((randf() - 0.5) * sh, (randf() - 0.5) * sh)).round()
+func _process(dt: float) -> void:
+	var c = cam + view_size() / 2
+	view.follow(c.x, c.y, fx.shake)
+	view.set_mood(zone.id if zone else "beach", dt)
+	view.begin_frame()
+	if player != null:
+		for n in npcs:
+			if not n.hidden and _in_view(n.x, n.y): n.draw3d()
+		for e in enemies:
+			if _in_view(e.x, e.y): e.draw3d()
+		player.draw3d()
+		view.fade_props(player.x, player.y)
+		view.set_lamps(_lights())
+	view.end_frame()
+	for gt in view.gates:
+		for n in view.gates[gt]: n.visible = not (gt == "south" and flags.get("gate_open", false))
+	tilt.size = view_size()
 	_update_lights()
 
-# ---------- drawing (world coordinates; the camera handles the view) ----------
+# screen position of a ground point (game pixels), z pixels above it along the screen's up axis
+func sp(x: float, y: float, z := 0.0) -> Vector2:
+	return view.project(x, y) - Vector2(0, z * view.ppx)
+
+# ---------- drawing (screen-space overlays projected through the 3D view) ----------
 func _in_view(x: float, y: float, m := 260.0) -> bool:
 	var vs = view_size()
 	return x > cam.x - m and x < cam.x + vs.x + m and y > cam.y - 40 and y < cam.y + vs.y + m
 
-func _draw_water(ci: CanvasItem) -> void:
-	var vs = view_size()
-	var tx0 = maxi(0, int(cam.x / T)); var ty0 = maxi(0, int(cam.y / T))
-	var tx1 = mini(World.W - 1, int((cam.x + vs.x) / T)); var ty1 = mini(World.H - 1, int((cam.y + vs.y) / T))
-	for ty in range(ty0, ty1 + 1):
-		for tx in range(tx0, tx1 + 1):
-			if not world.is_water(tx, ty): continue
-			var h = G.hash2(tx, ty, 5)
-			var ph = fmod(time * 0.6 + h * 10, 4.0)
-			if ph < 1.4:
-				var a = sin(ph / 1.4 * PI)
-				ci.draw_rect(Rect2(tx * T + int(h * 20) + 2, ty * T + int(G.hash2(tx, ty, 6) * 26) + 3, 6 + int(ph * 3), 1), Color(0.75, 0.86, 1, a * 0.5))
-
-func draw_prop(ci: CanvasItem, pr: Dictionary, alpha := 1.0) -> void:
-	if not Assets.props.has(pr.kind): return
-	if pr.get("gate", "") == "south" and flags.get("gate_open", false): return
-	var A: Dictionary = Assets.props[pr.kind]
-	var sh: float = pr.k.get("shadow", 0)
-	if sh > 0: Fx.ellipse(ci, Vector2(pr.x, pr.y - 2), sh, sh * 0.32, Color(0, 0, 0.04, 0.3))
-	var k: float = A.scale
-	ci.draw_set_transform(Vector2(pr.x, pr.y), 0, Vector2(-k if pr.flip else k, k))
-	ci.draw_texture(A.tex, Vector2(-A.ax, -A.ay), Color(1, 1, 1, alpha))
-	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
-
 func _draw_flat(ci: CanvasItem) -> void:
-	for pr in world.props:
-		if pr.k.get("flat", false) and _in_view(pr.x, pr.y): draw_prop(ci, pr)
+	if player == null: return
 	# miasma on locked paths
 	for gt in world.GATES:
 		if flags.get(gt.flag, false) or gt.id == "south": continue
 		var r = Rect2(gt.x0 * T, gt.y0 * T, (gt.x1 - gt.x0 + 1) * T, (gt.y1 - gt.y0 + 1) * T)
 		if not _in_view(r.get_center().x, r.get_center().y, 400): continue
 		if randf() < 0.5: fx.smoke(r.position.x + randf() * r.size.x, r.position.y + randf() * r.size.y, 1, Color("#7a2cff"))
-		ci.draw_texture_rect(dot, r.grow(r.size.length() * 0.4), false, Color(GATE_DIM, 0.35))
+		var g = r.grow(r.size.length() * 0.4)
+		var a = sp(g.position.x, g.position.y); var b = sp(g.end.x, g.end.y)
+		ci.draw_texture_rect(dot, Rect2(a, b - a), false, Color(GATE_DIM, 0.35))
 	if arena:
 		var pts = PackedVector2Array()
 		for i in 64:
 			var a = i / 64.0 * TAU
-			pts.append(Vector2(arena.x + cos(a) * (arena.r + 12), arena.y + sin(a) * (arena.r + 12) * 0.7))
+			pts.append(sp(arena.x + cos(a) * (arena.r + 12), arena.y + sin(a) * (arena.r + 12) * 0.7))
 		for i in range(0, 64, 2): ci.draw_line(pts[i], pts[(i + 1) % 64], Color(0.63, 0.31, 1, 0.4), 3)
 
 func _draw_ground_add(ci: CanvasItem) -> void:
+	if player == null: return
 	for h in hazards: h.draw_ground(ci)
 	fx.draw_ground(ci)
 
+# 2D extras of the actors (name tags, hp bars, coins, mask ring); their bodies are billboards in the 3D view
 func _draw_sprites(ci: CanvasItem) -> void:
 	if player == null: return
-	var list = []
-	for pr in world.props:
-		if not pr.k.get("flat", false) and _in_view(pr.x, pr.y): list.append(pr)
 	for n in npcs:
-		if not n.hidden and _in_view(n.x, n.y): list.append(n)
+		if not n.hidden and _in_view(n.x, n.y): n.draw(ci)
 	for e in enemies:
-		if _in_view(e.x, e.y): list.append(e)
-	list.append_array(pickups)
-	list.append_array(projectiles)
-	list.append(player)
-	list.sort_custom(func(a, b): return a.y < b.y)
-	var p = player
-	for o in list:
-		if o is Dictionary:
-			var alpha = 1.0
-			if Assets.props.has(o.kind):
-				var A: Dictionary = Assets.props[o.kind]
-				var ks: float = A.scale
-				if o.y > p.y and o.y - p.y < A.h * ks - 10 and abs(o.x - p.x) < A.bw * ks / 2 + 10 and A.h * ks > 70: alpha = 0.55
-			draw_prop(ci, o, alpha)
-		else: o.draw(ci)
+		if _in_view(e.x, e.y): e.draw(ci)
+	for o in pickups + projectiles: o.draw(ci)
+	player.draw(ci)
 
 func _draw_glow_add(ci: CanvasItem) -> void:
+	if player == null: return
 	fx.draw_parts(ci, true, dot)
 	for e in enemies:
 		if _in_view(e.x, e.y): e.draw_glow(ci)
@@ -566,7 +556,9 @@ func _draw_glow_add(ci: CanvasItem) -> void:
 		if pr.has_method("draw_glow"): pr.draw_glow(ci)
 	# coloured light pools (lanterns, spirits)
 	for l in _lights():
-		if l[3] != null: ci.draw_texture_rect(dot, Rect2(l[0] - l[2] * 0.8, l[1] - l[2] * 0.8, l[2] * 1.6, l[2] * 1.6), false, Color(l[3], 0.22 * l[4]))
+		if l[3] != null:
+			var q = sp(l[0], l[1]); var r: float = l[2] * 0.8 * view.ppx
+			ci.draw_texture_rect(dot, Rect2(q.x - r, q.y - r * 0.8, r * 2, r * 1.6), false, Color(l[3], 0.16 * l[4]))
 
 func _lights() -> Array:
 	var out = []
@@ -583,29 +575,22 @@ func _lights() -> Array:
 	if p.state == "ult": out.append([p.x, p.y - 30, 200 + p.state_t * 300, Color("#fff0c0"), 1.0])
 	return out
 
+# the 3D sun and fog carry the zone mood; the screen shader only adds the vignette
 func _update_lights() -> void:
 	var vs = view_size()
 	light_rect.size = vs
-	var zid: String = zone.id if zone else "beach"
-	var dark: float = {"beach": 0.08, "town": 0.12, "ruin": 0.34, "pond": 0.26, "forest": 0.36, "house": 0.3}.get(zid, 0.15)
-	var arr = []
-	for l in _lights():
-		if arr.size() >= 48: break
-		arr.append(Vector4(l[0] - camera.position.x, l[1] - camera.position.y, l[2], l[4]))
 	light_mat.set_shader_parameter("view_size", vs)
-	light_mat.set_shader_parameter("darkness", dark)
-	light_mat.set_shader_parameter("light_count", arr.size())
-	while arr.size() < 48: arr.append(Vector4.ZERO)
-	light_mat.set_shader_parameter("lights", arr)
+	light_mat.set_shader_parameter("darkness", 0.0)
+	light_mat.set_shader_parameter("light_count", 0)
 
 func _draw_guide(ci: CanvasItem) -> void:
 	if ui.dialog != null or cinema or G.state != "play": return
 	var ob: Dictionary = story.objective()
 	if ob.target == null or boss: return
 	var vs = view_size()
-	var t: Vector2 = ob.target
-	var pp = Vector2(player.x, player.y - 40)
-	var on = t.x > cam.x + 30 and t.x < cam.x + vs.x - 30 and t.y > cam.y + 30 and t.y < cam.y + vs.y - 30
+	var t: Vector2 = sp(ob.target.x, ob.target.y)
+	var pp = sp(player.x, player.y, 40)
+	var on = t.x > 30 and t.x < vs.x - 30 and t.y > 30 and t.y < vs.y - 30
 	var col = Color("#ffd27a")
 	if on:
 		var y = t.y - 70 + sin(time * 4) * 5

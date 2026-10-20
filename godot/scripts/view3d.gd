@@ -1,0 +1,357 @@
+# HD-2D view: 3D terrain (hills, slopes, water) with upright sprites, sun shadows, fog and an orthographic tilted camera.
+# Game logic stays in 2D pixels (x, y on the ground). 1 tile (32 px) = 1 metre; the ground height comes from height_px().
+class_name View3D
+extends Node3D
+
+const T := 32.0
+const PITCH := deg_to_rad(55.0)
+const ORTHO := 16.5            # metres visible vertically
+var W: int
+var H: int
+var hv := PackedFloat32Array() # vertex heights in metres, (W+1) x (H+1)
+var cam3: Camera3D
+var sun: DirectionalLight3D
+var env: Environment
+var lamps: Array[OmniLight3D] = []
+var sprite_shader: Shader
+var quad: QuadMesh
+var pool: Array = []
+var used_n := 0
+var tall := []                 # tall props that fade when the player walks behind them
+var gates := {}                # gate id -> nodes hidden once the gate opens
+var ppx := 1.0                 # screen pixels per game pixel
+var target := Vector3.ZERO     # camera focus (metres)
+var world: World
+
+func setup(w: World) -> void:
+	world = w; W = World.W; H = World.H
+	sprite_shader = load("res://shaders/billboard.gdshader")
+	quad = QuadMesh.new(); quad.size = Vector2(1, 1)
+	_heights()
+	add_child(_terrain())
+	add_child(_water())
+	_props()
+	_camera_and_light()
+
+# ---------- height field ----------
+func vh(x: int, y: int) -> float: return hv[clampi(y, 0, H) * (W + 1) + clampi(x, 0, W)]
+
+func _heights() -> void:
+	hv.resize((W + 1) * (H + 1))
+	var base := {"beach": 0.25, "town": 1.1, "ruin": 2.3, "pond": 1.7, "forest": 0.9, "house": 2.0}
+	var fixed := PackedByteArray(); fixed.resize(hv.size())
+	# walkable vertices: zone base height (+ gentle undulation); sea and pond lower; roads relax between zones
+	var walk_v := PackedByteArray(); walk_v.resize(hv.size())
+	for y in H + 1:
+		for x in W + 1:
+			var i := y * (W + 1) + x
+			var t := world.getv(x, y)
+			var z = world.zone_cell(min(x, W - 1), min(y, H - 1))
+			var cell_walk := false
+			for d in [[0, 0], [-1, 0], [0, -1], [-1, -1]]:
+				var cx: int = x + d[0]; var cy: int = y + d[1]
+				if cx >= 0 and cy >= 0 and cx < W and cy < H and world.walkable[cy * W + cx]: cell_walk = true
+			walk_v[i] = 1 if cell_walk else 0
+			if t == World.SEA: hv[i] = -0.7; fixed[i] = 1
+			elif t == World.POND: hv[i] = base.pond - 0.6; fixed[i] = 1
+			elif z and cell_walk:
+				hv[i] = base[z.id] + (G.noise(x * 0.35, y * 0.35, 21) - 0.5) * 0.35
+				if t == World.SAND: hv[i] = 0.08 + (G.noise(x * 0.3, y * 0.3, 22)) * 0.15
+				fixed[i] = 1
+			else: hv[i] = 1.0
+	# relax unfixed walkable vertices (roads) so they slope smoothly between zones
+	for it in 120:
+		for y in H + 1:
+			for x in W + 1:
+				var i := y * (W + 1) + x
+				if fixed[i] or not walk_v[i]: continue
+				var s := 0.0; var n := 0
+				for d in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
+					var xx: int = x + d[0]; var yy: int = y + d[1]
+					if xx < 0 or yy < 0 or xx > W or yy > H: continue
+					var j := yy * (W + 1) + xx
+					if walk_v[j] or fixed[j]: s += hv[j]; n += 1
+				if n > 0: hv[i] = s / n
+	# hills: unwalkable ground rises with the distance to the nearest walkable vertex
+	var dist := PackedFloat32Array(); dist.resize(hv.size()); dist.fill(1e9)
+	var near_h := PackedFloat32Array(); near_h.resize(hv.size())
+	var q := []
+	for i in hv.size():
+		if walk_v[i] or fixed[i]: dist[i] = 0; near_h[i] = hv[i]; q.append(i)
+	var head := 0
+	while head < q.size():
+		var i: int = q[head]; head += 1
+		var x := i % (W + 1); var y := i / (W + 1)
+		for d in [[1, 0], [-1, 0], [0, 1], [0, -1]]:
+			var xx: int = x + d[0]; var yy: int = y + d[1]
+			if xx < 0 or yy < 0 or xx > W or yy > H: continue
+			var j := yy * (W + 1) + xx
+			if dist[j] > dist[i] + 1:
+				dist[j] = dist[i] + 1; near_h[j] = near_h[i]; q.append(j)
+	for i in hv.size():
+		if walk_v[i] or fixed[i]: continue
+		var x := i % (W + 1); var y := i / (W + 1)
+		var d := dist[i]
+		# a short steep bank next to the walkable ground, then rolling hills
+		hv[i] = max(near_h[i], 0.2) + min(d, 2.0) * 0.8 + clampf(d - 2.0, 0.0, 8.0) * 0.35 + G.fbm(x * 0.12, y * 0.12, 31) * 2.4 * min(1.0, d / 3.0)
+
+# ground height in pixels at a 2D game position (bilinear)
+func height_px(px: float, py: float) -> float:
+	var fx := clampf(px / T, 0, W - 0.001); var fy := clampf(py / T, 0, H - 0.001)
+	var x0 := int(fx); var y0 := int(fy); var tx := fx - x0; var ty := fy - y0
+	var h := lerpf(lerpf(vh(x0, y0), vh(x0 + 1, y0), tx), lerpf(vh(x0, y0 + 1), vh(x0 + 1, y0 + 1), tx), ty)
+	return h * T
+
+func to3(px: float, py: float, z := 0.0) -> Vector3:
+	return Vector3(px / T, (height_px(px, py) + z) / T, py / T)
+
+# ---------- terrain mesh with a padded tile atlas ----------
+func _atlas() -> Dictionary:
+	var names: Array = Assets.tiles.keys()
+	var S := 64; var P := 2; var C := S + P * 2
+	var per_row := 16
+	var count := names.size() * 16
+	var rows := int(ceil(count / float(per_row)))
+	var img := Image.create(per_row * C, rows * C, false, Image.FORMAT_RGBA8)
+	var slot := {}
+	var k := 0
+	for n in names:
+		var t: Dictionary = Assets.tiles[n]
+		var src: Image = t.tex.get_image()
+		if src.is_compressed(): src.decompress()
+		src.convert(Image.FORMAT_RGBA8)
+		var sz: int = t.size
+		if sz != S: src.resize(src.get_width() * S / sz, src.get_height() * S / sz, Image.INTERPOLATE_LANCZOS)
+		for i in 16:
+			var tile := src.get_region(Rect2i((i % 4) * S, (i / 4) * S, S, S))
+			var ox := (k % per_row) * C; var oy := (k / per_row) * C
+			img.blit_rect(tile, Rect2i(0, 0, S, S), Vector2i(ox + P, oy + P))
+			for e in P: # extrude edges so mipmaps do not bleed
+				img.blit_rect(tile, Rect2i(0, 0, S, 1), Vector2i(ox + P, oy + e))
+				img.blit_rect(tile, Rect2i(0, S - 1, S, 1), Vector2i(ox + P, oy + P + S + e))
+				img.blit_rect(img, Rect2i(ox + P, oy, 1, C), Vector2i(ox + e, oy))
+				img.blit_rect(img, Rect2i(ox + P + S - 1, oy, 1, C), Vector2i(ox + P + S + e, oy))
+			slot["%s:%d" % [n, i]] = Rect2((ox + P) / float(img.get_width()), (oy + P) / float(img.get_height()), S / float(img.get_width()), S / float(img.get_height()))
+			k += 1
+	img.generate_mipmaps()
+	return {"tex": ImageTexture.create_from_image(img), "slot": slot}
+
+func _normal(x: int, y: int) -> Vector3:
+	return Vector3(vh(x - 1, y) - vh(x + 1, y), 2.0, vh(x, y - 1) - vh(x, y + 1)).normalized()
+
+func _terrain() -> MeshInstance3D:
+	var at := _atlas()
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for y in H:
+		for x in W:
+			var c: Dictionary = world.cells[y * W + x]
+			var r: Rect2 = at.slot.get("%s:%d" % [c.set, c.idx], Rect2())
+			var u0 := r.position.x; var u1 := r.end.x; var v0 := r.position.y; var v1 := r.end.y
+			if c.flip: var tmp := u0; u0 = u1; u1 = tmp
+			var corners := [[x, y, u0, v0], [x + 1, y, u1, v0], [x + 1, y + 1, u1, v1], [x, y + 1, u0, v1]]
+			for idx in [0, 1, 2, 0, 2, 3]:
+				var p: Array = corners[idx]
+				st.set_normal(_normal(p[0], p[1]))
+				st.set_uv(Vector2(p[2], p[3]))
+				st.add_vertex(Vector3(p[0], vh(p[0], p[1]), p[1]))
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = at.tex
+	m.roughness = 1.0
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	mi.material_override = m
+	return mi
+
+func _water() -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for y in H:
+		for x in W:
+			var c: Dictionary = world.cells[y * W + x]
+			var lvl := -INF
+			for t in c.t:
+				if t == World.SEA: lvl = max(lvl, -0.05)
+				elif t == World.POND: lvl = max(lvl, 1.45)
+			if lvl == -INF: continue
+			for p in [[x, y], [x + 1, y], [x + 1, y + 1], [x, y], [x + 1, y + 1], [x, y + 1]]:
+				st.add_vertex(Vector3(p[0], lvl, p[1]))
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var m := ShaderMaterial.new(); m.shader = load("res://shaders/water.gdshader")
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+# ---------- props: one MultiMesh per kind ----------
+func _props() -> void:
+	var by := {}
+	for p in world.props:
+		if Assets.props.has(p.kind) and not p.k.get("flat", false):
+			var key: String = p.kind + "|" + p.get("gate", "")
+			if not by.has(key): by[key] = []
+			by[key].append(p)
+	for key in by:
+		var kind: String = key.split("|")[0]; var gate: String = key.split("|")[1]
+		var A: Dictionary = Assets.props[kind]
+		var list: Array = by[key]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		var q := QuadMesh.new()
+		var k: float = A.scale / T
+		q.size = Vector2(A.w * k, A.h * k)
+		q.center_offset = Vector3(0, (A.ay - A.h / 2.0) * k, 0)
+		mm.mesh = q
+		mm.instance_count = list.size()
+		for i in list.size():
+			var p: Dictionary = list[i]
+			mm.set_instance_transform(i, Transform3D(Basis(), to3(p.x, p.y)))
+			mm.set_instance_custom_data(i, Color(1.0 if p.flip else 0.0, 1.0, 0, 1))
+			if A.h * A.scale > 70: tall.append({"p": p, "A": A, "mm": mm, "i": i, "a": 1.0})
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		var m := ShaderMaterial.new(); m.shader = sprite_shader
+		m.set_shader_parameter("tex", A.tex); m.set_shader_parameter("white", A.tex)
+		mmi.material_override = m
+		add_child(mmi)
+		if gate != "":
+			if not gates.has(gate): gates[gate] = []
+			gates[gate].append(mmi)
+	# flat props (lotus, bones, flowers) lie on the ground as decals
+	for p in world.props:
+		if not (Assets.props.has(p.kind) and p.k.get("flat", false)): continue
+		var A: Dictionary = Assets.props[p.kind]
+		var mi := MeshInstance3D.new()
+		var pm := PlaneMesh.new(); var k: float = A.scale / T
+		pm.size = Vector2(A.w * k, A.h * k)
+		mi.mesh = pm
+		var m := StandardMaterial3D.new()
+		m.albedo_texture = A.tex; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR; m.alpha_scissor_threshold = 0.4
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.material_override = m
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = to3(p.x, p.y, 1.5)
+		add_child(mi)
+
+# ---------- camera, sun, environment ----------
+func _camera_and_light() -> void:
+	cam3 = Camera3D.new()
+	cam3.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam3.size = ORTHO
+	cam3.near = 0.1; cam3.far = 200
+	cam3.rotation = Vector3(-PITCH, 0, 0)
+	add_child(cam3)
+	cam3.make_current()
+	sun = DirectionalLight3D.new()
+	sun.rotation = Vector3(deg_to_rad(-58), deg_to_rad(-30), 0)
+	sun.light_color = Color(1.0, 0.92, 0.8)
+	sun.light_energy = 1.25
+	sun.shadow_enabled = true
+	sun.shadow_opacity = 0.75
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.directional_shadow_max_distance = 60
+	add_child(sun)
+	env = Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.32, 0.36, 0.5)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.62, 0.64, 0.8)
+	env.ambient_light_energy = 0.45
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.5, 0.52, 0.66)
+	env.fog_density = 0.002
+	env.glow_enabled = true
+	env.glow_intensity = 0.5
+	env.glow_bloom = 0.0
+	env.glow_hdr_threshold = 0.9
+	var we := WorldEnvironment.new(); we.environment = env
+	add_child(we)
+	for i in 6:
+		var l := OmniLight3D.new(); l.omni_range = 5; l.light_energy = 0; l.shadow_enabled = false
+		add_child(l); lamps.append(l)
+	RenderingServer.global_shader_parameter_set("sprite_tint", Color(1, 1, 1))
+
+# zone mood: brighter day in the town and on the beach, dusk in the cursed places
+func set_mood(zid: String, dt: float) -> void:
+	var dark: float = {"beach": 0.0, "town": 0.1, "ruin": 0.55, "pond": 0.4, "forest": 0.6, "house": 0.5}.get(zid, 0.2)
+	var k := 1 - exp(-2.0 * dt)
+	sun.light_energy = lerpf(sun.light_energy, 1.25 - dark * 0.7, k)
+	env.ambient_light_energy = lerpf(env.ambient_light_energy, 0.45 - dark * 0.15, k)
+	env.fog_density = lerpf(env.fog_density, 0.002 + dark * 0.01, k)
+	var tint := Color(1, 1, 1).lerp(Color(0.78, 0.74, 0.92), dark)
+	RenderingServer.global_shader_parameter_set("sprite_tint", tint)
+
+# place the nearest coloured lights (lanterns, spirits) on the omni light pool
+func set_lamps(lights: Array) -> void:
+	var c := Vector2(target.x * T, target.z * T)
+	var near := lights.filter(func(l): return l[3] != null)
+	near.sort_custom(func(a, b): return c.distance_squared_to(Vector2(a[0], a[1])) < c.distance_squared_to(Vector2(b[0], b[1])))
+	for i in lamps.size():
+		var l := lamps[i]
+		if i < near.size():
+			var L: Array = near[i]
+			l.position = to3(L[0], L[1] + 20, 40)
+			l.light_color = L[3]; l.light_energy = 0.8 * L[4]; l.omni_range = L[2] / T * 1.2
+		else: l.light_energy = 0
+
+func follow(px: float, py: float, shake := 0.0) -> void:
+	ppx = get_viewport().get_visible_rect().size.y / ORTHO / T
+	target = Vector3(px / T, height_px(px, py) / T, py / T)
+	var off := Vector3(0, sin(PITCH), cos(PITCH)) * 40.0
+	cam3.position = target + off + Vector3(randf() - 0.5, randf() - 0.5, 0) * shake / T
+
+# screen position of a ground point (or z pixels above it)
+func project(px: float, py: float, z := 0.0) -> Vector2:
+	return cam3.unproject_position(to3(px, py, z))
+
+# ---------- dynamic sprites (a pool of billboards refilled every frame) ----------
+func begin_frame() -> void:
+	used_n = 0
+
+func sprite(name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
+	var f := Assets.frame(name, anim, dir, t, o.get("fps", 10.0), o.get("loop", true))
+	if f.is_empty(): return
+	if used_n >= pool.size():
+		var n := MeshInstance3D.new()
+		n.mesh = quad
+		var mat := ShaderMaterial.new(); mat.shader = sprite_shader
+		n.material_override = mat
+		add_child(n)
+		pool.append(n)
+	var mi: MeshInstance3D = pool[used_n]
+	used_n += 1
+	mi.visible = true
+	var c: Dictionary = f.c
+	var m: ShaderMaterial = mi.material_override
+	var tw: float = c.tex.get_width(); var th: float = c.tex.get_height()
+	m.set_shader_parameter("tex", c.tex); m.set_shader_parameter("white", c.white)
+	m.set_shader_parameter("region", Vector4(f.src.position.x / tw, f.src.position.y / th, f.src.size.x / tw, f.src.size.y / th))
+	m.set_shader_parameter("flip", 1.0 if f.mirror else 0.0)
+	m.set_shader_parameter("flash", o.get("flash", 0.0))
+	var a: float = o.get("alpha", 1.0)
+	m.set_shader_parameter("alpha", a)
+	m.set_shader_parameter("dark", o.get("dark", 0.0))
+	var k: float = o.get("scale", 1.0) * c.scale / T
+	var sq: float = o.get("squash", 1.0)
+	mi.scale = Vector3(c.w * k, c.h * k * sq, 1)
+	# the quad is centred on the cell: lift it along the camera's up axis so the feet row sits on the ground (plus z hover)
+	var up := cam3.global_transform.basis.y
+	mi.position = to3(x, y) + up * ((c.foot - c.h / 2.0) * k * sq + o.get("z", 0.0) / T)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if a < 0.5 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+func end_frame() -> void:
+	for i in range(used_n, pool.size()):
+		pool[i].visible = false
+
+# tall props near the player fade (dithered) so the hero stays visible behind trees and roofs
+func fade_props(px: float, py: float) -> void:
+	for e in tall:
+		var p: Dictionary = e.p; var A: Dictionary = e.A; var ks: float = A.scale
+		var a := 1.0
+		if p.y > py and p.y - py < A.h * ks - 10 and abs(p.x - px) < A.bw * ks / 2 + 10: a = 0.5
+		if a != e.a:
+			e.a = a
+			e.mm.set_instance_custom_data(e.i, Color(1.0 if p.flip else 0.0, a, 0, 1))

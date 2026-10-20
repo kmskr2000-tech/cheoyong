@@ -32,27 +32,13 @@ static func sfx(n: String) -> void:
 	Sfx.sfx(n)
 
 # ---------- drawing helpers ----------
-static func draw_shadow(ci: CanvasItem, x: float, y: float, w: float) -> void:
-	Fx.ellipse(ci, Vector2(x, y), w, w * 0.36, Color(0, 0, 0.04, 0.32))
+# draws a character frame with its feet at (x, y) as an upright billboard in the 3D view (shadows come from the sun)
+static func draw_sprite(name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
+	G.game.view.sprite(name, anim, dir, t, x, y, o)
 
-# draws a character frame with its feet at (x, y)
-static func draw_sprite(ci: CanvasItem, name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
-	var f = Assets.frame(name, anim, dir, t, o.get("fps", 10.0), o.get("loop", true))
-	if f.is_empty(): return
-	var c: Dictionary = f.c
-	var k: float = o.get("scale", 1.0) * c.scale
-	var sx = k * (-1.0 if f.mirror else 1.0)
-	var sy: float = k * o.get("squash", 1.0)
-	ci.draw_set_transform(Vector2(x, y - o.get("z", 0.0)), 0, Vector2(sx, sy))
-	var dst = Rect2(-c.w / 2.0, -c.foot, c.w, c.h)
-	var alpha: float = o.get("alpha", 1.0)
-	var dark: float = o.get("dark", 0.0)
-	var mod = Color(1, 1, 1).lerp(Color(0.55, 0.42, 0.7), dark)
-	mod.a = alpha
-	ci.draw_texture_rect_region(c.tex, dst, f.src, mod)
-	var fl: float = o.get("flash", 0.0)
-	if fl > 0: ci.draw_texture_rect_region(c.white, dst, f.src, Color(1, 1, 1, min(1.0, fl) * alpha))
-	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
+# screen position of a ground point, z pixels above it (screen-aligned, like the sprites)
+static func sp(x: float, y: float, z := 0.0) -> Vector2:
+	return G.game.sp(x, y, z)
 
 static func head_y(name: String) -> float:
 	if not Assets.chars.has(name): return 60.0
@@ -359,11 +345,12 @@ class Player extends Actor:
 		return true
 
 	func draw(ci: CanvasItem) -> void:
-		var blink = iframe > 0 and state != "roll" and state != "ult" and int(iframe * 20) % 2 == 0
-		Ent.draw_shadow(ci, x, y, 16)
 		if mask != "":
 			var c: Color = m().color; c.a = 0.35 + sin(G.game.time * 3) * 0.1
-			Fx.ellipse(ci, Vector2(x, y), 20, 7, c, false, 2)
+			Fx.gellipse(ci, Vector2(x, y), 20, 11, c, false, 2)
+
+	func draw3d() -> void:
+		var blink = iframe > 0 and state != "roll" and state != "ult" and int(iframe * 20) % 2 == 0
 		var an = anim; var fps = 10.0; var loop = true; var d = dir
 		if state == "attack":
 			an = "attack"; fps = Assets.anim_len("cheoyong", "attack", d) / (0.42 if combo == 2 else 0.3); loop = false
@@ -372,7 +359,7 @@ class Player extends Actor:
 		elif state == "dead": an = "idle"
 		if an == "idle": fps = 6
 		var squash = 0.82 if state == "roll" else (max(0.5, 1 - state_t) if state == "dead" else 1.0)
-		Ent.draw_sprite(ci, "cheoyong", an, d, anim_t, x, y, {"fps": fps, "loop": loop, "flash": flash, "alpha": 0.45 if blink else 1.0, "squash": squash})
+		Ent.draw_sprite("cheoyong", an, d, anim_t, x, y, {"fps": fps, "loop": loop, "flash": flash, "alpha": 0.45 if blink else 1.0, "squash": squash})
 
 # ---------- projectiles ----------
 class SoundWave:
@@ -402,7 +389,7 @@ class SoundWave:
 			var pts = PackedVector2Array()
 			for j in 17:
 				var an = a - 0.6 + j / 16.0 * 1.2
-				pts.append(Vector2(x + cos(an) * rr, y - 30 + sin(an) * rr * 0.65))
+				pts.append(Ent.sp(x + cos(an) * rr, y + sin(an) * rr * 0.65, 30))
 			ci.draw_polyline(pts, Color(0.63, 0.88, 1.0, (1 - k) * (0.8 - i * 0.22)), 3 - i, true)
 
 class Orb:
@@ -431,12 +418,13 @@ class Orb:
 			if p.hurt(dmg, x, y): dead = true
 		if t > life or (G.world.solid_at(x, y) and kind != "shadow" and t > 0.2): dead = true
 	func draw(ci: CanvasItem) -> void:
-		Ent.draw_shadow(ci, x, y, 6)
+		Fx.gellipse(ci, Vector2(x, y), 7, 4, Color(0, 0, 0.04, 0.3))
 	func draw_glow(ci: CanvasItem) -> void:
 		var c: Color = Ent.ORB_COL[kind][0]
 		var dot: Texture2D = G.game.dot
-		ci.draw_texture_rect(dot, Rect2(x - r * 2.2, y - z - r * 2.2, r * 4.4, r * 4.4), false, c)
-		ci.draw_texture_rect(dot, Rect2(x - r, y - z - r, r * 2, r * 2), false, Color(1, 1, 1, 0.9))
+		var q = Ent.sp(x, y, z); var rr = r * G.game.view.ppx
+		ci.draw_texture_rect(dot, Rect2(q.x - rr * 2.2, q.y - rr * 2.2, rr * 4.4, rr * 4.4), false, c)
+		ci.draw_texture_rect(dot, Rect2(q.x - rr, q.y - rr, rr * 2, rr * 2), false, Color(1, 1, 1, 0.9))
 
 class Hazard:
 	var x: float; var y: float; var r: float
@@ -474,12 +462,12 @@ class Hazard:
 		var c = color
 		if t < warn:
 			c.a = 0.15 + 0.15 * sin(t * 20)
-			Fx.ellipse(ci, Vector2(x, y), r, r * 0.62, c)
+			Fx.gellipse(ci, Vector2(x, y), r, r * 0.62, c)
 			c.a = 0.6
-			Fx.ellipse(ci, Vector2(x, y), r * k, r * k * 0.62, c, false, 2)
+			Fx.gellipse(ci, Vector2(x, y), r * k, r * k * 0.62, c, false, 2)
 		elif kind == "cloud":
 			c.a = 0.35 * min(1.0, (warn + life - t) / 0.5)
-			Fx.ellipse(ci, Vector2(x, y), r, r * 0.62, c)
+			Fx.gellipse(ci, Vector2(x, y), r, r * 0.62, c)
 
 # ---------- yokai ----------
 class Enemy extends Actor:
@@ -651,10 +639,8 @@ class Enemy extends Actor:
 	func recover() -> void:
 		state = "recover"; state_t = 0; cool = 0.8 + randf() * 0.8
 
-	func draw(ci: CanvasItem) -> void:
-		var boss: bool = def.get("boss", false)
+	func draw3d() -> void:
 		var k = state_t if state == "kneel" else 0.0
-		Ent.draw_shadow(ci, x, y, 44.0 if boss else r * 1.6)
 		var tell = state == "windup" and int(state_t * 14) % 2 == 0
 		var an = anim; var fps = 9.0; var loop = true
 		if state == "strike": an = "attack"; fps = 14; loop = false
@@ -662,18 +648,23 @@ class Enemy extends Actor:
 		var fl: float = (sin(aura * 2.5) * 4 + 8) if def.get("float", false) else 0.0
 		var squash = (1 - min(0.28, k * 0.5)) if state == "kneel" else (1 - spawn_t if spawn_t > 0 else 1.0)
 		var a = alpha * (max(0.0, 1 - max(0.0, k - 0.9) * 1.6) if state == "kneel" else (1 - min(1.0, spawn_t) if spawn_t > 0 else 1.0))
-		Ent.draw_sprite(ci, sprite, an, dir, anim_t, x, y, {"fps": fps, "loop": loop, "flash": max(flash, 0.55 if tell else 0.0), "squash": squash, "z": fl, "alpha": a, "dark": 0.0 if state == "kneel" or calm else 0.15})
+		Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"fps": fps, "loop": loop, "flash": max(flash, 0.55 if tell else 0.0), "squash": squash, "z": fl, "alpha": a, "dark": 0.0 if state == "kneel" or calm else 0.15})
 		if state == "kneel" and k < 1:
-			Ent.draw_sprite(ci, sprite, an, dir, anim_t, x, y, {"flash": 1.0, "squash": squash, "alpha": sin(k * PI) * 0.7, "z": fl})
-		if not boss and hp < max_hp and state != "kneel":
-			var w = 30.0; var hy = y - Ent.head_y(sprite) - 10 - fl
-			ci.draw_rect(Rect2(x - w / 2 - 1, hy - 1, w + 2, 5), Color(0, 0, 0, 0.6))
-			ci.draw_rect(Rect2(x - w / 2, hy, w * hp / max_hp, 3), Color("#e04848"))
+			Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"flash": 1.0, "squash": squash, "alpha": sin(k * PI) * 0.7, "z": fl})
+
+	func draw(ci: CanvasItem) -> void:
+		var fl: float = (sin(aura * 2.5) * 4 + 8) if def.get("float", false) else 0.0
+		if not def.get("boss", false) and hp < max_hp and state != "kneel":
+			var q = Ent.sp(x, y, Ent.head_y(sprite) + 10 + fl)
+			var w = 30.0
+			ci.draw_rect(Rect2(q.x - w / 2 - 1, q.y - 1, w + 2, 5), Color(0, 0, 0, 0.6))
+			ci.draw_rect(Rect2(q.x - w / 2, q.y, w * hp / max_hp, 3), Color("#e04848"))
 	func draw_glow(ci: CanvasItem) -> void:
 		if state == "kneel" or calm or kneeling: return
 		var boss: bool = def.get("boss", false)
-		var rad = 90.0 if boss else 40.0
-		ci.draw_texture_rect(G.game.dot, Rect2(x - rad, y - 20 - rad * 0.8, rad * 2, rad * 1.6), false, Color(0.55, 0.24, 1.0, 0.16 + sin(aura * 3) * 0.05))
+		var rad = (90.0 if boss else 40.0) * G.game.view.ppx
+		var q = Ent.sp(x, y, 20)
+		ci.draw_texture_rect(G.game.dot, Rect2(q.x - rad, q.y - rad * 0.8, rad * 2, rad * 1.6), false, Color(0.55, 0.24, 1.0, 0.16 + sin(aura * 3) * 0.05))
 
 # ---------- NPC ----------
 class Npc extends Actor:
@@ -689,15 +680,15 @@ class Npc extends Actor:
 		var p = G.game.player
 		if dist_to(p) < 110: face_to(atan2(p.y - y, p.x - x))
 		else: dir = dir_home
+	func draw3d() -> void:
+		Ent.draw_sprite(sprite, "idle", dir, anim_t, x, y, {"alpha": alpha})
 	func draw(ci: CanvasItem) -> void:
-		Ent.draw_shadow(ci, x, y, 12.0 if sprite == "dog" else 15.0)
-		Ent.draw_sprite(ci, sprite, "idle", dir, anim_t, x, y, {"alpha": alpha})
 		if id == "dog": return
 		var f: Font = Assets.font_bold
-		var hy = y - Ent.head_y(sprite) - 8
+		var q = Ent.sp(x, y, Ent.head_y(sprite) + 8)
 		var w = f.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 12
-		ci.draw_rect(Rect2(x - w / 2, hy - 12, w, 16), Color(0.16, 0.09, 0.27, 0.72))
-		ci.draw_string(f, Vector2(x - w / 2 + 6, hy), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#efe4ff"))
+		ci.draw_rect(Rect2(q.x - w / 2, q.y - 12, w, 16), Color(0.16, 0.09, 0.27, 0.72))
+		ci.draw_string(f, Vector2(q.x - w / 2 + 6, q.y), name, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("#efe4ff"))
 
 # ---------- pickups ----------
 class Coin:
@@ -723,8 +714,8 @@ class Coin:
 		if t > 0.4 and d < 20: dead = true; p.coins += v; Ent.sfx("coin")
 		if t > 30: dead = true
 	func draw(ci: CanvasItem) -> void:
-		Ent.draw_shadow(ci, x, y, 4)
+		Fx.gellipse(ci, Vector2(x, y), 5, 3, Color(0, 0, 0.04, 0.3))
 		var w: float = max(1.0, abs(cos(t * 6)) * 4)
-		var cy = y - z - 4
-		ci.draw_rect(Rect2(x - w - 1, cy - 5, w * 2 + 2, 10), Color("#7a5a10"))
-		ci.draw_rect(Rect2(x - w, cy - 4, w * 2, 8), Color("#ffd25a"))
+		var q = Ent.sp(x, y, z + 4)
+		ci.draw_rect(Rect2(q.x - w - 1, q.y - 5, w * 2 + 2, 10), Color("#7a5a10"))
+		ci.draw_rect(Rect2(q.x - w, q.y - 4, w * 2, 8), Color("#ffd25a"))
