@@ -27,7 +27,7 @@ G.assets = (() => {
     for (const [n, t] of Object.entries(man.tiles || {})) add(loadImg(t.file).then((img) => {
       const byCorners = {};
       t.tiles.forEach((c, i) => { (byCorners[c] = byCorners[c] || []).push(i); });
-      A.tiles[n] = { img, byCorners };
+      A.tiles[n] = { img, byCorners, size: t.size || 32 };
     }));
     for (const [n, p] of Object.entries(man.props || {})) add(loadImg(p.file).then((img) => { A.props[n] = { ...p, img }; }));
     for (const [n, f] of Object.entries(man.images || {})) add(loadImg(f).then((img) => { A.images[n] = img; }));

@@ -22,8 +22,13 @@ def bbox_bottom(im):
     return b[3] if b else im.height
 
 
+# chibi cast is drawn at roughly half size, smoothed, like a prerendered 3D sprite
+CHIBI_SCALE = {"dokchief": 0.62, "gumiho": 0.6, "imugi": 0.62, "yeoksin": 0.6, "dog": 0.42, "child": 0.5, "imp": 0.55}
+
+
 def pack_char(name):
-    base = os.path.join(RAW, "chars", name)
+    chibi = os.path.isdir(os.path.join(RAW, "chibi", name))
+    base = os.path.join(RAW, "chibi" if chibi else "chars", name)
     meta_p = os.path.join(base, "metadata.json")
     if not os.path.exists(meta_p):
         return None
@@ -77,6 +82,7 @@ def pack_char(name):
     b = south.getbbox()
     off = (cell - south.width) // 2
     return {"file": f"chars/{name}.png", "w": cell, "h": cell, "foot": idle_bottom["south"],
+            "scale": CHIBI_SCALE.get(name, 0.5) if chibi else 1,
             "top": b[1] + off, "cx": (b[0] + b[2]) // 2 + off, "bw": b[2] - b[0], "anims": anims}
 
 
@@ -96,12 +102,14 @@ def night_grade(img, sat=0.72, bright=0.8, tint=(0.92, 0.96, 1.12)):
 
 
 def pack_tiles(name):
-    p = os.path.join(RAW, "tiles", name + ".json")
+    p64 = os.path.join(RAW, "tiles64", name + ".json")
+    painted = os.path.exists(p64)
+    p = p64 if painted else os.path.join(RAW, "tiles", name + ".json")
     if not os.path.exists(p):
         return None
     t = json.load(open(p))["tileset"]
     tiles = t["tiles"]
-    size = 32
+    size = 64 if painted else 32
     sheet = Image.new("RGBA", (4 * size, ((len(tiles) + 3) // 4) * size))
     corners = []
     for i, tl in enumerate(tiles):
@@ -111,10 +119,11 @@ def pack_tiles(name):
         sheet.alpha_composite(img, ((i % 4) * size, (i // 4) * size))
         c = tl["corners"]
         corners.append("".join("1" if c[k] == "upper" else "0" for k in ("NW", "NE", "SW", "SE")))
-    sheet = night_grade(sheet)
+    if not painted:
+        sheet = night_grade(sheet)
     os.makedirs(os.path.join(OUT, "tiles"), exist_ok=True)
     sheet.save(os.path.join(OUT, "tiles", name + ".png"), optimize=True)
-    return {"file": f"tiles/{name}.png", "tiles": corners}
+    return {"file": f"tiles/{name}.png", "tiles": corners, "size": size}
 
 
 def clear_border_bg(im, tol=34):
@@ -153,18 +162,22 @@ def pack_prop(path):
 
 def main():
     man = {"chars": {}, "tiles": {}, "props": {}, "images": {}}
-    for d in sorted(glob.glob(os.path.join(RAW, "chars", "*"))):
-        if os.path.isdir(d):
-            c = pack_char(os.path.basename(d))
-            if c:
-                man["chars"][os.path.basename(d)] = c
-    for p in sorted(glob.glob(os.path.join(RAW, "tiles", "*.json"))):
+    names = {os.path.basename(d) for d in glob.glob(os.path.join(RAW, "chars", "*")) + glob.glob(os.path.join(RAW, "chibi", "*")) if os.path.isdir(d)}
+    for n in sorted(names):
+        c = pack_char(n)
+        if c:
+            man["chars"][n] = c
+    for p in sorted(set(glob.glob(os.path.join(RAW, "tiles", "*.json")))):
         n = os.path.splitext(os.path.basename(p))[0]
         t = pack_tiles(n)
         if t:
             man["tiles"][n] = t
-    for p in sorted(glob.glob(os.path.join(RAW, "props", "*.png"))):
+    props = {os.path.basename(p): p for p in glob.glob(os.path.join(RAW, "props", "*.png"))}
+    props.update({os.path.basename(p): p for p in glob.glob(os.path.join(RAW, "props2", "*.png"))})
+    for p in sorted(props.values()):
         n, v = pack_prop(p)
+        if v and "props2" in p:
+            v["scale"] = 0.5
         if v:
             man["props"][n] = v
     for p in sorted(glob.glob(os.path.join(RAW, "images", "*.png"))):

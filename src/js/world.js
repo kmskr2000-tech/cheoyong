@@ -359,16 +359,17 @@
       if (c) return c;
       const S = 512, n = S / T;
       c = document.createElement('canvas'); c.width = S; c.height = S;
-      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
         const tx = cx * n + x, ty = cy * n + y;
         if (tx >= W || ty >= H) continue;
         const ct = cellTile[ty * W + tx];
         const ts = G.assets.tiles[ct.set];
         if (ts && ct.idx != null) {
-          const sx = (ct.idx % 4) * T, sy = Math.floor(ct.idx / 4) * T;
-          if (ct.flip) { g.save(); g.translate(x * T + T, y * T); g.scale(-1, 1); g.drawImage(ts.img, sx, sy, T, T, 0, 0, T, T); g.restore(); }
-          else g.drawImage(ts.img, sx, sy, T, T, x * T, y * T, T, T);
+          const S2 = ts.size || T;
+          const sx = (ct.idx % 4) * S2, sy = Math.floor(ct.idx / 4) * S2;
+          if (ct.flip) { g.save(); g.translate(x * T + T, y * T); g.scale(-1, 1); g.drawImage(ts.img, sx, sy, S2, S2, 0, 0, T, T); g.restore(); }
+          else g.drawImage(ts.img, sx, sy, S2, S2, x * T, y * T, T, T);
         } else {
           g.fillStyle = ['#13306a', '#d9c79a', '#2f5a2a', '#7a5b3a', '#77777a', '#2a3a22', '#244a3a', '#5a5550', '#9a7f5a'][ct.t[3]];
           g.fillRect(x * T, y * T, T, T);

@@ -376,6 +376,7 @@
       const inView = (x, y, m = 260) => x > cam.x - m && x < cam.x + vw + m && y > cam.y - 40 && y < cam.y + vh + m;
       for (const pr of props) if (pr.k.flat && inView(pr.x, pr.y)) this.drawProp(ctx, cam, pr);
       for (const h of this.hazards) h.draw(ctx, cam);
+      fx.drawGround(ctx, cam);
       if (this.arena) {
         const ar = this.arena;
         ctx.strokeStyle = 'rgba(160,80,255,0.35)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
@@ -396,17 +397,19 @@
           // fade tall props that hide the player
           const A = G.assets.props[o.kind];
           let alpha = 1;
-          if (A && o.y > p.y && o.y - p.y < A.h - 10 && Math.abs(o.x - p.x) < A.bw / 2 + 10 && A.h > 70) alpha = 0.55;
+          const ks = A ? A.scale || 1 : 1;
+          if (A && o.y > p.y && o.y - p.y < A.h * ks - 10 && Math.abs(o.x - p.x) < (A.bw * ks) / 2 + 10 && A.h * ks > 70) alpha = 0.55;
           this.drawProp(ctx, cam, o, alpha);
         } else o.draw(ctx, cam);
       }
       fx.drawWorld(ctx, cam);
       this.drawLights(ctx, cam, vw, vh);
+      ctx.globalCompositeOperation = 'soft-light'; ctx.fillStyle = 'rgba(255,186,110,0.35)'; ctx.fillRect(0, 0, vw, vh); ctx.globalCompositeOperation = 'source-over';
       fx.drawTexts(ctx, cam);
       if (!G.ui.dialog && !this.cinema && G.state === 'play') G.ui.drawGuide(ctx, cam, vw, vh);
       // vignette
       const vg = ctx.createRadialGradient(vw / 2, vh / 2, vh * 0.35, vw / 2, vh / 2, vw * 0.7);
-      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,8,0.55)');
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(20,10,20,0.32)');
       ctx.fillStyle = vg; ctx.fillRect(0, 0, vw, vh);
       if (p.hp < p.maxHp * 0.3 && p.state !== 'dead') {
         ctx.fillStyle = `rgba(160,0,20,${0.12 + Math.sin(this.time * 5) * 0.06})`; ctx.fillRect(0, 0, vw, vh);
@@ -430,8 +433,11 @@
         ctx.beginPath(); ctx.ellipse(x, y - 2, pr.k.shadow, pr.k.shadow * 0.32, 0, 0, Math.PI * 2); ctx.fill();
       }
       ctx.globalAlpha = alpha;
-      if (pr.flipX) { ctx.save(); ctx.translate(x, y); ctx.scale(-1, 1); ctx.drawImage(A.img, -A.ax, -A.ay); ctx.restore(); }
-      else ctx.drawImage(A.img, x - A.ax, y - A.ay);
+      const k = A.scale || 1;
+      ctx.save(); ctx.translate(x, y); ctx.scale(pr.flipX ? -k : k, k);
+      if (k < 1) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; }
+      ctx.drawImage(A.img, -A.ax, -A.ay);
+      ctx.restore();
       ctx.globalAlpha = 1;
     },
     drawGates(ctx, cam) {
@@ -455,10 +461,10 @@
       if (L.width !== lw || L.height !== lh) { L.width = lw; L.height = lh; }
       const g = L.getContext('2d');
       const zid = this.zone ? this.zone.id : 'beach';
-      const dark = { beach: 0.56, town: 0.58, ruin: 0.7, pond: 0.66, forest: 0.72, house: 0.7 }[zid] ?? 0.6;
+      const dark = { beach: 0.08, town: 0.12, ruin: 0.34, pond: 0.26, forest: 0.36, house: 0.3 }[zid] ?? 0.15;
       g.globalCompositeOperation = 'source-over';
       g.clearRect(0, 0, lw, lh);
-      g.fillStyle = `rgba(6,8,30,${dark})`; g.fillRect(0, 0, lw, lh);
+      g.fillStyle = `rgba(34,20,52,${dark})`; g.fillRect(0, 0, lw, lh);
       g.globalCompositeOperation = 'destination-out';
       const lights = [];
       const p = this.player;
