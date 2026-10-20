@@ -78,13 +78,23 @@ static func ellipse(ci: CanvasItem, c: Vector2, rx: float, ry: float, col: Color
 	if filled: ci.draw_colored_polygon(pts, col)
 	else: ci.draw_polyline(pts, col, width, true)
 
+# an ellipse lying on the terrain (game pixels), drawn in screen space through the 3D view
+static func gellipse(ci: CanvasItem, c: Vector2, rx: float, ry: float, col: Color, filled := true, width := 2.0) -> void:
+	var pts = PackedVector2Array()
+	var n = 28
+	for i in n + 1:
+		var a = i / float(n) * TAU
+		pts.append(G.game.sp(c.x + cos(a) * rx, c.y + sin(a) * ry))
+	if filled: ci.draw_colored_polygon(pts, col)
+	else: ci.draw_polyline(pts, col, width, true)
+
 # additive layer under sprites: rune circles and expanding rings
 func draw_ground(ci: CanvasItem) -> void:
 	for r in rings:
 		var k: float = r.t / r.life
 		var rad: float = lerpf(r.r0, r.r1, G.ease_out(k))
 		var c: Color = r.color; c.a = 1.0 - k
-		ellipse(ci, Vector2(r.x, r.y), rad, rad * 0.62, c, false, r.w)
+		gellipse(ci, Vector2(r.x, r.y), rad, rad * 0.62, c, false, r.w)
 	for c in circles:
 		var k: float = c.t / c.life
 		var a: float = min(1.0, k * 6) * (1 - k * k)
@@ -92,17 +102,17 @@ func draw_ground(ci: CanvasItem) -> void:
 		var col: Color = c.color; col.a = a
 		var ctr = Vector2(c.x, c.y)
 		var fill = col; fill.a = a * 0.18
-		ellipse(ci, ctr, r, r * 0.6, fill)
-		ellipse(ci, ctr, r, r * 0.6, col, false, 2.0)
-		ellipse(ci, ctr, r * 0.78, r * 0.78 * 0.6, col, false, 1.2)
+		gellipse(ci, ctr, r, r * 0.6, fill)
+		gellipse(ci, ctr, r, r * 0.6, col, false, 2.0)
+		gellipse(ci, ctr, r * 0.78, r * 0.78 * 0.6, col, false, 1.2)
 		var rot: float = c.t * 1.6
 		for j in 12:
 			var an = rot + j / 12.0 * TAU
-			ci.draw_line(ctr + Vector2(cos(an) * r * 0.8, sin(an) * r * 0.8 * 0.6), ctr + Vector2(cos(an + 0.15) * r * 0.97, sin(an + 0.15) * r * 0.97 * 0.6), col, 1.2, true)
+			ci.draw_line(G.game.sp(ctr.x + cos(an) * r * 0.8, ctr.y + sin(an) * r * 0.8 * 0.6), G.game.sp(ctr.x + cos(an + 0.15) * r * 0.97, ctr.y + sin(an + 0.15) * r * 0.97 * 0.6), col, 1.2, true)
 		var star = PackedVector2Array()
 		for j in 6:
 			var an = -c.t * 1.6 + (j * 4 * PI) / 5 - PI / 2
-			star.append(ctr + Vector2(cos(an) * r * 0.62, sin(an) * r * 0.62 * 0.6))
+			star.append(G.game.sp(ctr.x + cos(an) * r * 0.62, ctr.y + sin(an) * r * 0.62 * 0.6))
 		ci.draw_polyline(star, col, 1.2, true)
 
 # particles: glow ones on the additive layer, the rest on the normal layer
@@ -112,8 +122,8 @@ func draw_parts(ci: CanvasItem, glow: bool, dot: Texture2D) -> void:
 		var k: float = p.t / p.life
 		var col: Color = p.color
 		col.a = (1 - k) * 0.35 if p.smoke else 1 - k * k
-		var s: float = p.size * (1 + k) if p.smoke else p.size
-		var pos = Vector2(p.x, p.y - p.z)
+		var s: float = (p.size * (1 + k) if p.smoke else p.size) * G.game.view.ppx
+		var pos: Vector2 = G.game.sp(p.x, p.y, p.z)
 		if p.soul or p.smoke:
 			ci.draw_texture_rect(dot, Rect2(pos - Vector2(s, s) * 1.6, Vector2(s, s) * 3.2), false, col)
 		else:
@@ -125,7 +135,7 @@ func draw_texts(ci: CanvasItem, font: Font) -> void:
 		var pop: float = 1 + (0.12 - k) * 5 if k < 0.12 else 1.0
 		var size = int(round(t.size * 1.25 * pop))
 		var col: Color = t.color; col.a = 1 - k * k
-		var pos = Vector2(t.x, t.y - 26 * G.ease_out(k))
+		var pos: Vector2 = G.game.sp(t.x, t.y, 26 * G.ease_out(k))
 		var w = font.get_string_size(t.s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 		var p = pos - Vector2(w / 2, 0)
 		ci.draw_string_outline(font, p, t.s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, max(3, size / 5), Color(0.08, 0.04, 0.04, col.a))
