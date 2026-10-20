@@ -1,3 +1,6 @@
 dist/
 tests/out/
 __pycache__/
+build/
+godot/.godot/
+*.import
