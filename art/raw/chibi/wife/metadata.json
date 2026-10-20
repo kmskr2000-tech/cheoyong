@@ -1,0 +1,36 @@
+{
+  "group_id": "9e514043-f55d-472b-92e8-2a1614eba894",
+  "states": [
+    {
+      "character": {
+        "id": "4f5d2013-5f5b-49e3-8552-7326d2c07089",
+        "name": "Idle",
+        "prompt": "chibi 3D rendered mobile MMORPG character, big head small body, smooth cel shading, soft warm lighting, no outline, Korean Silla folklore, young Silla noblewoman, hair in an elegant bun with a gold hairpin, pale pink jeogori and long white skirt",
+        "size": {
+          "width": 128,
+          "height": 128
+        },
+        "template_id": "mannequin",
+        "directions": 8,
+        "view": "high top-down",
+        "created_at": "2026-10-20T10:40:25.726878+00:00"
+      },
+      "folder": "Idle",
+      "frames": {
+        "rotations": {
+          "south": "Idle/rotations/south.png",
+          "south-east": "Idle/rotations/south-east.png",
+          "east": "Idle/rotations/east.png",
+          "north-east": "Idle/rotations/north-east.png",
+          "north": "Idle/rotations/north.png",
+          "north-west": "Idle/rotations/north-west.png",
+          "west": "Idle/rotations/west.png",
+          "south-west": "Idle/rotations/south-west.png"
+        },
+        "animations": {}
+      }
+    }
+  ],
+  "export_version": "3.1",
+  "export_date": "2026-10-20T10:44:32.495336"
+}

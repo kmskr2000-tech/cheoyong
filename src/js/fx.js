@@ -4,6 +4,7 @@ G.fx = (() => {
   const parts = [];
   const texts = [];
   const rings = [];
+  const circles = [];
   const F = { parts, texts, rings, shake: 0, flash: 0, flashColor: '#fff' };
 
   F.add = (p) => { parts.push({ life: 1, t: 0, vx: 0, vy: 0, vz: 0, z: 0, g: 0, size: 2, color: '#fff', glow: false, drag: 0, ...p }); };
@@ -25,6 +26,35 @@ G.fx = (() => {
   };
   F.text = (x, y, s, color = '#fff', size = 16) => texts.push({ x, y, s, color, size, t: 0, life: 0.9 });
   F.ring = (x, y, r0, r1, life, color = '#9fe0ff', w = 3) => rings.push({ x, y, r0, r1, life, t: 0, color, w });
+  // glowing rune circle on the ground (skills, purification)
+  F.circle = (x, y, r, color = '#7ff0ff', life = 0.8) => circles.push({ x, y, r, color, life, t: 0 });
+  F.drawGround = (ctx, cam) => {
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = circles.length - 1; i >= 0; i--) {
+      const c = circles[i]; c.t += 1 / 60;
+      if (c.t > c.life) { circles.splice(i, 1); continue; }
+      const k = c.t / c.life, a = Math.min(1, k * 6) * (1 - k * k);
+      const x = c.x - cam.x, y = c.y - cam.y, r = c.r * (0.7 + 0.3 * G.easeOut(Math.min(1, k * 3)));
+      ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.6);
+      const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.7, c.color + '33'); g.addColorStop(1, c.color + '00');
+      ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = c.color; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2); ctx.stroke();
+      ctx.rotate(c.t * 1.6);
+      for (let j = 0; j < 12; j++) { // rune ticks between the rings
+        const an = (j / 12) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(Math.cos(an) * r * 0.8, Math.sin(an) * r * 0.8); ctx.lineTo(Math.cos(an + 0.15) * r * 0.97, Math.sin(an + 0.15) * r * 0.97); ctx.stroke();
+      }
+      ctx.rotate(-c.t * 3.2);
+      ctx.beginPath(); // inner star
+      for (let j = 0; j <= 5; j++) { const an = (j * 4 * Math.PI) / 5 - Math.PI / 2; const px = Math.cos(an) * r * 0.62, py = Math.sin(an) * r * 0.62; j ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  };
   F.screenShake = (v) => { F.shake = Math.max(F.shake, v); };
   F.screenFlash = (v, color = '#fff') => { F.flash = Math.max(F.flash, v); F.flashColor = color; };
 
@@ -66,17 +96,20 @@ G.fx = (() => {
     ctx.globalAlpha = 1;
   };
   F.drawTexts = (ctx, cam) => {
-    ctx.textAlign = 'center';
+    ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     for (const t of texts) {
       const k = t.t / t.life;
+      // pop in, float up, fade
+      const pop = k < 0.12 ? 1 + (0.12 - k) * 5 : 1;
       ctx.globalAlpha = 1 - k * k;
-      ctx.font = `bold ${t.size}px "Noto Sans KR", sans-serif`;
-      const y = t.y - cam.y - 20 * G.easeOut(k);
-      ctx.fillStyle = '#000'; ctx.fillText(t.s, t.x - cam.x + 1, y + 1);
-      ctx.fillStyle = t.color; ctx.fillText(t.s, t.x - cam.x, y);
+      const size = Math.round(t.size * 1.25 * pop);
+      ctx.font = `italic 900 ${size}px "Noto Sans KR", sans-serif`;
+      const y = t.y - cam.y - 26 * G.easeOut(k), x = t.x - cam.x;
+      ctx.lineWidth = Math.max(3, size / 5); ctx.strokeStyle = 'rgba(20,10,10,0.9)'; ctx.strokeText(t.s, x, y);
+      ctx.fillStyle = t.color; ctx.fillText(t.s, x, y);
     }
     ctx.globalAlpha = 1;
   };
-  F.clear = () => { parts.length = 0; texts.length = 0; rings.length = 0; };
+  F.clear = () => { circles.length = 0; parts.length = 0; texts.length = 0; rings.length = 0; };
   return F;
 })();

@@ -208,6 +208,7 @@
     palanquin: { foot: [-48, -30, 96, 28], shadow: 46 }, altar: { foot: [-26, -18, 52, 16], shadow: 20, light: [0, -20, 110, '#7fd0ff', 0.7] },
     lotus: { foot: null, shadow: 0, flat: true }, cart: { foot: [-40, -26, 80, 24], shadow: 36 },
     bones: { foot: null, shadow: 0, flat: true },
+    tuft: { foot: null, shadow: 0 }, tuft2: { foot: null, shadow: 0 }, flowers: { foot: null, shadow: 0, flat: true }, pebbles: { foot: null, shadow: 0, flat: true },
   };
   const props = [];
   const addProp = (kind, tx, ty, opt = {}) => {
@@ -277,6 +278,14 @@
       const z = cellZone[y * W + x];
       if (!z) continue;
       if (onRoad(x, y)) continue;
+      // ground clutter like a painted MMORPG field: dry grass, green tufts, flowers, pebbles
+      const hc = G.hash2(x, y, 55);
+      if (z.id !== 'town' && t.every((v) => v === GRASS || v === FOREST || v === RUIN || v === YARD)) {
+        const ox = G.hash2(x, y, 56), oy = G.hash2(x, y, 57);
+        const dryZone = z.id === 'ruin' || z.id === 'beach' || z.id === 'house';
+        if (hc < 0.07) addProp(dryZone && hc < 0.03 ? 'tuft' : 'tuft2', x + ox, y + oy + 0.4, { flipX: ox > 0.5 });
+        else if (hc < 0.095 && z.id !== 'ruin') addProp('flowers', x + ox, y + oy);
+      }
       if (z.id === 'forest' && h < 0.085 && !nearPoint(x, y, [[34, 52], [18, 72], [26, 60]], 5)) addProp(h < 0.06 ? 'pine' : 'pine2', x + 0.5, y + 1, { flipX: h < 0.03 });
       else if (z.id === 'forest' && h < 0.11) addProp('bush', x + 0.5, y + 1);
       else if (z.id === 'beach' && h < 0.006) addProp('rock', x + 0.5, y + 1);
@@ -359,16 +368,17 @@
       if (c) return c;
       const S = 512, n = S / T;
       c = document.createElement('canvas'); c.width = S; c.height = S;
-      const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+      const g = c.getContext('2d'); g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
       for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
         const tx = cx * n + x, ty = cy * n + y;
         if (tx >= W || ty >= H) continue;
         const ct = cellTile[ty * W + tx];
         const ts = G.assets.tiles[ct.set];
         if (ts && ct.idx != null) {
-          const sx = (ct.idx % 4) * T, sy = Math.floor(ct.idx / 4) * T;
-          if (ct.flip) { g.save(); g.translate(x * T + T, y * T); g.scale(-1, 1); g.drawImage(ts.img, sx, sy, T, T, 0, 0, T, T); g.restore(); }
-          else g.drawImage(ts.img, sx, sy, T, T, x * T, y * T, T, T);
+          const S2 = ts.size || T;
+          const sx = (ct.idx % 4) * S2, sy = Math.floor(ct.idx / 4) * S2;
+          if (ct.flip) { g.save(); g.translate(x * T + T, y * T); g.scale(-1, 1); g.drawImage(ts.img, sx, sy, S2, S2, 0, 0, T, T); g.restore(); }
+          else g.drawImage(ts.img, sx, sy, S2, S2, x * T, y * T, T, T);
         } else {
           g.fillStyle = ['#13306a', '#d9c79a', '#2f5a2a', '#7a5b3a', '#77777a', '#2a3a22', '#244a3a', '#5a5550', '#9a7f5a'][ct.t[3]];
           g.fillRect(x * T, y * T, T, T);

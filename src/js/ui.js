@@ -82,21 +82,23 @@ G.ui = (() => {
   function layoutButtons(vw, vh) {
     const p = G.game.player, f = G.game.flags;
     const B = [];
-    const R = 44;
-    const bx = vw - 78, by = vh - 78;
+    // skill ring on the right, like a mobile MMORPG: big attack button, skills around it
+    const bx = vw - 70, by = vh - 70;
     if (f.has_attack) {
-      B.push({ action: 'attack', x: bx, y: by, r: R, label: '소매', icon: 'attack' });
-      B.push({ action: 'roll', x: bx - 108, y: by + 22, r: 30, label: '구르기', icon: 'roll' });
+      B.push({ action: 'attack', x: bx, y: by, r: 46, label: '', icon: 'attack', main: true });
+      B.push({ action: 'roll', x: bx - 4, y: by - 112, r: 24, label: '', icon: 'roll', key: 'K' });
     }
-    const sk = [['skill1', bx - 92, by - 70], ['skill2', bx - 34, by - 112], ['skill3', bx + 34, by - 132]];
-    for (const [k, x, y] of sk) if (p.skills[k]) B.push({ action: k, x, y, r: 28, label: G.SKILLS[k].name, icon: k, cd: p.cd[k] / G.SKILLS[k].cd, gi: G.SKILLS[k].gi });
-    if (f.has_ult) B.push({ action: 'ult', x: bx - 170, y: by - 40, r: 30, label: '처용가', icon: 'ult', fill: p.heung / 100 });
-    if (G.game.interactTarget) B.push({ action: 'interact', x: bx - 4, y: by - 170 - (p.skills.skill3 ? 40 : 0), r: 32, label: G.game.interactTarget.label || '말걸기', icon: 'talk' });
-    // top-right small buttons
-    B.push({ action: 'menu', x: vw - 30, y: 30, r: 20, label: '', icon: 'menu', small: true });
-    if (p.masks.length > 1) B.push({ action: 'mask', x: vw - 76, y: 30, r: 20, label: '', icon: 'mask', small: true });
-    B.push({ action: 'item1', x: vw - 30, y: 82, r: 20, label: '', icon: 'yakgwa', count: p.items.yakgwa, small: true });
-    B.push({ action: 'item2', x: vw - 76, y: 82, r: 20, label: '', icon: 'sikhye', count: p.items.sikhye, small: true });
+    const sk = [['skill1', bx - 104, by + 6, 'U'], ['skill2', bx - 92, by - 62, 'I'], ['skill3', bx - 52, by - 104, 'O']];
+    for (const [k, x, y, key] of sk) if (p.skills[k]) B.push({ action: k, x, y, r: 27, icon: k, key, cd: p.cd[k] / G.SKILLS[k].cd, gi: G.SKILLS[k].gi, color: { skill1: '#58d0ff', skill2: '#ff7ad0', skill3: '#3a9cff' }[k] });
+    if (f.has_ult) B.push({ action: 'ult', x: bx - 170, y: by + 4, r: 31, icon: 'ult', key: 'L', fill: p.heung / 100, color: '#ffc85a' });
+    if (G.game.interactTarget) B.push({ action: 'interact', x: bx - 150, y: by - 92, r: 30, label: G.game.interactTarget.label || '말걸기', icon: 'talk', key: 'E' });
+    // top-right icon row
+    B.push({ action: 'menu', x: vw - 28, y: 28, r: 19, icon: 'menu', small: true });
+    if (p.masks.length > 1) B.push({ action: 'mask', x: vw - 72, y: 28, r: 19, icon: 'mask', small: true, key: 'M' });
+    // quick slots under the health bar
+    const qx = vw / 2 + 60, qy = vh - 26;
+    B.push({ action: 'item1', x: qx, y: qy, r: 18, icon: 'yakgwa', count: p.items.yakgwa, slot: true, key: '1' });
+    B.push({ action: 'item2', x: qx + 44, y: qy, r: 18, icon: 'sikhye', count: p.items.sikhye, slot: true, key: '2' });
     return B;
   }
 
@@ -145,128 +147,153 @@ G.ui = (() => {
     ctx.restore();
   }
 
+  function ring(ctx, x, y, r, glow) {
+    // dark lacquer disc with a bronze rim
+    const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.4, r * 0.1, x, y, r);
+    g.addColorStop(0, 'rgba(70,64,84,0.92)'); g.addColorStop(1, 'rgba(18,16,26,0.92)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = glow ? '#ffe2a0' : '#8a7652';
+    ctx.beginPath(); ctx.arc(x, y, r - 1, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,240,200,0.25)';
+    ctx.beginPath(); ctx.arc(x, y, r - 4, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  }
+
   function drawButtons(ctx, vw, vh) {
     const B = layoutButtons(vw, vh);
     G.input.buttons = B;
     const touch = isTouch();
-    const t = G.game.time;
+    const t = G.game.time, p = G.game.player;
     for (const b of B) {
       const glow = U.glow === b.action;
-      if (!touch && !b.small && !glow) continue;
       ctx.save();
-      if (!touch) ctx.globalAlpha = 0.85;
-      // glow: one button at a time
       if (glow) {
         const pulse = 0.5 + 0.5 * Math.sin(t * 6);
         ctx.globalCompositeOperation = 'lighter';
         const g = ctx.createRadialGradient(b.x, b.y, b.r * 0.6, b.x, b.y, b.r * 1.9);
-        g.addColorStop(0, `rgba(255,220,140,${0.55 + pulse * 0.35})`); g.addColorStop(1, 'rgba(255,200,100,0)');
+        g.addColorStop(0, `rgba(255,220,140,${0.5 + pulse * 0.35})`); g.addColorStop(1, 'rgba(255,200,100,0)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 1.9, 0, Math.PI * 2); ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
       }
-      ctx.fillStyle = b.action === 'ult' && b.fill >= 1 ? 'rgba(120,40,60,0.75)' : 'rgba(14,16,34,0.62)';
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+      if (b.slot) {
+        ctx.fillStyle = 'rgba(16,14,22,0.75)'; ctx.fillRect(b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+        ctx.strokeStyle = glow ? '#ffe2a0' : 'rgba(150,130,90,0.8)'; ctx.lineWidth = 1.5; ctx.strokeRect(b.x - b.r + 0.5, b.y - b.r + 0.5, b.r * 2 - 1, b.r * 2 - 1);
+      } else ring(ctx, b.x, b.y, b.r, glow);
+      // colored skill glow inside the ring
+      if (b.color) {
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 0.9);
+        g.addColorStop(0, b.color + 'cc'); g.addColorStop(1, b.color + '00');
+        ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r * 0.9, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+      }
       if (b.fill != null) {
         ctx.strokeStyle = b.fill >= 1 ? '#ffd27a' : '#ff9ad0'; ctx.lineWidth = 4;
-        ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * b.fill); ctx.stroke();
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * b.fill); ctx.stroke();
       }
-      ctx.strokeStyle = glow ? '#ffe2a0' : 'rgba(214,180,110,0.8)'; ctx.lineWidth = glow ? 3 : 2;
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
-      if (b.cd > 0) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * b.cd); ctx.fill(); }
-      if (b.gi && G.game.player.gi < b.gi) { ctx.fillStyle = 'rgba(0,0,30,0.5)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); }
-      drawIcon(ctx, b.icon, b.x, b.y, b.r * 0.62);
-      if (b.label && touch) {
+      if (b.cd > 0) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, b.r - 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * b.cd); ctx.fill();
+        ctx.font = `bold 13px ${SANS}`; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+        ctx.fillText((b.cd * G.SKILLS[b.action].cd).toFixed(1), b.x, b.y + 5);
+      } else drawIcon(ctx, b.icon, b.x, b.y, b.r * (b.main ? 0.62 : 0.58));
+      if (b.gi && p.gi < b.gi) { ctx.fillStyle = 'rgba(0,10,40,0.55)'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r - 2, 0, Math.PI * 2); ctx.fill(); }
+      if (b.label) {
         ctx.font = `bold 11px ${SANS}`; ctx.textAlign = 'center';
-        ctx.fillStyle = '#000'; ctx.fillText(b.label, b.x + 1, b.y + b.r + 13);
-        ctx.fillStyle = '#f3e6c4'; ctx.fillText(b.label, b.x, b.y + b.r + 12);
+        stroked(ctx, b.label, b.x, b.y + b.r + 13, '#f3e6c4');
+      }
+      if (b.key && !touch) {
+        ctx.font = `bold 10px ${SANS}`; ctx.textAlign = 'center';
+        stroked(ctx, b.key, b.x + b.r * 0.72, b.y + b.r * 0.9, '#d8ccb0');
       }
       if (b.count != null) {
         ctx.font = `bold 12px ${SANS}`; ctx.textAlign = 'right';
-        ctx.fillStyle = '#000'; ctx.fillText(b.count, b.x + b.r + 1, b.y + b.r + 1);
-        ctx.fillStyle = '#fff'; ctx.fillText(b.count, b.x + b.r, b.y + b.r);
+        stroked(ctx, String(b.count), b.x + b.r - 2, b.y + b.r - 3, '#fff');
       }
       ctx.restore();
     }
     // floating joystick
     const st = G.input.stick;
     if (touch && st.active) {
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = '#f3e6c4'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(st.ox, st.oy, 46, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 0.55;
+      ring(ctx, st.ox, st.oy, 48, false);
       const dx = st.x - st.ox, dy = st.y - st.oy, m = Math.hypot(dx, dy), k = m > 46 ? 46 / m : 1;
       ctx.fillStyle = '#f3e6c4'; ctx.beginPath(); ctx.arc(st.ox + dx * k, st.oy + dy * k, 20, 0, Math.PI * 2); ctx.fill();
       ctx.globalAlpha = 1;
     }
-    // keyboard hint for the glowing action
-    if (!touch && U.glow) {
-      const KEY = { attack: 'J', roll: 'K', skill1: 'U', skill2: 'I', skill3: 'O', ult: 'L', interact: 'E', mask: 'M', item1: '1', item2: '2' };
-      const label = { attack: '소매', roll: '구르기', skill1: '소리결', skill2: '탈춤 회오리', skill3: '용왕 물결', ult: '처용가', interact: G.game.interactTarget?.label || '말걸기', mask: '탈 바꾸기' }[U.glow];
-      if (KEY[U.glow] && label) {
-        const pulse = 0.5 + 0.5 * Math.sin(t * 6);
-        const x = vw - 130, y = vh - 60;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = `rgba(255,210,120,${0.25 + pulse * 0.3})`; ctx.fillRect(x - 6, y - 26, 124, 44);
-        ctx.globalCompositeOperation = 'source-over';
-        panel(ctx, x, y - 20, 112, 32, 0.8);
-        ctx.font = `bold 16px ${SANS}`; ctx.textAlign = 'left';
-        ctx.fillStyle = '#ffe2a0'; ctx.fillText('[' + KEY[U.glow] + ']', x + 10, y + 2);
-        ctx.fillStyle = '#f3e6c4'; ctx.font = `14px ${SANS}`; ctx.fillText(label, x + 44, y + 1);
-      }
-    }
+  }
+
+  function stroked(ctx, text, x, y, color, w = 3) {
+    ctx.lineJoin = 'round'; ctx.lineWidth = w; ctx.strokeStyle = 'rgba(10,8,14,0.9)';
+    ctx.strokeText(text, x, y); ctx.fillStyle = color; ctx.fillText(text, x, y);
+  }
+  U.stroked = stroked;
+
+  // rounded translucent plate (quest list, top bar)
+  function plate(ctx, x, y, w, h, a = 0.55) {
+    const r = Math.min(8, h / 2);
+    ctx.fillStyle = `rgba(14,12,20,${a})`;
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill();
   }
 
   function drawHud(ctx, vw, vh) {
     const g = G.game, p = g.player, f = g.flags;
-    // top-left status
-    panel(ctx, 10, 10, 236, f.has_ult ? 74 : 60, 0.55);
-    ctx.font = `bold 13px ${SANS}`; ctx.textAlign = 'left'; ctx.fillStyle = '#ffe2a0';
-    ctx.fillText('처용  Lv.' + p.lvl, 20, 28);
-    ctx.fillStyle = '#d8d0c0'; ctx.font = `12px ${SANS}`; ctx.textAlign = 'right';
-    ctx.fillText('엽전 ' + p.coins, 236, 28);
-    bar(ctx, 20, 36, 216, 8, p.hp, p.maxHp, '#e05050');
-    bar(ctx, 20, 49, 216, 5, p.gi, p.maxGi, '#4cb8ff');
-    if (f.has_ult) bar(ctx, 20, 60, 216, 5, p.heung, 100, p.heung >= 100 ? '#ffd27a' : '#ff9ad0');
-    bar(ctx, 20, f.has_ult ? 71 : 60, 216, 2, p.exp, p.expNeed(), '#d8c070', 'rgba(0,0,0,0.3)');
-    // mask + verses
-    let x = 254;
-    if (p.mask) {
-      panel(ctx, x, 10, 120, 28, 0.55);
-      ctx.fillStyle = p.m.color; ctx.font = `bold 12px ${SANS}`; ctx.textAlign = 'left'; ctx.fillText(p.m.name, x + 10, 29);
-      x += 128;
-    }
-    const vc = g.verseCount();
-    if (vc) {
-      panel(ctx, x, 10, 98, 28, 0.55);
-      ctx.fillStyle = '#f3e6c4'; ctx.font = `bold 12px ${SANS}`; ctx.fillText('구절 ' + vc + ' / 8', x + 12, 29);
-    }
-    // objective
-    const ob = G.story.objective(f);
-    if (ob && !g.boss) {
-      ctx.font = `bold 13px ${SANS}`; ctx.textAlign = 'center';
-      const w = Math.min(vw - 520, ctx.measureText(ob.text).width + 40);
-      const ox = vw / 2;
-      if (vw > 700) {
-        panel(ctx, ox - w / 2, 46 + 0, w, 26, 0.55);
-        ctx.fillStyle = '#ffe2a0'; ctx.fillText(ob.text, ox, 64);
-      }
-    }
-    // boss bar
-    if (g.boss && !g.boss.dead) {
-      const b = g.boss, w = Math.min(520, vw - 300), x0 = vw / 2 - w / 2;
-      ctx.font = `bold 15px ${FONT}`; ctx.textAlign = 'center'; ctx.fillStyle = '#000'; ctx.fillText(b.def.name, vw / 2 + 1, 101);
-      ctx.fillStyle = '#e8c0ff'; ctx.fillText(b.def.name, vw / 2, 100);
-      bar(ctx, x0, 108, w, 10, b.hp, b.maxHp, b.ultVulnerable ? '#ffd27a' : '#a040ff');
-      if (b.type === 'yeoksin' && !b.ultVulnerable) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x0 + w * 0.3, 106, 2, 14); }
-    }
-    // minimap
+    // --- top-left: zone name + round minimap ---
     drawMinimap(ctx, vw, vh);
-    // zone name banner
+    // --- top-center: currency strip ---
+    ctx.font = `bold 13px ${SANS}`;
+    const items = [['엽전', String(p.coins), '#ffd25a'], ['구절', g.verseCount() + '/8', '#bfe6ff']];
+    if (p.mask) items.push(['탈', p.m.name, p.m.color]);
+    let tw = 0; for (const [a, b] of items) tw += ctx.measureText(a + ' ' + b).width + 28;
+    let x = vw / 2 - tw / 2;
+    plate(ctx, x - 6, 8, tw + 12, 26, 0.5);
+    ctx.textAlign = 'left';
+    for (const [a, b, c] of items) {
+      ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x + 8, 21, 5, 0, Math.PI * 2); ctx.fill();
+      stroked(ctx, a + ' ', x + 18, 26, '#d8ccb0', 2);
+      stroked(ctx, b, x + 18 + ctx.measureText(a + ' ').width, 26, '#fff', 2);
+      x += ctx.measureText(a + ' ' + b).width + 28;
+    }
+    // --- boss bar under the strip ---
+    if (g.boss && !g.boss.dead) {
+      const b = g.boss, w = Math.min(420, vw - 360), x0 = vw / 2 - w / 2, y0 = 44;
+      plate(ctx, x0 - 8, y0 - 4, w + 16, 34, 0.55);
+      ctx.font = `bold 13px ${SANS}`; ctx.textAlign = 'center';
+      stroked(ctx, (b.ultVulnerable ? '[처용가로 굴복시키시오] ' : '') + b.def.name, vw / 2, y0 + 11, '#ff9a8a');
+      bar(ctx, x0, y0 + 17, w, 7, b.hp, b.maxHp, b.ultVulnerable ? '#ffd27a' : '#d03a3a');
+    }
+    // --- right: quest tracker ---
+    const ob = G.story.objective(f);
+    if (ob) {
+      const parts = ob.text.split(' — ');
+      const head = parts[0], subs = parts[1] ? parts[1].split(' · ') : [];
+      const w = Math.min(250, vw * 0.26), x0 = vw - w - 12, y0 = 60;
+      const rows = [head, ...subs];
+      plate(ctx, x0, y0, w, 14 + rows.length * 22, 0.5);
+      ctx.textAlign = 'left';
+      rows.forEach((r, i) => {
+        const y = y0 + 22 + i * 22;
+        if (i === 0) {
+          ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.moveTo(x0 + 10, y - 9); ctx.lineTo(x0 + 18, y - 4); ctx.lineTo(x0 + 10, y + 1); ctx.fill();
+          ctx.font = `bold 13px ${SANS}`; stroked(ctx, fit(ctx, '[이야기] ' + r, w - 30), x0 + 24, y, '#ffe08a', 2);
+        } else {
+          ctx.font = `12px ${SANS}`; stroked(ctx, fit(ctx, r, w - 30), x0 + 24, y, '#e8e0d0', 2);
+        }
+      });
+    }
+    // --- bottom-center: level badge, health and gi bars ---
+    const bw = Math.min(360, vw * 0.36), bx = vw / 2 - bw / 2, by = vh - 62;
+    ctx.textAlign = 'center'; ctx.font = `bold 12px ${SANS}`;
+    stroked(ctx, `Lv.${p.lvl} 처용`, bx - 34, by + 12, '#ffe2a0', 2);
+    bar(ctx, bx, by, bw, 10, p.hp, p.maxHp, '#6fcf4a', 'rgba(10,10,14,0.7)');
+    ctx.font = `bold 10px ${SANS}`; stroked(ctx, `${Math.ceil(p.hp)} / ${p.maxHp}`, vw / 2, by + 9, '#fff', 2);
+    bar(ctx, bx, by + 14, bw, 5, p.gi, p.maxGi, '#4cb8ff', 'rgba(10,10,14,0.7)');
+    if (f.has_ult) bar(ctx, bx, by + 22, bw, 3, p.heung, 100, p.heung >= 100 ? '#ffd27a' : '#ff9ad0', 'rgba(10,10,14,0.6)');
+    bar(ctx, 0, vh - 3, vw, 3, p.exp, p.expNeed(), '#d8c070', 'rgba(0,0,0,0.4)');
+    // zone banner
     if (g.zoneBanner && g.zoneBanner.t < 3) {
       const k = g.zoneBanner.t, a = Math.min(1, k * 2, (3 - k) * 1.5);
       ctx.globalAlpha = a; ctx.font = `bold 30px ${FONT}`; ctx.textAlign = 'center';
-      ctx.fillStyle = '#000'; ctx.fillText(g.zoneBanner.name, vw / 2 + 2, vh * 0.3 + 2);
-      ctx.fillStyle = '#f3e6c4'; ctx.fillText(g.zoneBanner.name, vw / 2, vh * 0.3);
-      ctx.fillStyle = 'rgba(214,180,110,0.8)'; ctx.fillRect(vw / 2 - 90, vh * 0.3 + 12, 180, 2);
+      stroked(ctx, g.zoneBanner.name, vw / 2, vh * 0.28, '#fff4dc', 5);
+      ctx.fillStyle = 'rgba(255,220,150,0.8)'; ctx.fillRect(vw / 2 - 90, vh * 0.28 + 12, 180, 2);
       ctx.globalAlpha = 1;
     }
     // toasts
@@ -275,11 +302,11 @@ G.ui = (() => {
       if (t.t > 2) { U.toasts.splice(i, 1); continue; }
       ctx.globalAlpha = Math.min(1, (2 - t.t) * 2);
       ctx.font = `bold 15px ${SANS}`; ctx.textAlign = 'center';
-      ctx.fillStyle = '#000'; ctx.fillText(t.s, vw / 2 + 1, vh * 0.62 + 1 - i * 22);
-      ctx.fillStyle = '#ffe2a0'; ctx.fillText(t.s, vw / 2, vh * 0.62 - i * 22);
+      stroked(ctx, t.s, vw / 2, vh * 0.62 - i * 22, '#ffe2a0');
       ctx.globalAlpha = 1;
     }
   }
+  const fit = (ctx, s, w) => { if (ctx.measureText(s).width <= w) return s; while (s.length > 2 && ctx.measureText(s + '…').width > w) s = s.slice(0, -1); return s + '…'; };
 
   // objective arrow at the screen edge (in world layer coords)
   U.drawGuide = (ctx, cam, vw, vh) => {
@@ -312,24 +339,40 @@ G.ui = (() => {
     if (!mini) {
       mini = document.createElement('canvas'); mini.width = w.W; mini.height = w.H;
       const m = mini.getContext('2d');
-      const COLS = ['#1b3870', '#cdbb8a', '#3c6a34', '#8a6a44', '#8a8a8e', '#24402a', '#2a5a5a', '#5f5a55', '#a08a64'];
+      const COLS = ['#3a8ab0', '#d8c088', '#6a9a48', '#a07a50', '#b8a078', '#3a5a32', '#3a7068', '#6a6058', '#c0a070'];
       for (let y = 0; y < w.H; y++) for (let x = 0; x < w.W; x++) {
         const t = w.terrainAt(x * 32 + 16, y * 32 + 16);
-        m.fillStyle = w.solidAt(x * 32 + 16, y * 32 + 16) && t !== 0 && t !== 6 ? '#16261a' : COLS[t];
+        m.fillStyle = w.solidAt(x * 32 + 16, y * 32 + 16) && t !== 0 && t !== 6 ? '#2e4228' : COLS[t];
         m.fillRect(x, y, 1, 1);
       }
     }
-    const s = 1.2, mw = w.W * s, mh = w.H * s, x0 = vw - mw - 106, y0 = 8;
-    if (vw < 760) return;
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(x0 - 3, y0 - 3, mw + 6, mh + 6);
-    ctx.drawImage(mini, x0, y0, mw, mh);
-    ctx.strokeStyle = 'rgba(214,180,110,0.7)'; ctx.lineWidth = 1; ctx.strokeRect(x0 - 2.5, y0 - 2.5, mw + 5, mh + 5);
-    const p = G.game.player;
-    ctx.fillStyle = '#fff'; ctx.fillRect(x0 + (p.x / 32) * s - 2, y0 + (p.y / 32) * s - 2, 4, 4);
-    const ob = G.story.objective(G.game.flags);
-    if (ob && ob.target && Math.floor(G.game.time * 3) % 2 === 0) { ctx.fillStyle = '#ffd27a'; ctx.fillRect(x0 + (ob.target.x / 32) * s - 2, y0 + (ob.target.y / 32) * s - 2, 4, 4); }
-    ctx.globalAlpha = 1;
+    const R = vw < 700 ? 44 : 58, cx = 14 + R, cy = 30 + R;
+    const g = G.game, p = g.player;
+    // zone label
+    ctx.font = `bold 12px ${SANS}`; ctx.textAlign = 'left';
+    ctx.fillStyle = '#6fcf4a'; ctx.beginPath(); ctx.moveTo(14, 11); ctx.lineTo(22, 16); ctx.lineTo(14, 21); ctx.fill();
+    stroked(ctx, g.zone ? g.zone.name : '', 26, 21, '#fff', 2);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+    const s = 2.6; // minimap pixels per tile
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#1a2418'; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    ctx.drawImage(mini, cx - (p.x / 32) * s, cy - (p.y / 32) * s, w.W * s, w.H * s);
+    // npcs and foes
+    for (const n of g.npcs) if (!n.hidden) { ctx.fillStyle = '#ffd25a'; ctx.fillRect(cx + ((n.x - p.x) / 32) * s - 1.5, cy + ((n.y - p.y) / 32) * s - 1.5, 3, 3); }
+    for (const e of g.enemies) if (!e.dead && e.state !== 'kneel') { ctx.fillStyle = e.def.boss ? '#ff3a3a' : '#ff7a7a'; ctx.fillRect(cx + ((e.x - p.x) / 32) * s - 1.5, cy + ((e.y - p.y) / 32) * s - 1.5, e.def.boss ? 5 : 3, e.def.boss ? 5 : 3); }
+    const ob = G.story.objective(g.flags);
+    if (ob && ob.target) {
+      const ox = G.clamp(cx + ((ob.target.x - p.x) / 32) * s, cx - R + 6, cx + R - 6), oy = G.clamp(cy + ((ob.target.y - p.y) / 32) * s, cy - R + 6, cy + R - 6);
+      ctx.fillStyle = '#ffcf5a'; ctx.beginPath(); ctx.arc(ox, oy, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    // player arrow
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate(p.face + Math.PI / 2);
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(4.5, 5); ctx.lineTo(-4.5, 5); ctx.fill(); ctx.restore();
+    // bronze frame
+    ctx.lineWidth = 4; ctx.strokeStyle = '#6a5838'; ctx.beginPath(); ctx.arc(cx, cy, R + 1, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#d8b878'; ctx.beginPath(); ctx.arc(cx, cy, R + 3, 0, Math.PI * 2); ctx.stroke();
   }
 
   function portrait(ctx, sprite, x, y, size) {

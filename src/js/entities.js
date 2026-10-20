@@ -40,9 +40,11 @@
     const f = A.frame(name, anim, dir, t, o.fps || 10, o.loop !== false);
     if (!f) return;
     const c = f.c, w = c.w, h = c.h;
-    const sx = o.scale || 1, sy = (o.scale || 1) * (o.squash || 1);
+    const k = (o.scale || 1) * (c.scale || 1);
+    const sx = k, sy = k * (o.squash || 1);
     const px = Math.round(x - cam.x), py = Math.round(y - cam.y - (o.z || 0));
     ctx.save();
+    if (k < 1) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; }
     ctx.translate(px, py);
     if (f.mirror) ctx.scale(-1, 1);
     ctx.scale(sx, sy);
@@ -217,9 +219,9 @@
       this.gi -= s.gi; this.cd[k] = s.cd;
       this.state = 'skill'; this.stateT = 0; this.skill = k; this.skillTick = 0;
       this.autoAim(220);
-      if (k === 'skill1') { this.setAnim('attack'); sfx('skill1'); this.fireSoundWave(); }
-      if (k === 'skill2') { this.setAnim('cast'); sfx('skill2'); }
-      if (k === 'skill3') { this.setAnim('walk'); sfx('skill3'); this.waveHit = new Set(); }
+      if (k === 'skill1') { this.setAnim('attack'); sfx('skill1'); this.fireSoundWave(); fx.circle(this.x, this.y, 46, '#7ff0ff', 0.6); }
+      if (k === 'skill2') { this.setAnim('cast'); sfx('skill2'); fx.circle(this.x, this.y, 90, '#ff9ad0', 1.2); }
+      if (k === 'skill3') { this.setAnim('walk'); sfx('skill3'); this.waveHit = new Set(); fx.circle(this.x, this.y, 50, '#5ab8ff', 0.7); }
     }
     skillMult() { return this.mask ? this.m.skill : 1; }
     fireSoundWave() {
@@ -287,7 +289,7 @@
         const a = Math.random() * Math.PI * 2, rr = 40 + Math.random() * 300;
         fx.add({ x: this.x + Math.cos(a) * rr, y: this.y + Math.sin(a) * rr * 0.6, z: 0, vz: 40 + Math.random() * 60, life: 1.2, size: 3, color: ['#ffe9a8', '#9fe0ff', '#ff9ad0'][Math.floor(Math.random() * 3)], glow: true });
       }
-      if (t > 0.6 && !this.ultRing1) { this.ultRing1 = true; fx.ring(this.x, this.y, 20, 420, 1.2, '#ffe9a8', 4); }
+      if (t > 0.6 && !this.ultRing1) { this.ultRing1 = true; fx.ring(this.x, this.y, 20, 420, 1.2, '#ffe9a8', 4); fx.circle(this.x, this.y, 160, '#ffe08a', 2.2); }
       if (t > 1.6 && !this.ultHit) {
         this.ultHit = true;
         fx.ring(this.x, this.y, 20, 600, 1.4, '#9fe0ff', 6); fx.screenFlash(0.8, '#fff6d8'); fx.screenShake(8);
@@ -490,7 +492,7 @@
       this.applyKnock(dt);
       if (this.state === 'kneel') {
         if (Math.random() < 0.5 && this.stateT < 1.0) fx.smoke(this.x, this.y - 20, 1);
-        if (this.stateT > 1.0 && !this.souled) { this.souled = true; fx.soul(this.x, this.y); fx.ring(this.x, this.y, 5, 50, 0.6, '#9fe0ff', 2); }
+        if (this.stateT > 1.0 && !this.souled) { this.souled = true; fx.soul(this.x, this.y); fx.circle(this.x, this.y, 40, '#9fe0ff', 0.9); fx.ring(this.x, this.y, 5, 50, 0.6, '#9fe0ff', 2); }
         if (this.stateT > 1.6) this.dead = true;
         return;
       }
@@ -640,7 +642,7 @@
         ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
       }
       if (!isBoss && this.hp < this.maxHp && this.state !== 'kneel') {
-        const w = 30, x = Math.round(this.x - cam.x - w / 2), y = Math.round(this.y - cam.y - (A.chars[this.sprite]?.foot || 60) - 6 - float);
+        const w = 30, x = Math.round(this.x - cam.x - w / 2), y = Math.round(this.y - cam.y - ((A.chars[this.sprite]?.foot || 60) - (A.chars[this.sprite]?.top || 0)) * (A.chars[this.sprite]?.scale || 1) * (this.scale || 1) - 10 - float);
         ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 1, y - 1, w + 2, 5);
         ctx.fillStyle = '#c04cff'; ctx.fillRect(x, y, Math.round((w * this.hp) / this.maxHp), 3);
       }
@@ -670,6 +672,15 @@
       drawShadow(ctx, cam, this.x, this.y, this.sprite === 'dog' ? 12 : 16);
       const anim = this.anim === 'walk' && A.has(this.sprite, 'walk') ? 'walk' : 'idle';
       drawSprite(ctx, cam, this.sprite, anim, this.dir, this.animT, this.x, this.y, { fps: anim === 'idle_anim' ? 6 : 10, alpha: this.alpha ?? 1, scale: this.scale || 1 });
+      // MMORPG-style name tag
+      const c = A.chars[this.sprite];
+      if (c && this.name && this.id !== 'dog') {
+        const hy = Math.round(this.y - cam.y - (c.foot - c.top) * (c.scale || 1) - 8), hx = Math.round(this.x - cam.x);
+        ctx.font = 'bold 11px "Noto Sans KR", sans-serif'; ctx.textAlign = 'center';
+        const w = ctx.measureText(this.name).width + 12;
+        ctx.fillStyle = 'rgba(40,24,70,0.72)'; ctx.beginPath(); ctx.roundRect(hx - w / 2, hy - 12, w, 16, 8); ctx.fill();
+        ctx.fillStyle = '#efe4ff'; ctx.fillText(this.name, hx, hy);
+      }
     }
   }
 
