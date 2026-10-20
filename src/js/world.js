@@ -283,9 +283,8 @@
       if (z.id !== 'town' && t.every((v) => v === GRASS || v === FOREST || v === RUIN || v === YARD)) {
         const ox = G.hash2(x, y, 56), oy = G.hash2(x, y, 57);
         const dryZone = z.id === 'ruin' || z.id === 'beach' || z.id === 'house';
-        if (hc < 0.16) addProp(dryZone || hc < 0.07 ? 'tuft' : 'tuft2', x + ox, y + oy + 0.4, { flipX: ox > 0.5 });
-        else if (hc < 0.2 && z.id !== 'ruin') addProp('flowers', x + ox, y + oy);
-        else if (hc < 0.23) addProp('pebbles', x + ox, y + oy);
+        if (hc < 0.07) addProp(dryZone && hc < 0.03 ? 'tuft' : 'tuft2', x + ox, y + oy + 0.4, { flipX: ox > 0.5 });
+        else if (hc < 0.095 && z.id !== 'ruin') addProp('flowers', x + ox, y + oy);
       }
       if (z.id === 'forest' && h < 0.085 && !nearPoint(x, y, [[34, 52], [18, 72], [26, 60]], 5)) addProp(h < 0.06 ? 'pine' : 'pine2', x + 0.5, y + 1, { flipX: h < 0.03 });
       else if (z.id === 'forest' && h < 0.11) addProp('bush', x + 0.5, y + 1);

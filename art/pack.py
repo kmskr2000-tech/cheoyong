@@ -119,8 +119,7 @@ def pack_tiles(name):
         sheet.alpha_composite(img, ((i % 4) * size, (i // 4) * size))
         c = tl["corners"]
         corners.append("".join("1" if c[k] == "upper" else "0" for k in ("NW", "NE", "SW", "SE")))
-    if not painted:
-        sheet = night_grade(sheet)
+    sheet = night_grade(sheet) if not painted else night_grade(sheet, sat=0.85, bright=0.96, tint=(1.02, 1.0, 0.96))
     os.makedirs(os.path.join(OUT, "tiles"), exist_ok=True)
     sheet.save(os.path.join(OUT, "tiles", name + ".png"), optimize=True)
     return {"file": f"tiles/{name}.png", "tiles": corners, "size": size}
@@ -177,7 +176,7 @@ def main():
     for p in sorted(props.values()):
         n, v = pack_prop(p)
         if v and "props2" in p:
-            v["scale"] = 0.5
+            v["scale"] = 0.36 if n in ("tuft", "tuft2", "flowers") else 0.5
         if v:
             man["props"][n] = v
     for p in sorted(glob.glob(os.path.join(RAW, "images", "*.png"))):
