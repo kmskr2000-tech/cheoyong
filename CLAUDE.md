@@ -18,5 +18,11 @@
 - 한 장면: `node tests/shot.mjs "<query>" out.png <초> [KeyJ@1] [hold:KeyD@0.5-2]`
 - URL 테스트 훅: `?play`, `?quest=n`(1~6), `?at=x,y`(타일), `?flags=a,b`, `?enemies=imp,snake`, `?boss=gumiho`, `?heung`, `?lvl=n`, `?touch`, `?ending`, `?mute`
 
+## Godot 판 (모바일)
+- `godot/`: 웹판과 같은 에셋·스토리·전투를 Godot 4.4(GL Compatibility)로 옮긴 판. 사용법은 `godot/README.md`.
+- 컨테이너 준비: `sh tools/setup_godot.sh` (dl.google.com이 막혀 Android SDK 없이 비-Gradle 내보내기 → uber-apk-signer로 서명).
+- 검증: `godot --headless --path godot -- --auto --skipintro --speed=8 --mute` 가 `REACHED ENDING` 을 찍어야 한다.
+- 게임 규칙을 바꾸면 `src/js`와 `godot/scripts` 양쪽을 맞춘다.
+
 ## 작업 방식
 - `main`에서 브랜치 → 커밋·푸시 → PR → 바로 머지(merge 커밋).

@@ -78,10 +78,13 @@ def pack_char(name):
             anims[k][d].append([c * cell, r * cell])
     os.makedirs(os.path.join(OUT, "chars"), exist_ok=True)
     sheet.save(os.path.join(OUT, "chars", name + ".png"), optimize=True)
+    white = Image.new("RGBA", sheet.size, (255, 255, 255, 0))
+    white.putalpha(sheet.getchannel("A"))
+    white.save(os.path.join(OUT, "chars", name + "_w.png"), optimize=True)
     south = imgs["idle"]["south"][0]
     b = south.getbbox()
     off = (cell - south.width) // 2
-    return {"file": f"chars/{name}.png", "w": cell, "h": cell, "foot": idle_bottom["south"],
+    return {"file": f"chars/{name}.png", "white": f"chars/{name}_w.png", "w": cell, "h": cell, "foot": idle_bottom["south"],
             "scale": CHIBI_SCALE.get(name, 0.5) if chibi else 1,
             "top": b[1] + off, "cx": (b[0] + b[2]) // 2 + off, "bw": b[2] - b[0], "anims": anims}
 
