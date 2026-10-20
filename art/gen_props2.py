@@ -34,6 +34,10 @@ PROPS = {
     "altar": ("small stone altar with offering bowls and incense, glowing faintly blue", 64, 56),
     "lotus": ("floating lotus pads with pink lotus flowers on dark water", 64, 40),
     "cart": (K + "wooden ox cart with two big wheels, loaded with sacks", 96, 80),
+    "tuft": ("clump of tall dry golden grass blades", 40, 40),
+    "tuft2": ("clump of fresh green grass blades with tiny white flowers", 40, 36),
+    "flowers": ("small patch of pink and yellow wildflowers", 40, 28),
+    "pebbles": ("few small grey pebbles and a flat stone on the ground", 36, 24),
     "bones": ("scattered animal bones and broken pottery on the ground, eerie", 56, 40),
 }
 
