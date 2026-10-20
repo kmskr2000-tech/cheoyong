@@ -55,7 +55,7 @@ CHARS = {
     "dokchief": ("dokkaebi chieftain, giant muscular red-skinned Korean goblin king with three horns, golden earrings, tiger pelt cape, huge iron-studded club", 144, "mannequin", [
         ("walk", "v3:6:stomping forward heavily", DIRS5), ("attack", "v3:6:swinging a huge club in a wide arc", DIRS3),
         ("kneel", "v3:6:dropping to one knee in defeat, head bowed", ["south"])]),
-    "gumiho": ("gumiho, white nine-tailed fox spirit with nine fluffy tails fanned out, glowing blue fox fire at the tail tips", 144, "dog", [
+    "gumiho": ("one single large white fox with one head and nine fluffy tails fanned out behind it, gumiho fox spirit, glowing blue fox fire at the tail tips, full body", 144, "dog", [
         ("walk", "v3:6:running forward gracefully", DIRS5), ("attack", "v3:6:pouncing and slashing with claws", DIRS3),
         ("kneel", "v3:6:lying down and bowing head in defeat", ["south"])]),
     "imugi": ("imugi, giant serpent dragon without horns, dark teal scales, glowing yellow eyes, coiled body rising from water", 144, "cat", [
