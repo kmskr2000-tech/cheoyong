@@ -1,0 +1,29 @@
+{
+ "id": "b54c57d9-7ef2-4818-87aa-781499adcff2",
+ "anims": {
+  "walk": {
+   "group": "628a9bf2-8599-4860-9430-e14648d9d87c",
+   "dirs": [
+    "east",
+    "north",
+    "north-east",
+    "south",
+    "south-east"
+   ]
+  },
+  "attack": {
+   "group": "e75e9450-dc12-4599-a14c-0d1ca3540b97",
+   "dirs": [
+    "east",
+    "north",
+    "south"
+   ]
+  },
+  "kneel": {
+   "group": "c80f942f-b023-4629-a1dc-09095a4cd37b",
+   "dirs": [
+    "south"
+   ]
+  }
+ }
+}

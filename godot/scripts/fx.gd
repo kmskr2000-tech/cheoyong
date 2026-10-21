@@ -85,7 +85,9 @@ static func gellipse(ci: CanvasItem, c: Vector2, rx: float, ry: float, col: Colo
 	for i in n + 1:
 		var a = i / float(n) * TAU
 		pts.append(G.game.sp(c.x + cos(a) * rx, c.y + sin(a) * ry))
-	if filled: ci.draw_colored_polygon(pts, col)
+	if filled:
+		pts.remove_at(pts.size() - 1)
+		if not Geometry2D.triangulate_polygon(pts).is_empty(): ci.draw_colored_polygon(pts, col)
 	else: ci.draw_polyline(pts, col, width, true)
 
 # additive layer under sprites: rune circles and expanding rings

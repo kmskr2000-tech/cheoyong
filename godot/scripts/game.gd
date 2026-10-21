@@ -9,6 +9,7 @@ const CHECKPOINTS := {"beach": [100, 70], "town": [61, 53], "ruin": [90, 36], "p
 const GATE_DIM := Color(0.47, 0.17, 1.0)
 
 var world: World
+var map_id := "seorabeol"
 var fx = Fx.new()
 var story: Story
 var ui
@@ -72,6 +73,59 @@ func _make_dot() -> Texture2D:
 	gt.gradient = gr
 	return gt
 
+func _make_view() -> void:
+	if view: view.queue_free()
+	view = View3D.new()
+	add_child(view)
+	move_child(view, 0)
+	view.setup(world)
+
+# switch to another map (tile position of the arrival)
+func load_map(id: String, tx: float, ty: float) -> void:
+	if id != map_id or world == null:
+		map_id = id
+		world = World.new(); world.map_id = id; world.flags = flags
+		G.world = world
+		world.init()
+		_make_view()
+		ui.mini = null
+	if player:
+		player.x = tx * T; player.y = ty * T
+	zone = null
+	reset()
+
+func travel(id: String) -> void:
+	var st: Dictionary = Maps.STATION[id]
+	fx.screen_flash(1.0, Color(0.02, 0.02, 0.05))
+	Sfx.sfx("door")
+	load_map(id, st.entry[0], st.entry[1])
+	var c = story.chapters.get(id)
+	if c and not c.started():
+		flags["c%d_start" % c.n] = true
+		ui.chapter_banner = {"text": c.title, "t": 0.0}
+		Sfx.sfx("quest")
+	save_game()
+
+# rewards from chapters and side quests: {coins, exp, items: {k: n}, talis, mask}
+func give(r: Dictionary) -> void:
+	var p = player
+	if r.has("coins"): p.coins += int(r.coins); ui.toast("엽전 %d냥" % int(r.coins))
+	if r.has("exp"): p.gain_exp(float(r.exp))
+	for k in r.get("items", {}): p.items[k] = int(p.items.get(k, 0)) + int(r.items[k])
+	if r.has("talis"): add_talis(r.talis)
+	if r.has("mask"): add_mask(r.mask)
+
+func add_mask(id: String) -> void:
+	if not player.masks.has(id): player.masks.append(id)
+	Sfx.sfx("item")
+	tutorial("mask")
+
+func add_talis(id: String) -> void:
+	player.talis.append(id)
+	if player.equip.size() < 2: player.equip.append(player.talis.size() - 1)
+	ui.toast("부적을 얻었소: " + Ent.TALIS[id].name)
+	Sfx.sfx("item")
+
 func _layer(parent: Node, fn: Callable, add := false) -> Node2D:
 	var n = Node2D.new()
 	n.set_script(load("res://scripts/draw_layer.gd"))
@@ -83,9 +137,7 @@ func _layer(parent: Node, fn: Callable, add := false) -> Node2D:
 	return n
 
 func _build_nodes() -> void:
-	view = View3D.new()
-	add_child(view)
-	view.setup(world)
+	_make_view()
 	# screen-space overlays over the 3D view: tilt-shift blur first, then ground marks, particles, bars, texts
 	var tc = CanvasLayer.new(); tc.layer = 1
 	add_child(tc)
@@ -126,12 +178,12 @@ func new_game() -> void:
 	flags.clear()
 	player = Ent.Player.new(100 * T, 70.5 * T)
 	player.face_to(0)
-	reset()
+	load_map("seorabeol", 100, 70.5)
 
 func reset() -> void:
 	enemies = []; projectiles = []; hazards = []; pickups = []
 	arena = null; boss = null; frozen = false; cinema = false; zone = null; spawn_dead = {}; music_stack = []; death_t = null
-	ui.dialog = null; ui.shop = null; ui.menu = false; ui.banner = null
+	ui.dialog = null; ui.shop = null; ui.menu = false; ui.banner = null; ui.choice = null
 	fx.clear()
 	dissolved = {}
 	build_npcs()
@@ -141,8 +193,8 @@ func has_save() -> bool: return FileAccess.file_exists(SAVE_PATH)
 
 func save_game() -> void:
 	var p = player
-	var data = {"flags": flags, "p": {"x": p.x, "y": p.y, "lvl": p.lvl, "xp": p.xp, "coins": p.coins, "hp": p.hp, "max_hp": p.max_hp,
-		"max_gi": p.max_gi, "items": p.items, "masks": p.masks, "mask": p.mask, "skills": p.skills}}
+	var data = {"flags": flags, "map": map_id, "p": {"x": p.x, "y": p.y, "lvl": p.lvl, "xp": p.xp, "coins": p.coins, "hp": p.hp, "max_hp": p.max_hp,
+		"max_gi": p.max_gi, "items": p.items, "masks": p.masks, "mask": p.mask, "skills": p.skills, "talis": p.talis, "equip": p.equip}}
 	var f = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f: f.store_string(JSON.stringify(data))
 
@@ -155,12 +207,15 @@ func load_game() -> void:
 	player = Ent.Player.new(d.x, d.y)
 	for k in ["lvl", "coins", "max_hp", "max_gi"]: player.set(k, int(d[k]))
 	for k in ["xp", "hp"]: player.set(k, float(d[k]))
-	player.items = {"yakgwa": int(d.items.yakgwa), "sikhye": int(d.items.sikhye)}
+	for k in d.items: player.items[k] = int(d.items[k])
 	player.masks = d.masks; player.mask = d.mask; player.skills = d.skills
+	player.talis = d.get("talis", []); player.equip = []
+	for i in d.get("equip", []): player.equip.append(int(i))
 	player.gi = player.max_gi
+	var px: float = player.x / T; var py: float = player.y / T
 	if flags.get("yeoksin_started", false) and not flags.get("yeoksin_done", false):
-		flags.yeoksin_started = false; player.x = 40 * T; player.y = 31 * T
-	reset()
+		flags.yeoksin_started = false; px = 40; py = 31
+	load_map(str(data.get("map", "seorabeol")), px, py)
 
 # command-line / URL test hooks: quest=n flags=a,b at=x,y lvl=n heung
 func apply_debug() -> void:
@@ -179,20 +234,40 @@ func apply_debug() -> void:
 	if q >= 6: f.q4 = true; f.q5 = true; f.house_open = true; f.verse6 = true
 	if G.param("flags") != "":
 		for k in G.param("flags").split(","): f[k] = true
+	if G.param("kills") != "":  # kills=maae:8,samhwa:8
+		for kv in G.param("kills").split(","): f["kills_" + kv.split(":")[0]] = int(kv.split(":")[1])
 	if G.param("at") != "":
 		var a = G.param("at").split(","); p.x = float(a[0]) * T; p.y = float(a[1]) * T
 	if G.param("lvl") != "":
 		p.lvl = int(G.param("lvl")); p.max_hp = 100 + (p.lvl - 1) * 14; p.hp = p.max_hp
 	if G.has("heung"): p.heung = 100.0
+	# chapter=n: chapters before n are finished; the game starts on chapter n's map
+	var ch = int(G.param("chapter", "0"))
+	if ch >= 2:
+		for k in ["q1", "q2", "q3", "q4", "q5", "has_attack", "has_ult", "gate_open", "paths_open", "king_event", "king_met", "house_open", "yeoksin_done", "song_complete", "ch1_done", "boss_dok", "boss_fox", "boss_imugi", "dosa_done"]: f[k] = true
+		for i in range(1, 9): f["verse%d" % i] = true
+		p.skills = {"skill1": true, "skill2": true, "skill3": true}; p.masks = ["cheoyong", "gwimyeon", "yongwang"]; p.mask = "cheoyong"
+		var lv = [0, 0, 11, 15, 20, 24, 27][min(ch, 6)]
+		p.lvl = lv; p.max_hp = 100 + (lv - 1) * 14; p.hp = p.max_hp; p.max_gi = 130
+		var keys = Story.HYANGGA_ORDER
+		for i in range(2, ch):
+			f["c%d_start" % i] = true; f["c%d_done" % i] = true; f["hy_" + keys[i - 2]] = true
+			f["map_" + Maps.ORDER[i - 1]] = true
+		f["map_" + Maps.ORDER[ch - 1]] = true
+		if G.param("at") == "":
+			var st: Dictionary = Maps.STATION[Maps.ORDER[ch - 1]]
+			p.x = st.entry[0] * T; p.y = st.entry[1] * T
+		f["c%d_start" % ch] = true
+		load_map(Maps.ORDER[ch - 1], p.x / T, p.y / T)
 	build_npcs(); snap_cam()
 
 # ---------- NPCs ----------
 func build_npcs() -> void:
 	npcs = []
-	for s in story.NPCS:
+	for s in story.npcs():
 		var vis: Callable = s[6] if s[6] is Callable else Callable()
 		var n = Ent.Npc.new(s[0], s[1], s[2] * T, s[3] * T, s[4], s[5], vis)
-		if s[0] == "yongwang":
+		if s[0] == "yongwang" and map_id == "seorabeol":
 			# stand ankle-deep at the waterline east of the start point
 			var x = 98.0 * T
 			while x < 118 * T and not world.solid_at(x, n.y): x += 8
@@ -203,7 +278,7 @@ func build_npcs() -> void:
 func refresh_npcs() -> void:
 	for n in npcs: n.hidden = (not n.visible_if.call(flags)) if n.visible_if.is_valid() else false
 	var hw = npc("hwarang")
-	if hw and flags.get("gate_open", false): hw.x = 69.5 * T; hw.y = 68.6 * T; hw.dir_home = "west"
+	if hw and map_id == "seorabeol" and flags.get("gate_open", false): hw.x = 69.5 * T; hw.y = 68.6 * T; hw.dir_home = "west"
 
 func npc(id: String):
 	for n in npcs:
@@ -214,25 +289,36 @@ func npc(id: String):
 func spawn_enemy(type: String, x: float, y: float, o := {}):
 	var e = Ent.Enemy.new(type, x, y, o)
 	e.spawn_key = o.get("key"); e.summoned = o.get("summoned", false)
+	if o.get("elite", "") != "": e.make_elite(o.elite)
 	if world.blocked(x, y, e.r): e.x = player.x + (randf() - 0.5) * 60; e.y = player.y + (randf() - 0.5) * 40
 	enemies.append(e)
 	fx.smoke(e.x, e.y, 6, Color("#6a2aff"))
 	return e
 
 func spawn_zone(zid: String) -> void:
-	if not story.SPAWNS.has(zid): return
-	if zid == "house" and (not flags.get("house_open", false) or flags.get("yeoksin_done", false)): return
-	if zid == "beach" and not flags.get("q1", false): return
-	var sp: Dictionary = story.SPAWNS[zid]
+	var spawns: Dictionary = story.spawns()
+	if not spawns.has(zid): return
+	if map_id == "seorabeol":
+		if zid == "house" and (not flags.get("house_open", false) or flags.get("yeoksin_done", false)): return
+		if zid == "beach" and not flags.get("q1", false): return
+	var sp: Dictionary = spawns[zid]
+	if sp.has("elite") and not flags.get("elite_%s_%s" % [map_id, zid], false):
+		var el: Array = sp.elite
+		var alive_e = false
+		for e in enemies:
+			if e.spawn_key == "elite_" + zid and not e.dead: alive_e = true
+		if not alive_e:
+			var ee = spawn_enemy(el[0], el[1] * T, el[2] * T, {"level": sp.lvl + 2, "zone": zid, "key": "elite_" + zid, "elite": el[3]})
+			ee.spawn_t = 0
 	for i in sp.list.size():
 		var key = "%s%d" % [zid, i]
 		var alive = false
 		for e in enemies:
 			if e.spawn_key == key and not e.dead: alive = true; break
 		if alive: continue
-		if spawn_dead.has(key) and time - spawn_dead[key] < 75: continue
+		if spawn_dead.has(key) and time - spawn_dead[key] < (75 if map_id == "seorabeol" else 40): continue
 		var s: Array = sp.list[i]
-		var e = spawn_enemy(s[0], s[1] * T, s[2] * T, {"level": sp.lvl, "zone": zid, "key": key})
+		var e = spawn_enemy(s[0], s[1] * T, s[2] * T, {"level": sp.lvl + (1 if s.size() > 3 else 0), "zone": zid, "key": key})
 		e.spawn_t = 0
 
 func despawn_far() -> void:
@@ -244,24 +330,31 @@ func despawn_far() -> void:
 func on_purify(e) -> void:
 	var p = player
 	if e.spawn_key != null: spawn_dead[e.spawn_key] = time
+	if e.elite:
+		flags["elite_%s_%s" % [map_id, e.zone]] = true
+		ui.toast("정예 요괴 「%s」를 정화했소!" % e.elite)
+		pickups.append(Ent.Coin.new(e.x, e.y, 40))
+	story.on_purify(e)
 	if not e.illusion:
 		flags.kills_total = int(flags.get("kills_total", 0)) + 1
 		if e.zone != null: flags["kills_" + e.zone] = int(flags.get("kills_" + e.zone, 0)) + 1
-	p.gain_exp(e.def.exp * (1 + (e.lvl - 1) * 0.2))
+	# experience grows gently with the yokai's level (chapters 2-6 are tuned for about four levels each)
+	p.gain_exp(e.def.exp * (1 + (e.lvl - 1) * (0.2 if e.lvl <= 4 else 0.07)) * p.stat("exp") * (4.0 if e.elite else 1.0))
 	var c: Array = e.def.coin
-	var n: int = c[0] + randi() % (c[1] - c[0] + 1)
+	var n: int = int((c[0] + randi() % (c[1] - c[0] + 1)) * p.stat("coin") * (1 + (e.lvl - 1) * 0.08))
 	var pieces: int = min(n, 8)
 	for i in pieces: pickups.append(Ent.Coin.new(e.x, e.y, int(ceil(float(n) / pieces))))
 	if randf() < 0.06: p.items.yakgwa += 1; ui.toast("약과를 주웠소")
 	p.add_heung(5)
 	if e.zone != null and int(flags.get("kills_" + e.zone, 0)) == 6:
 		if e.zone == "beach": ui.toast("개운포의 요괴를 모두 정화했소 — 용왕에게")
-		elif story.BOSSES.has(e.zone): ui.toast("탁기가 한곳으로 모인다… 우두머리가 깨어났소")
+		elif story.bosses().has(e.zone) and map_id == "seorabeol": ui.toast("탁기가 한곳으로 모인다… 우두머리가 깨어났소")
 		Sfx.sfx("quest")
 	if flags.get("q3", false) and not flags.get("dosa_done", false) and int(flags.get("kills_total", 0)) == 12: ui.toast("도사에게 가 보시오")
 
-func spawn_boss(type: String, x: float, y: float, z):
-	var b = Ent.Enemy.new(type, x, y, {"level": 1, "zone": z})
+func spawn_boss(type: String, x: float, y: float, z, lvl := 1, o := {}):
+	var b = Ent.Enemy.new(type, x, y, {"level": lvl, "zone": z})
+	if o.get("mini", false): b.make_mini(o.get("name", b.def.name))
 	b.cool = 1.5
 	b.on_defeat = func():
 		b.kneeling = true; b.state = "kneel"; b.state_t = 0; b.invuln = true; b.calm = true
@@ -275,7 +368,7 @@ func spawn_boss(type: String, x: float, y: float, z):
 		player.gain_exp(b.def.exp)
 		var c: Array = b.def.coin
 		for i in 8: pickups.append(Ent.Coin.new(b.x, b.y, int(ceil((c[0] + randf() * (c[1] - c[0])) / 8.0))))
-		if b.type == "yeoksin": story.yeoksin_kneel(b)
+		if b.type == "yeoksin" and map_id == "seorabeol": story.yeoksin_kneel(b)
 		else: story.boss_defeated(b)
 	enemies.append(b)
 	return b
@@ -367,14 +460,16 @@ func respawn() -> void:
 	var p = player
 	var z: String = zone.id if zone else "beach"
 	var cp: Array = CHECKPOINTS.get(z, CHECKPOINTS.beach)
-	if z == "town" and not flags.get("king_met", false): cp = [66, 62]
-	if z == "house": cp = [40, 31]
+	if map_id != "seorabeol":
+		cp = zone.get("cp", Maps.STATION[map_id].entry) if zone else Maps.STATION[map_id].entry
+	elif z == "town" and not flags.get("king_met", false): cp = [66, 62]
+	elif z == "house": cp = [40, 31]
 	p.x = cp[0] * T; p.y = cp[1] * T
 	p.hp = p.max_hp; p.gi = p.max_gi; p.state = "move"; p.iframe = 2; p.kbx = 0; p.kby = 0
 	var lost = int(p.coins * 0.1); p.coins -= lost
 	if boss is Object:
 		var b = boss
-		if b.type == "yeoksin": flags.yeoksin_started = false
+		if b.type == "yeoksin" and map_id == "seorabeol": flags.yeoksin_started = false
 		enemies = enemies.filter(func(e): return e != b and not e.summoned)
 		boss = null; arena = null; music_stack = []
 	projectiles = []; hazards = []
@@ -393,6 +488,7 @@ func tick(dt: float) -> void:
 	ui.tick(dt)
 	if ui.menu: ui.update_menu(); return
 	if ui.shop: ui.update_shop(dt); return
+	if ui.choice: ui.update_choice(dt); return
 	if ui.dialog or ui.banner:
 		ui.update_dialog(dt)
 		if ui.dialog or ui.banner:
@@ -450,9 +546,11 @@ func tick(dt: float) -> void:
 	interact_target = null
 	if not frozen and p.state == "move":
 		var best = null; var bd = 84.0
+		var want = story.objective().get("talk", "")
 		for n in npcs:
 			if n.hidden: continue
 			var d: float = p.dist_to(n)
+			if n.id == want and d < 84.0: best = n; break  # the NPC the story points at always wins
 			if d < bd: bd = d; best = n
 		if best: interact_target = {"npc": best, "label": "사기" if best.id == "merchant" else "말걸기"}
 	if interact_target and Inp.hit("interact"):
@@ -489,7 +587,7 @@ func update_cam(dt: float) -> void:
 func _process(dt: float) -> void:
 	var c = cam + view_size() / 2
 	view.follow(c.x, c.y, fx.shake)
-	view.set_mood(zone.id if zone else "beach", dt)
+	view.set_mood(zone, dt)
 	view.begin_frame()
 	if player != null:
 		for n in npcs:
@@ -500,8 +598,9 @@ func _process(dt: float) -> void:
 		view.fade_props(player.x, player.y)
 		view.set_lamps(_lights())
 	view.end_frame()
-	for gt in view.gates:
-		for n in view.gates[gt]: n.visible = not (gt == "south" and flags.get("gate_open", false))
+	for gt in world.GATES:
+		if view.gates.has(gt.id):
+			for n in view.gates[gt.id]: n.visible = not flags.get(gt.flag, false)
 	tilt.size = view_size()
 	_update_lights()
 
@@ -518,7 +617,7 @@ func _draw_flat(ci: CanvasItem) -> void:
 	if player == null: return
 	# miasma on locked paths
 	for gt in world.GATES:
-		if flags.get(gt.flag, false) or gt.id == "south": continue
+		if flags.get(gt.flag, false) or view.gates.has(gt.id): continue
 		var r = Rect2(gt.x0 * T, gt.y0 * T, (gt.x1 - gt.x0 + 1) * T, (gt.y1 - gt.y0 + 1) * T)
 		if not _in_view(r.get_center().x, r.get_center().y, 400): continue
 		if randf() < 0.5: fx.smoke(r.position.x + randf() * r.size.x, r.position.y + randf() * r.size.y, 1, Color("#7a2cff"))

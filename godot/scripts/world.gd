@@ -22,7 +22,7 @@ var ZONES = [
 	{"id": "forest", "name": "여우숲", "x0": 4, "y0": 42, "x1": 38, "y1": 86, "music": "eerie", "amb": "wind"},
 	{"id": "house", "name": "처용의 집", "x0": 5, "y0": 5, "x1": 34, "y1": 34, "music": "eerie", "amb": "wind"},
 ]
-const ROADS := [
+var ROADS = [
 	{"pts": [[100, 70], [88, 71], [76, 70], [68, 68], [66, 64]], "w": 2.2},
 	{"pts": [[66, 64], [64, 56], [61, 50]], "w": 1.6, "plaza": true},
 	{"pts": [[61, 40], [61, 28], [61, 22]], "w": 1.8},
@@ -56,6 +56,8 @@ const KINDS := {
 	"palanquin": {"foot": [-48, -30, 96, 28], "shadow": 46}, "altar": {"foot": [-26, -18, 52, 16], "shadow": 20, "light": [0, -20, 110, "7fd0ff", 0.7]},
 	"lotus": {"shadow": 0, "flat": true}, "cart": {"foot": [-40, -26, 80, 24], "shadow": 36},
 	"bones": {"shadow": 0, "flat": true},
+	"cave": {"light": [0, -20, 140, "8a4cff", 0.7]}, "maae": {"light": [0, -30, 110, "ffd28a", 0.4]},
+	"stonebuddha": {"light": [0, -30, 90, "ffd28a", 0.35]}, "palace": {"light": [0, -40, 200, "ffb35a", 0.6]},
 	"tuft": {"shadow": 0}, "tuft2": {"shadow": 0}, "flowers": {"shadow": 0, "flat": true}, "pebbles": {"shadow": 0, "flat": true},
 }
 
@@ -68,13 +70,114 @@ var props = []
 var flags = {}          # shared with the game (gates read it)
 var pw = W * T
 var ph = H * T
+var map_id := "seorabeol"
+var spec := {}          # data of a chapter map (maps.gd); empty for 서라벌
 
 func init() -> void:
-	_paint()
+	if map_id != "seorabeol":
+		spec = Maps.get_spec(map_id)
+		ZONES = spec.zones; ROADS = spec.get("roads", []); GATES = spec.get("gates", [])
+		_paint_spec()
+	else: _paint()
 	_build_cells()
 	_build_walk()
-	_place_props()
+	if spec: _place_props_spec()
+	else: _place_props()
+	for p in props:
+		p.k = KINDS.get(p.kind, {})
+		if Buildings.has(p.kind) and not p.kind in ["gate", "palacegate", "poseok"]:
+			p.k = p.k.duplicate(); p.k.foot = Buildings.foot(p.kind); p.k.building = true
+		if p.k.has("light"):
+			var l: Array = p.k.light
+			p.light = [l[0], l[1], l[2], Color("#" + l[3]), l[4]]
 	_prop_solids()
+
+# ---------- chapter maps from data ----------
+# areas: {t, rect: [x0, y0, x1, y1]} or {t, ell: [cx, cy, rx, ry]}, optional noise threshold
+func _paint_spec() -> void:
+	V.resize((W + 1) * (H + 1)); V.fill(spec.get("base", GRASS))
+	for y in H + 1:
+		for x in W + 1:
+			var t: int = V[vi(x, y)]
+			for a in spec.get("areas", []):
+				var inside := false
+				if a.has("rect"):
+					var r: Array = a.rect
+					inside = x >= r[0] and x <= r[2] and y >= r[1] and y <= r[3]
+				elif a.has("ell"):
+					var e: Array = a.ell
+					var n0 = (G.fbm(x * 0.15, y * 0.15, 3) - 0.5) * 0.4
+					inside = pow((x - e[0]) / e[2], 2) + pow((y - e[1]) / e[3], 2) < 1.0 - n0
+				if inside and (not a.has("noise") or G.fbm(x * 0.15, y * 0.15, a.get("seed", 3)) > a.noise): t = a.t
+			V[vi(x, y)] = t
+	for r in ROADS:
+		for y in H + 1:
+			for x in W + 1:
+				var d = road_dist(x, y, r)
+				if d < r.w * 0.55 + G.noise(x * 0.5, y * 0.5, 2) * 0.5:
+					var cur = V[vi(x, y)]
+					if cur == POND or cur == YARD or cur == PLAZA: continue
+					V[vi(x, y)] = PLAZA if r.get("plaza", false) else PATH
+	if spec.has("sea"):
+		var sea_d: Dictionary = spec.sea
+		var sea = PackedByteArray(); sea.resize(V.size())
+		for y in H + 1:
+			for x in W + 1:
+				var n = G.fbm(x * 0.09, y * 0.09, 5) * 6.0
+				var s := false
+				if sea_d.has("east"): s = s or x >= sea_d.east - n
+				if sea_d.has("south"): s = s or y >= sea_d.south - n * 0.6
+				if sea_d.has("north"): s = s or y <= sea_d.north + n * 0.6
+				if s: sea[vi(x, y)] = 1
+		for y in H + 1:
+			for x in W + 1:
+				if sea[vi(x, y)]: V[vi(x, y)] = SEA; continue
+				var near = 99.0
+				for dy in range(-6, 7):
+					for dx in range(-6, 7):
+						var xx = x + dx; var yy = y + dy
+						if xx < 0 or yy < 0 or xx > W or yy > H or not sea[vi(xx, yy)]: continue
+						near = min(near, Vector2(dx, dy).length())
+				if near <= 3.2 + G.fbm(x * 0.12, y * 0.12, 6) * 3.0: V[vi(x, y)] = SAND
+	_legalize()
+
+func _place_props_spec() -> void:
+	props.clear()
+	for p in spec.get("props", []):
+		# decorations never sit on a road (they would narrow it to a gap nobody fits through)
+		if p[0] in ["jangseung", "rock", "cart", "jars", "bush", "pine", "pine2", "deadtree", "reeds"] and _on_road(int(p[1]), int(p[2] - 0.5)): continue
+		_add(p[0], p[1], p[2], p[3] if p.size() > 3 else {})
+	var trees: Array = spec.get("trees", ["pine", "pine2"])
+	var keep: Array = spec.get("clear", [])  # spots kept free of scattered props [x, y, radius]
+	var near_bld := PackedByteArray(); near_bld.resize(W * H)
+	for pr in props:
+		if not Buildings.has(pr.kind): continue
+		var bx := int(pr.x / T); var by := int(pr.y / T)
+		for yy in range(by - 6, by + 2):
+			for xx in range(bx - 5, bx + 6):
+				if xx >= 0 and yy >= 0 and xx < W and yy < H: near_bld[yy * W + xx] = 1
+	for y in H:
+		for x in W:
+			var h = G.hash2(x, y, 31)
+			var t: Array = cells[y * W + x].t
+			if t.has(SEA) or t.has(POND) or t.has(SAND): continue
+			if walkable[y * W + x] == 0:
+				if (x + (y % 2)) % 2 == 0 and y % 2 == 0 and _near_walk(x, y, 7):
+					var kind: String = trees[int(G.hash2(x, y, 33) * trees.size())]
+					_add(kind, x + 0.5 + (h - 0.5) * 0.8, y + 1 + (G.hash2(x, y, 32) - 0.5) * 0.6, {"flip": h > 0.5})
+				continue
+			var z = cell_zone[y * W + x]
+			if z == null or _on_road(x, y): continue
+			var free := true
+			for q in keep:
+				if Vector2(q[0] - x, q[1] - y).length() < q[2]: free = false
+			if not free or near_bld[y * W + x]: continue
+			var acc := 0.0
+			for sc in z.get("scatter", []):
+				acc += sc[1]
+				if h < acc:
+					_add(sc[0], x + 0.5 + (G.hash2(x, y, 56) - 0.5) * 0.6, y + 1, {"flip": G.hash2(x, y, 57) > 0.5})
+					break
 
 # ---------- helpers ----------
 static func in_rect(x: float, y: float, r: Dictionary, m := 0.0) -> bool:
@@ -294,13 +397,6 @@ func _place_props() -> void:
 			elif z.id == "beach" and h < 0.006: _add("rock", x + 0.5, y + 1)
 			elif z.id != "town" and z.id != "house" and h < 0.012: _add("bush", x + 0.5, y + 1)
 			elif z.id == "ruin" and h < 0.02: _add("rock", x + 0.5, y + 1)
-	for p in props:
-		p.k = KINDS.get(p.kind, {})
-		if Buildings.has(p.kind) and p.kind != "gate":
-			p.k = p.k.duplicate(); p.k.foot = Buildings.foot(p.kind); p.k.building = true
-		if p.k.has("light"):
-			var l: Array = p.k.light
-			p.light = [l[0], l[1], l[2], Color("#" + l[3]), l[4]]
 
 func _near_walk(x: int, y: int, rad: int) -> bool:
 	for dy in range(-rad, rad + 1):

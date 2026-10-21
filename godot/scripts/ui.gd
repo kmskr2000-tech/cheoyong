@@ -6,6 +6,10 @@ var dialog = null
 var banner = null
 var shop = null
 var menu = false
+var menu_page = 0
+var choice = null          # {"title", "options": [{"label", "fn"}], "sel", "rects"}
+var chapter_banner = null  # {"text", "t"}
+var shop_lv = 1
 var glow = null
 var toasts = []
 var menu_rects = []
@@ -13,14 +17,31 @@ var mini: ImageTexture
 var vw = 1280.0
 var vh = 600.0
 
-const GOODS := [{"k": "yakgwa", "name": "약과", "desc": "체력 40% 회복", "price": 20}, {"k": "sikhye", "name": "식혜", "desc": "기 60 회복", "price": 15}]
+# shop goods by chapter: food gets dearer, each market has its own talismans
+const TALIS_SHOP := {2: ["hwa", "su"], 3: ["heung", "myo"], 4: ["geum"], 5: ["yong"], 6: ["cheon"]}
+const TALIS_PRICE := {"hwa": 260, "su": 220, "heung": 420, "myo": 480, "geum": 820, "yong": 900, "cheon": 1200}
+func goods() -> Array:
+	var k: int = shop_lv
+	var out = [{"k": "yakgwa", "name": "약과", "desc": "체력 40% 회복", "price": 20 * k}, {"k": "sikhye", "name": "식혜", "desc": "기 60 회복", "price": 15 * k}]
+	for t in TALIS_SHOP.get(k, []):
+		if not g.player.talis.has(t): out.append({"t": t, "name": Ent.TALIS[t].name, "desc": Ent.TALIS[t].desc, "price": TALIS_PRICE[t]})
+	return out
 const SPEAKER := {"용왕": "yongwang", "처용": "cheoyong", "화랑": "hwarang", "할미": "halmi", "상인": "merchant", "도사": "dosa", "아이": "child",
 	"누렁이": "dog", "앓는 사람": "sick", "아내": "wife", "왕": "king", "스님": "monk", "산신령": "sansin", "아낙": "villager",
 	"도깨비 대장": "dokchief", "구미호": "gumiho", "이무기": "imugi", "역신": "yeoksin"}
 const GOLD := Color("#ffd27a")
 const PAPER := Color("#f3e6c4")
 
-func modal() -> bool: return dialog != null or shop != null or menu
+func modal() -> bool: return dialog != null or shop != null or menu or choice != null
+
+# who is talking: the fixed cast, then NPCs on this map, then the boss
+func speaker_sprite(sp: String) -> String:
+	if SPEAKER.has(sp): return SPEAKER[sp]
+	for n in g.npcs:
+		if n.name == sp: return n.sprite
+	for e in g.enemies:
+		if e.def.name == sp: return e.sprite
+	return ""
 
 func is_touch() -> bool:
 	return Inp.last_touch or (DisplayServer.is_touchscreen_available() and not Inp.any_key) or G.has("touch")
@@ -94,6 +115,12 @@ func next_line() -> void:
 		Sfx.sfx("verse")
 		d.wait = true
 		return
+	if l[0] == "@hyangga":
+		g.flags["hy_" + l[1]] = true
+		banner = {"hy": l[1], "t": 0.0}
+		Sfx.sfx("verse")
+		d.wait = true
+		return
 	d.wait = false
 	if l.size() > 2 and l[2] is Callable: l[2].call()
 
@@ -115,7 +142,42 @@ func update_dialog(dt: float) -> void:
 		else: next_line()
 
 # ---------- shop ----------
-func open_shop() -> void: shop = {"sel": 0, "t": 0.0, "cool": 0.0, "rects": []}
+func open_shop(lv := 1) -> void:
+	shop_lv = lv
+	shop = {"sel": 0, "t": 0.0, "cool": 0.0, "rects": []}
+
+# a list of choices (the post station); options: [{"label", "fn"}]
+func choose(title: String, options: Array) -> void:
+	choice = {"title": title, "options": options, "sel": 0, "t": 0.0, "cool": 0.0, "rects": []}
+
+func update_choice(dt: float) -> void:
+	var c = choice
+	c.t += dt; c.cool -= dt
+	var pick = func(i: int):
+		choice = null
+		var fn: Callable = c.options[i].fn
+		fn.call()
+	if Inp.hit("menu"): choice = null; return
+	var mv = Inp.move()
+	if abs(mv.y) > 0.5 and c.cool <= 0:
+		c.sel = posmod(c.sel + (1 if mv.y > 0 else -1), c.options.size()); c.cool = 0.2; Sfx.sfx("ui")
+	if Inp.hit("tap"):
+		for r in c.rects:
+			if hit_rect(r): pick.call(r.i); return
+	if c.t > 0.25 and (Inp.hit("confirm") or Inp.hit("interact") or Inp.hit("attack")): pick.call(c.sel)
+
+func draw_choice() -> void:
+	var c = choice
+	var n: int = c.options.size()
+	var w = 340.0; var h = 70.0 + n * 50; var x = vw / 2 - w / 2; var y = vh / 2 - h / 2
+	panel(x, y, w, h, 0.94)
+	txt(c.title, vw / 2, y + 36, 19, GOLD, 1, Assets.font_black)
+	c.rects = []
+	for i in n:
+		var ry = y + 56 + i * 50; var rx = x + 20; var rw = w - 40
+		c.rects.append({"x": rx, "y": ry, "w": rw, "h": 42, "i": i})
+		draw_rect(Rect2(rx, ry, rw, 42), Color(0.84, 0.7, 0.43, 0.28) if c.sel == i else Color(1, 1, 1, 0.05))
+		txt(c.options[i].label, rx + rw / 2, ry + 27, 17, PAPER, 1)
 
 func hit_rect(r: Dictionary) -> bool:
 	var p = Inp.tap_pos
@@ -128,13 +190,16 @@ func update_shop(dt: float) -> void:
 	s.t += dt; s.cool -= dt
 	if Inp.hit("menu"): shop = null; return
 	var mv = Inp.move()
+	var list = goods()
 	if abs(mv.y) > 0.5 and s.cool <= 0:
-		s.sel = posmod(s.sel + (1 if mv.y > 0 else -1), GOODS.size() + 1); s.cool = 0.2; Sfx.sfx("ui")
+		s.sel = posmod(s.sel + (1 if mv.y > 0 else -1), list.size() + 1); s.cool = 0.2; Sfx.sfx("ui")
 	var buy = func(i: int):
-		if i == GOODS.size(): shop = null; return
-		var it: Dictionary = GOODS[i]
+		if i >= list.size(): shop = null; return
+		var it: Dictionary = list[i]
 		if p.coins < it.price: toast("엽전이 모자라오"); return
-		p.coins -= it.price; p.items[it.k] += 1; Sfx.sfx("coin"); toast(it.name + " 하나 샀소")
+		p.coins -= it.price; Sfx.sfx("coin")
+		if it.has("t"): g.add_talis(it.t)
+		else: p.items[it.k] += 1; toast(it.name + " 하나 샀소")
 	if Inp.hit("tap"):
 		for r in s.rects:
 			if hit_rect(r): s.sel = r.i; buy.call(r.i); return
@@ -147,6 +212,13 @@ func update_menu() -> void:
 	if Inp.hit("tap"):
 		for r in menu_rects:
 			if hit_rect(r):
+				if r.has("page"): menu_page = r.page; Sfx.sfx("ui")
+				if r.has("talis"):
+					var i: int = r.talis
+					if p.equip.has(i): p.equip.erase(i)
+					elif p.equip.size() < 2: p.equip.append(i)
+					else: p.equip[0] = p.equip[1]; p.equip[1] = i
+					Sfx.sfx("ui")
 				if r.has("mask"): p.mask = r.mask; Sfx.sfx("ui")
 				if r.has("close"): menu = false
 				if r.has("sound"): Sfx.toggle()
@@ -255,6 +327,7 @@ func draw_hud() -> void:
 	draw_minimap()
 	# currency strip
 	var items = [["엽전", str(p.coins), Color("#ffd25a")], ["구절", "%d/8" % g.verse_count(), Color("#bfe6ff")]]
+	if f.get("ch1_done", false): items.append(["향가", "%d/5" % g.story.hyangga_count(), Color("#ffb0e0")])
 	if p.mask != "": items.append(["탈", p.m().name, p.m().color])
 	var total = 0.0
 	for it in items: total += tw(it[0] + " " + it[1], 13) + 28
@@ -276,11 +349,17 @@ func draw_hud() -> void:
 	var ob: Dictionary = g.story.objective()
 	var parts: PackedStringArray = ob.text.split(" — ")
 	var rows = [parts[0]]
+	var side_rows = side_lines()
 	if parts.size() > 1: rows.append_array(parts[1].split(" · "))
 	var qw: float = min(250.0, vw * 0.26); var qx = vw - qw - 12; var qy = 60.0
+	var main_n := rows.size()
+	rows.append_array(side_rows)
 	plate(qx, qy, qw, 14 + rows.size() * 22, 0.5)
 	for i in rows.size():
 		var y = qy + 22 + i * 22
+		if i >= main_n:
+			txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#c8b0ff"), 0, Assets.font, 2)
+			continue
 		if i == 0:
 			draw_colored_polygon(PackedVector2Array([Vector2(qx + 10, y - 9), Vector2(qx + 18, y - 4), Vector2(qx + 10, y + 1)]), Color("#ffcf5a"))
 			txt(fit("[이야기] " + rows[i], 13, qw - 30), qx + 24, y, 13, Color("#ffe08a"), 0, null, 2)
@@ -304,6 +383,18 @@ func draw_hud() -> void:
 		var t = toasts[i]
 		var a: float = min(1.0, (2 - t.t) * 2)
 		txt(t.s, vw / 2, vh * 0.62 - i * 22, 15, Color(1, 0.89, 0.63, a), 1, null, 3)
+
+# active side quests (at most two shown)
+func side_lines() -> Array:
+	var c = g.story.chapter()
+	var out = []
+	if c == null: return out
+	for q in c.sides():
+		if c.side_state(q) != "on": continue
+		var pr: int = c.side_progress(q)
+		out.append("[부탁] %s %s" % [q.name, "— 돌아가 알리시오" if pr >= q.count else "(%d/%d)" % [pr, q.count]])
+		if out.size() >= 2: break
+	return out
 
 func draw_minimap() -> void:
 	var W: World = G.world
@@ -369,9 +460,10 @@ func draw_dialog() -> void:
 	panel(x, y, w, h, 0.9)
 	var tx = x + 22
 	if sp != "@":
-		if SPEAKER.has(sp) and Assets.chars.has(SPEAKER[sp]):
+		var spr := speaker_sprite(sp)
+		if spr != "" and Assets.chars.has(spr):
 			draw_rect(Rect2(x + 14, y + 14, 92, 92), Color(0.16, 0.17, 0.27, 0.9))
-			portrait(SPEAKER[sp], x + 16, y + 16, 88)
+			portrait(spr, x + 16, y + 16, 88)
 			draw_rect(Rect2(x + 14, y + 14, 92, 92), Color(0.84, 0.7, 0.43, 0.7), false, 1)
 			tx = x + 122
 		txt(sp, tx, y + 34, 17, GOLD, 0, Assets.font_black)
@@ -392,22 +484,31 @@ func draw_banner(dt: float) -> void:
 	if b.t > D: banner = null; return
 	var a: float = min(1.0, min(b.t * 1.5, (D - b.t) * 1.5))
 	draw_rect(Rect2(0, 0, vw, vh), Color(0.016, 0.024, 0.063, 0.6 * a))
-	txt("처용가 · 제" + "一二三四五六七八"[b.n - 1] + "구", vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
-	var text: String = Story.VERSES[b.n - 1]
+	var text: String
+	if b.has("hy"):
+		var H: Dictionary = Story.HYANGGA[b.hy]
+		txt("향가 · %s (%s)" % [H.name, H.by], vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
+		text = H.line
+		txt(H.effect, vw / 2, vh / 2 + 64, 15, Color(0.75, 0.9, 1.0, a * min(1.0, max(0.0, b.t - 1.0))), 1, Assets.font)
+	else:
+		txt("처용가 · 제" + "一二三四五六七八"[b.n - 1] + "구", vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
+		text = Story.VERSES[b.n - 1]
 	var shown = text.substr(0, int(ceil(min(1.0, b.t / 1.2) * text.length())))
-	txt(shown, vw / 2, vh / 2 + 14, 40, Color(0.63, 0.86, 1, 0.35 * a), 1, Assets.font_black)
-	txt(shown, vw / 2, vh / 2 + 12, 40, Color(0.97, 0.93, 0.82, a), 1, Assets.font_black)
+	var fs := 40 if text.length() < 14 else 28
+	txt(shown, vw / 2, vh / 2 + 14, fs, Color(0.63, 0.86, 1, 0.35 * a), 1, Assets.font_black)
+	txt(shown, vw / 2, vh / 2 + 12, fs, Color(0.97, 0.93, 0.82, a), 1, Assets.font_black)
 	var k: float = min(1.0, b.t)
 	draw_rect(Rect2(vw / 2 - 160 * k, vh / 2 + 34, 320 * k, 2), Color(0.84, 0.7, 0.43, 0.8 * a))
 
 func draw_shop() -> void:
 	var s = shop; var p = g.player
-	var w = 380.0; var h = 74.0 + (GOODS.size() + 1) * 52; var x = vw / 2 - w / 2; var y = vh / 2 - h / 2
+	var list = goods()
+	var w = 400.0; var h = 74.0 + (list.size() + 1) * 52; var x = vw / 2 - w / 2; var y = vh / 2 - h / 2
 	panel(x, y, w, h, 0.94)
 	txt("상인의 좌판", vw / 2, y + 34, 20, GOLD, 1, Assets.font_black)
 	txt("가진 엽전 %d냥" % p.coins, vw / 2, y + 56, 13, Color("#d8d0c0"), 1, Assets.font)
 	s.rects = []
-	var all = GOODS.duplicate(); all.append({"name": "그만 보겠소", "desc": ""})
+	var all = list.duplicate(); all.append({"name": "그만 보겠소", "desc": ""})
 	for i in all.size():
 		var it: Dictionary = all[i]
 		var ry = y + 70 + i * 52; var rx = x + 20; var rw = w - 40
@@ -418,6 +519,9 @@ func draw_shop() -> void:
 		txt(it.name, rx + off, ry + 20, 16, PAPER)
 		if it.has("k"):
 			txt("%s  (가진 것 %d)" % [it.desc, p.items[it.k]], rx + off, ry + 37, 12, Color("#b8b0a0"), 0, Assets.font)
+		elif it.has("t"):
+			txt("부적 · " + it.desc, rx + off, ry + 37, 12, Color("#c8b0ff"), 0, Assets.font)
+		if it.has("price"):
 			txt("%d냥" % it.price, rx + rw - 12, ry + 28, 15, GOLD if p.coins >= it.price else Color("#888866"), 2)
 
 func draw_menu() -> void:
@@ -427,17 +531,27 @@ func draw_menu() -> void:
 	panel(x, y, w, h, 0.95)
 	menu_rects = []
 	txt("쉬어 가기", x + 24, y + 40, 22, GOLD, 0, Assets.font_black)
+	for i in 2:
+		var tr = {"x": x + 170 + i * 120, "y": y + 16, "w": 110, "h": 34, "page": i}
+		menu_rects.append(tr)
+		draw_rect(Rect2(tr.x, tr.y, tr.w, tr.h), Color(0.84, 0.7, 0.43, 0.3) if menu_page == i else Color(1, 1, 1, 0.06))
+		txt(["몸과 탈", "부적·향가·부탁"][i], tr.x + tr.w / 2, tr.y + 23, 13, PAPER, 1)
+	if menu_page == 1:
+		draw_menu2(x, y, w, h)
+		return
 	var st = ["레벨 %d  (%d/%d)" % [p.lvl, p.xp, p.exp_need()], "체력 %d/%d" % [ceil(p.hp), p.max_hp], "기 %d/%d" % [p.gi, p.max_gi],
 		"공격 %d" % round(p.atk()), "엽전 %d냥" % p.coins, "약과 %d · 식혜 %d" % [p.items.yakgwa, p.items.sikhye], "정화한 요괴 %d" % int(f.get("kills_total", 0))]
 	for i in st.size(): txt(st[i], x + 24, y + 76 + i * 24, 14, PAPER, 0, Assets.font)
-	txt("탈", x + 24, y + 270, 16, GOLD)
+	txt("탈", x + 24, y + 262, 16, GOLD)
+	var cols: int = 1 if p.masks.size() <= 4 else 2
+	var mw: float = 300.0 if cols == 1 else (w / 2 - 40) / 2.0
 	for i in p.masks.size():
 		var M: Dictionary = Ent.MASKS[p.masks[i]]
-		var rx = x + 24; var ry = y + 282 + i * 46
-		menu_rects.append({"x": rx, "y": ry, "w": 300, "h": 40, "mask": p.masks[i]})
-		draw_rect(Rect2(rx, ry, 300, 40), Color(0.84, 0.7, 0.43, 0.28) if p.mask == p.masks[i] else Color(1, 1, 1, 0.05))
-		txt(M.name, rx + 12, ry + 18, 15, M.color)
-		txt(M.desc, rx + 12, ry + 34, 12, Color("#c8c0b0"), 0, Assets.font)
+		var rx = x + 24 + (i % cols) * (mw + 6); var ry = y + 272 + int(i / cols) * 44
+		menu_rects.append({"x": rx, "y": ry, "w": mw, "h": 40, "mask": p.masks[i]})
+		draw_rect(Rect2(rx, ry, mw, 40), Color(0.84, 0.7, 0.43, 0.28) if p.mask == p.masks[i] else Color(1, 1, 1, 0.05))
+		txt(M.name, rx + 10, ry + 18, 15, M.color)
+		txt(fit(M.desc, 11, mw - 14), rx + 10, ry + 34, 11, Color("#c8c0b0"), 0, Assets.font)
 	var vx = x + w / 2 + 10
 	txt("처용가", vx, y + 76, 16, GOLD)
 	for i in 8:
@@ -460,6 +574,43 @@ func draw_menu() -> void:
 	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)
 	txt("진행은 자동으로 저장되오", x + w / 2, y + h - 18, 12, Color("#9a9080"), 1, Assets.font)
 
+# page 2: talismans (tap to wear, two at most), the hyangga gathered, side quests on this map
+func draw_menu2(x: float, y: float, w: float, h: float) -> void:
+	var p = g.player; var f: Dictionary = g.flags
+	txt("부적 (둘까지 지닐 수 있소)", x + 24, y + 80, 16, GOLD)
+	if p.talis.is_empty(): txt("아직 부적이 없소", x + 24, y + 110, 13, Color("#9a9080"), 0, Assets.font)
+	for i in p.talis.size():
+		var T: Dictionary = Ent.TALIS[p.talis[i]]
+		var rx = x + 24 + (i % 2) * 168; var ry = y + 92 + int(i / 2) * 44
+		menu_rects.append({"x": rx, "y": ry, "w": 160, "h": 40, "talis": i})
+		var on: bool = p.equip.has(i)
+		draw_rect(Rect2(rx, ry, 160, 40), Color(0.66, 0.5, 1.0, 0.32) if on else Color(1, 1, 1, 0.05))
+		txt(("● " if on else "") + T.name, rx + 10, ry + 18, 14, Color("#e0d0ff") if on else PAPER)
+		txt(fit(T.desc, 11, 146), rx + 10, ry + 34, 11, Color("#c8c0b0"), 0, Assets.font)
+	var vx = x + w / 2 + 10
+	txt("향가", vx, y + 80, 16, GOLD)
+	for i in Story.HYANGGA_ORDER.size():
+		var k: String = Story.HYANGGA_ORDER[i]
+		var H: Dictionary = Story.HYANGGA[k]
+		var got: bool = f.get("hy_" + k, false)
+		txt(H.name if got else "· · · · ·", vx, y + 108 + i * 40, 15, Color("#ffb0e0") if got else Color(PAPER, 0.25))
+		if got: txt(fit(H.effect, 11, w / 2 - 40), vx, y + 124 + i * 40, 11, Color("#c8c0b0"), 0, Assets.font)
+	txt("부탁 (이 고장)", vx, y + 330, 16, GOLD)
+	var c = g.story.chapter()
+	var row := 0
+	if c:
+		for q in c.sides():
+			var st: String = c.side_state(q)
+			if st == "": continue
+			var t2: String = q.name + ("  ✔" if st == "done" else "  (%d/%d)" % [min(c.side_progress(q), q.count), q.count])
+			txt(fit(t2, 13, w / 2 - 40), vx, y + 356 + row * 22, 13, Color("#9a9080") if st == "done" else PAPER, 0, Assets.font)
+			row += 1
+	if row == 0: txt("맡은 부탁이 없소", vx, y + 356, 13, Color("#9a9080"), 0, Assets.font)
+	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true}
+	menu_rects.append(cr)
+	draw_rect(Rect2(cr.x, cr.y, cr.w, cr.h), Color(0.84, 0.7, 0.43, 0.25))
+	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)
+
 func tick(dt: float) -> void:
 	for i in range(toasts.size() - 1, -1, -1):
 		toasts[i].t += dt
@@ -469,12 +620,21 @@ func _draw() -> void:
 	if g == null or G.state != "play": return
 	var dt = get_process_delta_time()
 	if not g.cinema: draw_hud()
-	if dialog == null and shop == null and not menu and not g.cinema: draw_buttons()
+	if dialog == null and shop == null and choice == null and not menu and not g.cinema: draw_buttons()
 	else: Inp.buttons = []
 	if g.cinema:
 		var k: float = min(1.0, g.cinema_t * 2); var bh = 48 * k
 		draw_rect(Rect2(0, 0, vw, bh), Color.BLACK); draw_rect(Rect2(0, vh - bh, vw, bh), Color.BLACK)
 	draw_dialog()
 	if shop: draw_shop()
+	if choice: draw_choice()
 	if menu: draw_menu()
 	draw_banner(dt)
+	if chapter_banner:
+		var cb = chapter_banner
+		cb.t += dt
+		if cb.t > 4.5: chapter_banner = null
+		else:
+			var a: float = min(1.0, min(cb.t * 1.5, (4.5 - cb.t) * 1.5))
+			draw_rect(Rect2(0, vh * 0.2, vw, 70), Color(0.02, 0.02, 0.06, 0.55 * a))
+			txt(cb.text, vw / 2, vh * 0.2 + 45, 28, Color(1, 0.93, 0.78, a), 1, Assets.font_black, 5)

@@ -23,7 +23,8 @@ def bbox_bottom(im):
 
 
 # chibi cast is drawn at roughly half size, smoothed, like a prerendered 3D sprite
-CHIBI_SCALE = {"dokchief": 0.62, "gumiho": 0.6, "imugi": 0.62, "yeoksin": 0.6, "dog": 0.42, "child": 0.5, "imp": 0.55}
+CHIBI_SCALE = {"dokchief": 0.62, "gumiho": 0.6, "imugi": 0.62, "yeoksin": 0.6, "dog": 0.42, "child": 0.5, "imp": 0.55,
+               "jangsanbeom": 0.55, "bulgasari": 0.64, "eoduksini": 0.66, "geuseundae": 0.66, "samjogo": 0.6, "haeryong": 0.64}
 
 
 def pack_char(name):

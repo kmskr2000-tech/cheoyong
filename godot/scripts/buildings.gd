@@ -10,6 +10,8 @@ const DIMS := {
 	"giwa": [176, 100], "choga": [144, 88], "cheoyonghouse": [236, 150], "shrine": [100, 76],
 	"pavilion": [132, 108], "stall": [100, 56], "well": [56, 56], "brokenwell": [60, 60],
 	"pagoda": [60, 60], "wall": [128, 20], "ruinwall": [104, 18], "altar": [52, 22], "gate": [0, 0],
+	"hall": [240, 150], "dabotap": [76, 76], "cave": [200, 120], "poseok": [190, 120], "brickpagoda": [96, 96],
+	"mokta": [190, 190], "cheomseong": [90, 90], "palace": [340, 190], "palacegate": [300, 40], "maae": [150, 40], "stonebuddha": [44, 36],
 }
 
 static var mats := {}
@@ -220,6 +222,121 @@ static func make(kind: String) -> Dictionary:
 			for sx in [-1, 1]:
 				dk.box("wood", Vector3(sx * half / 2, -0.1, -0.2), Vector3(half - 0.3, 3.0, 0.14), 1.0)
 			doors = dk.build()
+		"hall", "palace":
+			# temple hall / palace: stone terrace, red pillars all round, lattice walls, big hipped roof
+			var pal = kind == "palace"
+			var ph := 1.1 if pal else 0.6
+			k.box("stone_block", Vector3(0, -0.8, cz), Vector3(w, ph + 0.8, dp), 1.0)
+			k.box("stone_block", Vector3(0, -0.5, cz + dp / 2 + 0.5), Vector3(2.2, ph * 0.6 + 0.5, 1.0), 1.0)
+			var bw := w - 1.6; var bd := dp - 1.6
+			k.box("wall_shrine", Vector3(0, ph, cz), Vector3(bw, 2.7, bd), 2.0, true)
+			var n := int(bw / 1.6) + 1
+			for i in n:
+				var x := lerpf(-w / 2 + 0.5, w / 2 - 0.5, i / float(n - 1))
+				k.box("red_wood", Vector3(x, ph, cz + dp / 2 - 0.45), Vector3(0.26, 2.9, 0.26), 1.0)
+			var top := ph + 2.9
+			k.box("red_wood", Vector3(0, top - 0.25, cz), Vector3(w - 0.6, 0.3, dp - 0.6), 1.0)
+			k.roof("roof_giwa", Vector3(0, top, cz), w / 2 + 0.5, dp / 2 + 0.5, 2.1 if pal else 1.8, max(0.4, w / 2 - dp / 2), 0.55, 1.6, 8, 14)
+			var rr: float = max(0.4, w / 2 - dp / 2)
+			var ry := top + (2.1 if pal else 1.8)
+			k.box("roof_giwa", Vector3(0, ry - 0.12, cz), Vector3(rr * 2 + 0.4, 0.34, 0.4), 0.5)
+			for sx in [-1, 1]: k.box("roof_giwa", Vector3(sx * (rr + 0.18), ry - 0.05, cz), Vector3(0.26, 0.6, 0.42), 0.5)
+			k.box("stone_smooth", Vector3(0, top - 0.02, cz + dp / 2 + 0.45), Vector3(w + 0.6, 0.1, 0.12), 0.5)
+		"dabotap":
+			# Dabotap: square base with stairs, an open pillared storey, octagonal railings and a finial
+			k.box("stone_smooth", Vector3(0, -0.4, cz), Vector3(w, 1.2, dp), 1.0)
+			for sx in [-1, 1]:
+				for sz in [-1, 1]: k.box("stone_smooth", Vector3(sx * 0.6, 0.8, cz + sz * 0.6), Vector3(0.22, 1.1, 0.22), 1.0)
+			k.box("stone_smooth", Vector3(0, 0.8, cz), Vector3(0.5, 1.1, 0.5), 1.0)
+			k.roof("stone_smooth", Vector3(0, 1.9, cz), 1.25, 1.25, 0.25, 0.05, 0.1, 1.0, 2, 4)
+			k.cylinder("stone_smooth", Vector3(0, 2.15, cz), 0.75, 0.55, 8)
+			k.cylinder("stone_smooth", Vector3(0, 2.7, cz), 0.55, 0.12, 8)
+			k.cylinder("stone_smooth", Vector3(0, 2.82, cz), 0.45, 0.5, 8)
+			k.roof("stone_smooth", Vector3(0, 3.32, cz), 0.85, 0.85, 0.3, 0.02, 0.08, 1.0, 2, 4)
+			k.cylinder("stone_smooth", Vector3(0, 3.6, cz), 0.07, 0.9, 6)
+		"cave":
+			# Seokguram: a grassy mound of stone with a dark arched doorway facing south
+			k.box("stone_block", Vector3(0, -0.5, cz), Vector3(w, 3.0, dp * 0.8), 1.0)
+			k.roof("roof_thatch" if false else "stone_block", Vector3(0, 2.5, cz), w / 2, dp * 0.4, 1.8, w / 4, 0.0, 0.5, 4, 8, 1.0)
+			k.box("wood", Vector3(0, -0.1, cz + dp * 0.4 + 0.02), Vector3(2.0, 2.4, 0.05), 1.0)
+			k.box("stone_smooth", Vector3(0, -0.2, cz + dp * 0.4 + 0.1), Vector3(2.8, 0.3, 0.2), 1.0)
+			for sx in [-1, 1]: k.box("stone_smooth", Vector3(sx * 1.2, -0.2, cz + dp * 0.4 + 0.1), Vector3(0.4, 2.7, 0.3), 1.0)
+		"poseok":
+			# Poseokjeong: abalone-shaped stone water channel around a garden
+			var rx := w / 2 - 0.3; var rz := dp / 2 - 0.3
+			for i in 22:
+				var a0 := i / 22.0 * TAU; var a1 := (i + 1) / 22.0 * TAU
+				var wob := 1.0 + 0.12 * sin(a0 * 3)
+				var p0 := Vector3(cos(a0) * rx * wob, 0, cz + sin(a0) * rz * wob)
+				var p1 := Vector3(cos(a1) * rx * (1.0 + 0.12 * sin(a1 * 3)), 0, cz + sin(a1) * rz * (1.0 + 0.12 * sin(a1 * 3)))
+				var mid := (p0 + p1) / 2
+				k.box("stone_smooth", Vector3(mid.x, -0.3, mid.z), Vector3(abs(p1.x - p0.x) + 0.35, 0.55, abs(p1.z - p0.z) + 0.35), 0.5)
+		"brickpagoda":
+			# Bunhwangsa: square pagoda of dark stone bricks, stepped eaves, guardian lions at the corners
+			k.box("stone_block", Vector3(0, -0.4, cz), Vector3(w, 0.8, dp), 1.0)
+			var y := 0.4; var s := w - 0.8
+			for i in 3:
+				k.box("brick", Vector3(0, y, cz), Vector3(s, 1.3 - i * 0.2, s), 1.0)
+				y += 1.3 - i * 0.2
+				for st in 3:
+					k.box("stone_block", Vector3(0, y, cz), Vector3(s + 0.5 - st * 0.35, 0.14, s + 0.5 - st * 0.35), 1.0)
+					y += 0.14
+				s *= 0.82
+			for sx in [-1, 1]:
+				for sz in [-1, 1]: k.box("stone_smooth", Vector3(sx * (w / 2 - 0.3), 0.4, cz + sz * (dp / 2 - 0.3)), Vector3(0.45, 0.6, 0.6), 1.0)
+		"mokta":
+			# Hwangnyongsa nine-storey wooden pagoda
+			k.box("stone_block", Vector3(0, -0.6, cz), Vector3(w, 1.2, dp), 1.0)
+			var y := 0.6; var s := w - 1.2
+			for i in 9:
+				var bh := 1.05 - i * 0.04
+				k.box("wall_shrine", Vector3(0, y, cz), Vector3(s, bh, s), 2.0, true)
+				y += bh
+				k.roof("roof_giwa", Vector3(0, y - 0.05, cz), s / 2 + 0.55, s / 2 + 0.55, 0.45, 0.05, 0.22, 1.4, 2, 6)
+				y += 0.4
+				s *= 0.9
+			k.cylinder("stone_smooth", Vector3(0, y, cz), 0.1, 2.2, 6)
+			for j in 5: k.cylinder("stone_smooth", Vector3(0, y + 0.5 + j * 0.3, cz), 0.25, 0.06, 8)
+		"cheomseong":
+			# Cheomseongdae: bottle-shaped stone observatory with a square window and a well frame on top
+			k.box("stone_block", Vector3(0, -0.3, cz), Vector3(w, 0.6, dp), 1.0)
+			var y := 0.3
+			for i in 12:
+				var t := i / 11.0
+				var r := lerpf(1.25, 0.82, t) + 0.12 * sin(t * PI) * (1.0 - t)
+				k.cylinder("stone_block", Vector3(0, y, cz), r, 0.38, 16, 0.0, TAU, i == 11)
+				y += 0.38
+			k.box("wood", Vector3(0, 2.2, cz + 1.02), Vector3(0.55, 0.55, 0.05), 1.0)
+			for sz in [-1, 1]: k.box("stone_smooth", Vector3(0, y, cz + sz * 0.75), Vector3(1.9, 0.22, 0.22), 1.0)
+			for sx in [-1, 1]: k.box("stone_smooth", Vector3(sx * 0.75, y + 0.22, cz), Vector3(0.22, 0.22, 1.9), 1.0)
+		"palacegate":
+			var half := w / 2
+			for i in 5:
+				var x := lerpf(-half + 0.4, half - 0.4, i / 4.0)
+				if abs(x) < 1.0: continue
+				k.box("red_wood", Vector3(x, -0.2, cz), Vector3(0.4, 3.4, 0.4), 1.0)
+			k.box("stone_block", Vector3(-half + 1.6, -0.4, cz), Vector3(3.0, 1.2, dp), 1.0)
+			k.box("stone_block", Vector3(half - 1.6, -0.4, cz), Vector3(3.0, 1.2, dp), 1.0)
+			k.box("red_wood", Vector3(0, 2.9, cz), Vector3(w, 0.4, 0.5), 1.0)
+			k.roof("roof_giwa", Vector3(0, 3.3, cz), half + 0.8, 1.2, 1.1, half, 0.4, 1.5, 4, 14)
+			var dk := Kit.new()
+			dk.box("wood", Vector3(0, -0.1, cz), Vector3(4.6, 3.0, 0.16), 1.0)
+			doors = dk.build()
+		"maae":
+			# rock face with a carved Buddha (raised relief built from a few blocks)
+			k.box("stone_block", Vector3(0, -0.4, cz), Vector3(w, 3.6, dp), 1.0)
+			k.roof("stone_block", Vector3(0, 3.2, cz), w / 2 + 0.1, dp / 2 + 0.1, 0.6, w / 2 - 0.4, 0.0, 0.6, 2, 4, 1.0)
+			var fz := cz + dp / 2 + 0.06
+			k.box("stone_smooth", Vector3(0, 0.1, fz), Vector3(1.3, 1.6, 0.12), 1.0)
+			k.box("stone_smooth", Vector3(0, 1.7, fz), Vector3(0.65, 0.7, 0.14), 1.0)
+			k.box("stone_smooth", Vector3(0, 2.4, fz), Vector3(0.25, 0.25, 0.12), 1.0)
+			k.cylinder("stone_smooth", Vector3(0, 1.5, fz - 0.02), 1.0, 0.05, 14, PI, TAU, false)
+		"stonebuddha":
+			k.box("stone_smooth", Vector3(0, -0.2, cz), Vector3(w, 0.55, dp), 1.0)
+			k.box("stone_smooth", Vector3(0, 0.35, cz), Vector3(0.9, 0.55, 0.7), 1.0)
+			k.box("stone_smooth", Vector3(0, 0.9, cz), Vector3(0.6, 0.75, 0.45), 1.0)
+			k.box("stone_smooth", Vector3(0, 1.65, cz), Vector3(0.36, 0.38, 0.36), 1.0)
+			k.box("stone_smooth", Vector3(0, 2.03, cz), Vector3(0.16, 0.12, 0.16), 1.0)
 	var node := Node3D.new()
 	var mi := k.build()
 	node.add_child(mi)

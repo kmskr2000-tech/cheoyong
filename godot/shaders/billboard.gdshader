@@ -9,6 +9,7 @@ uniform float flip = 0.0;
 uniform float flash = 0.0;
 uniform float alpha = 1.0;
 uniform float dark = 0.0;
+uniform vec4 tint : source_color = vec4(1.0);  // recolour reused art (multiplied, then pushed towards the hue)
 global uniform vec4 sprite_tint;
 
 varying float v_flip;
@@ -31,7 +32,10 @@ void fragment() {
 	if (v_flip > 0.5) uv.x = 1.0 - uv.x;
 	uv = region.xy + uv * region.zw;
 	vec4 c = texture(tex, uv);
-	vec3 col = c.rgb * mix(vec3(1.0), vec3(0.55, 0.42, 0.7), dark) * sprite_tint.rgb;
+	float lum = dot(c.rgb, vec3(0.3, 0.55, 0.15));
+	float amt = 0.65 * (1.0 - step(2.995, tint.r + tint.g + tint.b));
+	vec3 base = mix(c.rgb, lum * tint.rgb * 1.6, amt);
+	vec3 col = base * mix(vec3(1.0), vec3(0.55, 0.42, 0.7), dark) * sprite_tint.rgb;
 	float fa = clamp(flash, 0.0, 1.0) * texture(white, uv).a;
 	col = mix(col, vec3(1.0), fa);
 	ALBEDO = col;
