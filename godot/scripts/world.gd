@@ -296,6 +296,8 @@ func _place_props() -> void:
 			elif z.id == "ruin" and h < 0.02: _add("rock", x + 0.5, y + 1)
 	for p in props:
 		p.k = KINDS.get(p.kind, {})
+		if Buildings.has(p.kind) and p.kind != "gate":
+			p.k = p.k.duplicate(); p.k.foot = Buildings.foot(p.kind); p.k.building = true
 		if p.k.has("light"):
 			var l: Array = p.k.light
 			p.light = [l[0], l[1], l[2], Color("#" + l[3]), l[4]]

@@ -56,6 +56,38 @@ G.CHARS = {
     "yeoksin": ("Yeoksin the plague spirit, tall gaunt demon in tattered dark purple robes, pale grey skin, long black hair, glowing red eyes, green miasma", 192, "mannequin", [
         ("walk", "tpl:walking-6-frames", D5), ("attack", "v3:6:casting a dark spell with both hands", D3),
         ("kneel", "v3:6:kneeling on both knees with head bowed in surrender", ["south"])]),
+    # --- chapters 2-6 (경주 순례) ---
+    "chungdam": ("Buddhist monk-poet Chungdam, middle-aged, shaved head, brown robe, carrying a tea set wrapped in cloth on his back", 128, "mannequin", NPC),
+    "wolmyeong": ("Buddhist monk Wolmyeong, young monk with a shaved head, grey robe, holding a long bamboo flute", 128, "mannequin", NPC),
+    "suro": ("Lady Suro, beautiful Silla noblewoman, elaborate hair with flowers, flowing jade-green silk hanbok, gold ornaments", 128, "mannequin", NPC),
+    "noin": ("old farmer with a white beard, straw hat, plain hemp clothes, holding a red azalea flower bouquet", 128, "mannequin", NPC),
+    "heemyeong": ("village mother Heemyeong, plain white hanbok, hair in a low bun, kind tired face, praying hands", 128, "mannequin", NPC),
+    "mabu": ("Silla post station horse keeper, sturdy man with a cloth headband, brown tunic, leather boots, holding a horse whip", 128, "mannequin", NPC),
+    "jangsanbeom": ("jangsanbeom, white long-haired four-legged mountain beast like a shaggy tiger with hidden face, glowing eyes", 128, "dog", [
+        ("walk", "v3:6:prowling forward quickly", D5), ("attack", "v3:6:pouncing forward with claws", D3)]),
+    "mulgwisin": ("mulgwisin water ghost, drowned pale man with seaweed hair dripping water, tattered blue rags, floating", 128, "mannequin", [
+        ("walk", "v3:6:floating forward, dripping water", D5), ("attack", "v3:6:throwing a ball of dark water with both hands", D3)]),
+    "seokjang": ("corrupted stone guardian statue warrior, grey granite body with cracks, glowing purple eyes, stone sword", 128, "mannequin", [
+        WALK, ("attack", "v3:6:swinging a heavy stone sword downward", D3)]),
+    "kkoktu": ("kkokdu wooden puppet demon, jointed wooden doll in faded red and blue hanbok, painted mask face, strings hanging", 128, "mannequin", [
+        WALK, ("attack", "v3:6:spinning and slashing with wooden arms", D3)]),
+    "hwagwi": ("hwagwi fire spirit, small floating demon made of orange flames with a black ember face", 128, "mannequin", [
+        ("walk", "v3:6:floating forward, flames flickering", D5), ("attack", "v3:6:spitting a fireball forward", D3)]),
+    "bulgasari": ("bulgasari, huge iron-eating beast with a bear body, elephant trunk, rhinoceros eyes, metal spikes on its back, dark iron skin", 192, "dog", [
+        ("walk", "v3:6:stomping forward heavily", D5), ("attack", "v3:6:rearing up and slamming down with front paws", D3),
+        ("kneel", "v3:6:lying down and lowering its head in defeat", ["south"])]),
+    "eoduksini": ("eoduksini, towering giant made of black smoke and darkness, long arms, two glowing white eyes, wisps of shadow", 192, "mannequin", [
+        ("walk", "v3:6:looming forward, shadow wisps trailing", D5), ("attack", "v3:6:sweeping a giant shadow arm across", D3),
+        ("kneel", "v3:6:shrinking down to its knees, head bowed", ["south"])]),
+    "haeryong": ("haeryong sea dragon, long blue-green Korean dragon with a pearl, horns and whiskers, coiled, water splashing", 192, "cat", [
+        ("walk", "v3:6:slithering and swaying through water", D5), ("attack", "v3:6:lunging forward breathing a jet of water", D3),
+        ("kneel", "v3:6:lowering its head to the ground in defeat", ["south"])]),
+    "geuseundae": ("geuseundae, very tall thin shadow giant in a black hooded robe, long thin arms, a pale mask face, purple flames around it", 192, "mannequin", [
+        ("walk", "tpl:walking-6-frames", D5), ("attack", "v3:6:stretching a long arm and slamming the ground", D3),
+        ("kneel", "v3:6:kneeling on both knees with head bowed in surrender", ["south"])]),
+    "samjogo": ("samjogo, giant three-legged black crow with golden sun disc behind it, fiery red eyes, burning feathers", 192, "cat", [
+        ("walk", "v3:6:hopping forward, wings half open", D5), ("attack", "v3:6:flapping wings and shooting a fire blast", D3),
+        ("kneel", "v3:6:folding its wings and bowing its head to the ground", ["south"])]),
 }
 
 
