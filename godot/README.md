@@ -15,3 +15,7 @@
 - `scripts/view3d.gd`: 3D 지형(높이장: 구역 고도·길 완화·언덕), 물 메시, 소품 MultiMesh 빌보드, 직교 카메라(55°), 해 그림자·안개, 등불 OmniLight.
 - 게임 규칙은 그대로 2D 픽셀 좌표. 캐릭터는 `Ent.draw_sprite` → 빌보드, 이름표·HP·이펙트는 `game.sp(x, y, z)`로 화면에 투영해 2D로 그린다.
 - 셰이더: `billboard.gdshader`(디더 투명·흰색 깜빡임), `water.gdshader`, `tiltshift.gdshader`(위아래 흐림).
+
+## 아이폰(웹)
+- 웹 내보내기는 PWA로 나간다(홈 화면에 추가하면 전체 화면). 모바일 텍스처 압축(ETC2/ASTC)도 켰다.
+- 배포: 빌드 결과만 담은 `web-play` 브랜치를 Vercel 프로젝트 `cheoyong`이 그대로 서빙한다(빌드 명령 없음) → https://cheoyong.vercel.app
