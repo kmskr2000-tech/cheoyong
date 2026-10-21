@@ -20,6 +20,7 @@
 
 ## 그래픽 파이프라인
 1. `python3 art/gen_chars.py <이름…>` — PixelLab `create-character-v3`(8방향 회전) + 애니메이션(템플릿 걷기, v3 공격·춤·무릎). 결과는 `art/raw/chars/<이름>/`.
+   - 크레딧이 없을 때: `python3 art/anim_proc.py <이름…>` — 치비의 Idle 8방향 그림을 발 기준으로 휘고 늘여 걷기·공격·무릎 프레임을 만든다(현재 그슨대·꼭두각시). 메타데이터에 `procedural`이 붙으며, 나중에 `gen_chibi.py`로 진짜 애니메이션을 만들면 덮어쓴다.
 2. `python3 art/gen_tiles.py` — Wang 타일셋 8종. 모래·풀은 base tile id로 이어 붙여 세트끼리 색이 같다.
 3. `python3 art/gen_props.py` — 소품(`/map-objects`, low top-down).
 4. `python3 art/pack.py` — 캐릭터 아틀라스(발 위치 정렬), 타일 시트(밤 색보정), 소품 트림 → `src/assets/`.
