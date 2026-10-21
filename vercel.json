@@ -1,0 +1,6 @@
+{
+  "headers": [
+    {"source": "/(.*)\\.wasm", "headers": [{"key": "Content-Type", "value": "application/wasm"}, {"key": "Cache-Control", "value": "public, max-age=3600"}]},
+    {"source": "/(.*)\\.pck", "headers": [{"key": "Content-Type", "value": "application/octet-stream"}, {"key": "Cache-Control", "value": "public, max-age=3600"}]}
+  ]
+}
