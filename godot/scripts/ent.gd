@@ -6,6 +6,23 @@ const MASKS := {
 	"cheoyong": {"name": "처용탈", "desc": "균형 · 흥 +30%", "atk": 1.0, "taken": 1.0, "heung": 1.3, "gi": 1.0, "skill": 1.0, "color": Color("#ff6a5a")},
 	"gwimyeon": {"name": "귀면탈", "desc": "공격 +35% · 받는 피해 +15%", "atk": 1.35, "taken": 1.15, "heung": 1.0, "gi": 1.0, "skill": 1.0, "color": Color("#c04cff")},
 	"yongwang": {"name": "용왕탈", "desc": "기 회복 2배 · 스킬 피해 +20%", "atk": 1.0, "taken": 1.0, "heung": 1.0, "gi": 2.0, "skill": 1.2, "color": Color("#4cd6ff")},
+	"yangban": {"name": "양반탈", "desc": "공격 +15% · 받는 피해 −10%", "atk": 1.15, "taken": 0.9, "color": Color("#ffd27a")},
+	"gaksi": {"name": "각시탈", "desc": "이동 +15% · 구르기 대기 −40% · 흥 +20%", "speed": 1.15, "roll": 0.6, "heung": 1.2, "color": Color("#ff9ad0")},
+	"saja": {"name": "사자탈", "desc": "공격 +55% · 기 회복 절반", "atk": 1.55, "gi": 0.5, "color": Color("#ff7a3a")},
+	"malttugi": {"name": "말뚝이탈", "desc": "엽전·경험 +50% · 흥 +20%", "coin": 1.5, "exp": 1.5, "heung": 1.2, "color": Color("#9aff7a")},
+}
+# 부적 (talismans): two can be worn; each adds to the mask's numbers
+const TALIS := {
+	"soe": {"name": "쇠부적", "desc": "받는 피해 −10%", "taken": -0.10},
+	"hwa": {"name": "화부적", "desc": "공격 +10%", "atk": 0.10},
+	"su": {"name": "수부적", "desc": "기 회복 +40%", "gi": 0.40},
+	"pung": {"name": "풍부적", "desc": "이동 +12% · 구르기 대기 −20%", "speed": 0.12, "roll": -0.2},
+	"bok": {"name": "복부적", "desc": "엽전 +40%", "coin": 0.40},
+	"heung": {"name": "흥부적", "desc": "흥 +30%", "heung": 0.30},
+	"geum": {"name": "금강부적", "desc": "받는 피해 −20%", "taken": -0.20},
+	"yong": {"name": "용부적", "desc": "스킬 피해 +30%", "skill": 0.30},
+	"cheon": {"name": "천부적", "desc": "공격 +20%", "atk": 0.20},
+	"myo": {"name": "묘부적", "desc": "경험 +30% · 엽전 +20%", "exp": 0.30, "coin": 0.20},
 }
 const SKILLS := {
 	"skill1": {"name": "소리결", "gi": 12, "cd": 0.6},
@@ -22,8 +39,20 @@ const ENEMIES := {
 	"gumiho": {"name": "구미호", "hp": 720, "atk": 15, "spd": 95, "r": 22, "ai": "boss", "exp": 140, "coin": [40, 50], "boss": true},
 	"imugi": {"name": "이무기", "hp": 820, "atk": 17, "spd": 40, "r": 30, "ai": "boss", "exp": 160, "coin": [45, 60], "boss": true},
 	"yeoksin": {"name": "역신", "hp": 1500, "atk": 18, "spd": 80, "r": 22, "ai": "boss", "exp": 300, "coin": [0, 0], "boss": true},
+	# chapters 2-6 (alt: sprite used until the new art is packed)
+	"jangsanbeom": {"name": "장산범", "hp": 70, "atk": 10, "spd": 96, "r": 13, "ai": "lunge", "range": 110, "exp": 18, "coin": [3, 6], "alt": "gumiho", "alt_scale": 0.55},
+	"mulgwisin": {"name": "물귀신", "hp": 64, "atk": 10, "spd": 60, "r": 11, "ai": "ranged", "range": 210, "exp": 18, "coin": [3, 6], "float": true, "alt": "ghost", "orb": "water", "tint": Color("#5aa8ff")},
+	"seokjang": {"name": "석장승", "hp": 130, "atk": 14, "spd": 40, "r": 14, "ai": "slam", "range": 60, "exp": 22, "coin": [4, 8], "alt": "ghoul", "tint": Color("#b8b0a0")},
+	"kkoktu": {"name": "꼭두각시", "hp": 80, "atk": 11, "spd": 82, "r": 11, "ai": "melee", "range": 40, "exp": 18, "coin": [3, 6], "float": true, "alt": "imp", "tint": Color("#d8a060")},
+	"hwagwi": {"name": "화귀", "hp": 60, "atk": 12, "spd": 70, "r": 10, "ai": "ranged", "range": 220, "exp": 18, "coin": [3, 6], "float": true, "alt": "ghost", "orb": "sun", "tint": Color("#ff8a3a")},
+	"bulgasari": {"name": "불가사리", "hp": 750, "atk": 18, "spd": 62, "r": 30, "ai": "boss", "exp": 360, "coin": [50, 70], "boss": true, "alt": "dokchief"},
+	"eoduksini": {"name": "어둑시니", "hp": 800, "atk": 19, "spd": 55, "r": 28, "ai": "boss", "exp": 420, "coin": [55, 75], "boss": true, "alt": "yeoksin", "tint": Color("#3a2a5a"), "alt_scale": 1.5},
+	"haeryong": {"name": "해룡", "hp": 850, "atk": 20, "spd": 48, "r": 30, "ai": "boss", "exp": 480, "coin": [60, 80], "boss": true, "alt": "imugi", "tint": Color("#4ab0ff"), "alt_scale": 1.2},
+	"geuseundae": {"name": "그슨대", "hp": 900, "atk": 21, "spd": 70, "r": 24, "ai": "boss", "exp": 540, "coin": [65, 85], "boss": true, "float": true, "alt": "yeoksin", "tint": Color("#30304a"), "alt_scale": 1.5},
+	"samjogo": {"name": "삼족오", "hp": 950, "atk": 22, "spd": 86, "r": 26, "ai": "boss", "exp": 600, "coin": [70, 90], "boss": true, "alt": "gumiho", "tint": Color("#ff7a2a")},
+	"yeoksin_true": {"name": "역신 본체", "hp": 1600, "atk": 24, "spd": 86, "r": 28, "ai": "boss", "exp": 0, "coin": [0, 0], "boss": true, "alt": "yeoksin", "scale": 1.35, "tint": Color("#c040ff")},
 }
-const ORB_COL := {"fire": [Color("#4cb8ff"), Color("#9fe0ff")], "plague": [Color("#8aff6a"), Color("#c0ff9a")], "water": [Color("#3a9cff"), Color("#bfe6ff")], "shadow": [Color("#b04cff"), Color("#e0a8ff")]}
+const ORB_COL := {"iron": [Color("#c8d0e0"), Color("#ffffff")], "sun": [Color("#ff8a2a"), Color("#ffe08a")], "fire": [Color("#4cb8ff"), Color("#9fe0ff")], "plague": [Color("#8aff6a"), Color("#c0ff9a")], "water": [Color("#3a9cff"), Color("#bfe6ff")], "shadow": [Color("#b04cff"), Color("#e0a8ff")]}
 
 static func game():
 	return G.game
@@ -105,13 +134,23 @@ class Player extends Actor:
 	var wave_hit = {}
 	var ult_ring = false
 	var ult_hit = false
+	var talis: Array = []   # owned talisman ids
+	var equip: Array = []   # indexes into talis (at most 2)
+	var shield_t = 0.0      # 헌화가 petal shield
 
 	func _init(px: float, py: float) -> void:
 		x = px; y = py; r = 11
 
 	func m() -> Dictionary: return Ent.MASKS.get(mask, Ent.MASKS.cheoyong)
-	func atk() -> float: return (10 + (lvl - 1) * 2.5) * (m().atk if mask != "" else 1.0)
-	func exp_need() -> int: return 20 + lvl * 18
+	# combined multiplier of the worn mask and talismans: atk taken heung gi skill speed roll coin exp
+	func stat(k: String) -> float:
+		var v: float = m().get(k, 1.0) if mask != "" else 1.0
+		for i in equip:
+			if i < talis.size(): v += Ent.TALIS[talis[i]].get(k, 0.0)
+		return max(0.1, v)
+	func hy(k: String) -> bool: return G.game.flags.get("hy_" + k, false)
+	func atk() -> float: return (10 + (lvl - 1) * 2.5) * stat("atk")
+	func exp_need() -> int: return 20 + lvl * 18 + int(pow(max(0, lvl - 10), 2) * 7)  # steeper after chapter 1
 	func fx() -> Fx: return G.game.fx
 
 	func gain_exp(n: float) -> void:
@@ -125,7 +164,7 @@ class Player extends Actor:
 
 	func add_heung(n: float) -> void:
 		if not G.game.flags.get("has_ult", false): return
-		heung = min(100.0, heung + n * (m().heung if mask != "" else 1.0))
+		heung = min(100.0, heung + n * stat("heung") * (1.25 if hy("dosol") else 1.0))
 
 	func update(dt: float) -> void:
 		var g = G.game
@@ -134,7 +173,8 @@ class Player extends Actor:
 		iframe = max(0.0, iframe - dt)
 		for k in cd: cd[k] = max(0.0, cd[k] - dt)
 		combo_window = max(0.0, combo_window - dt)
-		gi = min(float(max_gi), gi + dt * 4 * (m().gi if mask != "" else 1.0))
+		gi = min(float(max_gi), gi + dt * 4 * stat("gi"))
+		shield_t = max(0.0, shield_t - dt)
 		apply_knock(dt)
 		if state == "dead": return
 		if g.frozen: set_anim("idle"); return
@@ -144,7 +184,7 @@ class Player extends Actor:
 			"move":
 				if moving:
 					face_to(mv.angle())
-					var sp = speed * min(1.0, mv.length() * 1.2)
+					var sp = speed * stat("speed") * min(1.0, mv.length() * 1.2)
 					G.world.move_circle(self, mv.x * sp * dt, mv.y * sp * dt)
 					arena_clamp()
 					set_anim("walk")
@@ -219,13 +259,19 @@ class Player extends Actor:
 			var ad: float = abs(G.angdiff(face, atan2(e.y - y, e.x - x)))
 			if d < R and (ad < arc or d < 16):
 				e.damage(atk() * mult, cos(face) * kb, sin(face) * kb); hits += 1
+				if hy("docheon") and randf() < 0.3 and not e.dead:
+					e.damage(atk() * mult * 0.6, 0, 0)
+					fx().circle(e.x, e.y, 26, Color("#ffe08a"), 0.4)
 		if hits > 0:
 			add_heung(4 * hits)
 			G.game.hitstop = max(G.game.hitstop, 0.08 if combo == 2 else 0.045)
 		G.game.on_player_attack(hits)
 
 	func start_roll(a: float) -> void:
-		state = "roll"; state_t = 0; roll_a = a; face_to(a); iframe = 0.3; cd.roll = 0.5
+		state = "roll"; state_t = 0; roll_a = a; face_to(a); iframe = 0.3; cd.roll = 0.5 * stat("roll")
+		if hy("heonhwa"):
+			shield_t = 1.5
+			for i in 6: fx().add({"x": x + (randf() - 0.5) * 40, "y": y, "z": 20 + randf() * 30, "vz": 30.0, "life": 0.8, "size": 3.0, "color": Color("#ff7aa0"), "glow": true})
 		set_anim("walk"); Ent.sfx("roll")
 		G.game.rolled = true
 
@@ -238,14 +284,16 @@ class Player extends Actor:
 		auto_aim(220)
 		if k == "skill1":
 			set_anim("attack"); Ent.sfx("skill1")
-			G.game.projectiles.append(Ent.SoundWave.new(x, y, face, atk() * 1.7 * skill_mult()))
+			if hy("chan"):
+				for da in [-0.45, 0.0, 0.45]: G.game.projectiles.append(Ent.SoundWave.new(x, y, face + da, atk() * 2.0 * skill_mult()))
+			else: G.game.projectiles.append(Ent.SoundWave.new(x, y, face, atk() * 1.7 * skill_mult()))
 			fx().circle(x, y, 46, Color("#7ff0ff"), 0.6)
 		elif k == "skill2":
 			set_anim("cast"); Ent.sfx("skill2"); fx().circle(x, y, 90, Color("#ff9ad0"), 1.2)
 		else:
 			set_anim("walk"); Ent.sfx("skill3"); wave_hit = {}; fx().circle(x, y, 50, Color("#5ab8ff"), 0.7)
 
-	func skill_mult() -> float: return m().skill if mask != "" else 1.0
+	func skill_mult() -> float: return stat("skill")
 
 	func update_skill(dt: float) -> void:
 		if skill == "skill1" and state_t > 0.3: state = "move"
@@ -264,6 +312,7 @@ class Player extends Actor:
 						var a = atan2(e.y - y, e.x - x)
 						e.damage(atk() * 0.55 * skill_mult(), cos(a) * 120, sin(a) * 120); hits += 1
 				if hits: add_heung(2 * hits)
+				if hits and hy("jemang"): hp = min(float(max_hp), hp + max_hp * 0.012 * hits)
 			for i in 2:
 				var a = randf() * TAU
 				fx().add({"x": x + cos(a) * 60, "y": y + sin(a) * 40, "z": 10 + randf() * 40, "vx": -sin(a) * 120, "vy": cos(a) * 80, "life": 0.35, "size": 3.0, "color": [Color("#ff9ad0"), Color("#ffe9a8"), Color("#9fe0ff")][i % 3], "glow": true})
@@ -306,8 +355,8 @@ class Player extends Actor:
 			for e in G.game.enemies.duplicate():
 				if e.dead or e.state == "kneel": continue
 				if dist_to(e) < 620:
-					var dmg = atk() * (3 + verses * 1.2)
-					if e.def.get("boss", false): e.damage(99999.0 if e.ult_vulnerable else min(dmg, e.max_hp * 0.22), 0, 0, true)
+					var dmg = atk() * (3 + verses * 1.2) * (1.0 + 0.12 * G.game.story.hyangga_count()) * (1.4 if hy("dosol") else 1.0)
+					if e.def.get("boss", false): e.damage(99999.0 if e.ult_vulnerable else min(dmg, e.max_hp * (0.22 + (0.06 if hy("dosol") else 0.0))), 0, 0, true)
 					else: e.damage(99999.0, 0, 0, true)
 		if t > 2.6:
 			state = "move"; ult_ring = false; ult_hit = false; G.game.pop_music()
@@ -334,7 +383,7 @@ class Player extends Actor:
 	func hurt(dmg: float, fx_: float, fy: float) -> bool:
 		if iframe > 0 or state == "dead" or state == "ult" or G.game.frozen: return false
 		if G.has("god"): flash = 1; iframe = 0.3; return true
-		var d = int(round(dmg * (m().taken if mask != "" else 1.0) * (0.9 + randf() * 0.2)))
+		var d = int(round(dmg * stat("taken") * (0.5 if shield_t > 0 else 1.0) * (0.9 + randf() * 0.2)))
 		hp -= d; flash = 1; iframe = 0.7
 		var a = atan2(y - fy, x - fx_)
 		kbx = cos(a) * 260; kby = sin(a) * 260
@@ -349,6 +398,8 @@ class Player extends Actor:
 		if mask != "":
 			var c: Color = m().color; c.a = 0.35 + sin(G.game.time * 3) * 0.1
 			Fx.gellipse(ci, Vector2(x, y), 20, 11, c, false, 2)
+		if shield_t > 0:
+			Fx.gellipse(ci, Vector2(x, y), 26, 16, Color(1, 0.5, 0.65, 0.5 * min(1.0, shield_t)), false, 3)
 
 	func draw3d() -> void:
 		var blink = iframe > 0 and state != "roll" and state != "ult" and int(iframe * 20) % 2 == 0
@@ -498,6 +549,11 @@ class Enemy extends Actor:
 	var summoned = false
 	var spawn_key = null
 	var on_defeat: Callable
+	var elite = ""
+	var mini = false
+	var armor = 1.0
+	var tint = Color.WHITE
+	var scale = 1.0
 	# boss scratch state
 	var step = 0
 	var last_move = ""
@@ -513,6 +569,20 @@ class Enemy extends Actor:
 		atk_v = def.atk * (1 + (lvl - 1) * 0.15) * 1.2
 		r = def.r; home = Vector2(px, py); zone = o.get("zone"); state_t = randf()
 		sprite = t; aura = randf() * 6; cool = 0.5 + randf()
+		scale = def.get("scale", 1.0)
+		if not Assets.chars.has(t) and def.has("alt"):
+			sprite = def.alt; scale *= def.get("alt_scale", 1.0); tint = def.get("tint", Color.WHITE)
+
+	# 정예: a named, larger and much tougher yokai with a golden aura
+	func make_elite(nm: String) -> void:
+		elite = nm
+		max_hp = int(max_hp * 5); hp = max_hp; atk_v *= 1.4; scale *= 1.3; r = int(r * 1.25)
+		def = def.duplicate(); def.name = nm
+
+	# a named yokai fought as a boss (boss bar, kneels) with its normal moves
+	func make_mini(nm: String) -> void:
+		def = def.duplicate(); def.boss = true; def.name = nm; def.exp = def.exp * 8; def.coin = [30, 40]
+		max_hp = int(max_hp * 9); hp = max_hp; atk_v *= 1.3; scale *= 1.45; r = int(r * 1.4); mini = true
 
 	func fx() -> Fx: return G.game.fx
 	func p(): return G.game.player
@@ -521,7 +591,7 @@ class Enemy extends Actor:
 
 	func damage(d: float, kx: float, ky: float, ult := false) -> void:
 		if dead or state == "kneel" or invuln: return
-		var n: int = max(1, int(round(d * (0.9 + randf() * 0.2))))
+		var n: int = max(1, int(round(d * armor * (0.9 + randf() * 0.2))))
 		hp -= n; flash = 1
 		var kb = 0.15 if def.get("boss", false) else 1.0
 		kbx += kx * kb; kby += ky * kb
@@ -607,7 +677,7 @@ class Enemy extends Actor:
 						if not did_hit:
 							did_hit = true
 							var a = ang_to()
-							G.game.projectiles.append(Ent.Orb.new(x, y, cos(a) * 170, sin(a) * 170, atk_v, "shadow", {"homing": 0.8}))
+							G.game.projectiles.append(Ent.Orb.new(x, y, cos(a) * 170, sin(a) * 170, atk_v, def.get("orb", "shadow"), {"homing": 0.8}))
 							Ent.sfx("fire")
 						if state_t > 0.2: recover()
 					"slam":
@@ -649,19 +719,28 @@ class Enemy extends Actor:
 		var fl: float = (sin(aura * 2.5) * 4 + 8) if def.get("float", false) else 0.0
 		var squash = (1 - min(0.28, k * 0.5)) if state == "kneel" else (1 - spawn_t if spawn_t > 0 else 1.0)
 		var a = alpha * (max(0.0, 1 - max(0.0, k - 0.9) * 1.6) if state == "kneel" else (1 - min(1.0, spawn_t) if spawn_t > 0 else 1.0))
-		Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"fps": fps, "loop": loop, "flash": max(flash, 0.55 if tell else 0.0), "squash": squash, "z": fl, "alpha": a, "dark": 0.0 if state == "kneel" or calm else 0.15, "blob": 44.0 if def.get("boss", false) else r * 1.5})
+		Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"fps": fps, "loop": loop, "flash": max(flash, 0.55 if tell else 0.0), "squash": squash, "z": fl, "alpha": a, "dark": 0.0 if state == "kneel" or calm else 0.15, "blob": 44.0 if def.get("boss", false) else r * 1.5, "scale": scale, "tint": tint})
 		if state == "kneel" and k < 1:
-			Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"flash": 1.0, "squash": squash, "alpha": sin(k * PI) * 0.7, "z": fl})
+			Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"flash": 1.0, "squash": squash, "alpha": sin(k * PI) * 0.7, "z": fl, "scale": scale})
 
 	func draw(ci: CanvasItem) -> void:
 		var fl: float = (sin(aura * 2.5) * 4 + 8) if def.get("float", false) else 0.0
+		if elite != "" and state != "kneel":
+			var f: Font = Assets.font_bold
+			var q3 = Ent.sp(x, y, Ent.head_y(sprite) * scale + 24 + fl)
+			var tw: float = f.get_string_size(elite, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+			ci.draw_string_outline(f, Vector2(q3.x - tw / 2, q3.y), elite, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, 3, Color(0.2, 0.1, 0, 0.9))
+			ci.draw_string(f, Vector2(q3.x - tw / 2, q3.y), elite, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("#ffd25a"))
 		if not def.get("boss", false) and hp < max_hp and state != "kneel":
-			var q = Ent.sp(x, y, Ent.head_y(sprite) + 10 + fl)
+			var q = Ent.sp(x, y, Ent.head_y(sprite) * scale + 10 + fl)
 			var w = 30.0
 			ci.draw_rect(Rect2(q.x - w / 2 - 1, q.y - 1, w + 2, 5), Color(0, 0, 0, 0.6))
 			ci.draw_rect(Rect2(q.x - w / 2, q.y, w * hp / max_hp, 3), Color("#e04848"))
 	func draw_glow(ci: CanvasItem) -> void:
 		if state == "kneel" or calm or kneeling: return
+		if elite != "":
+			var q2 = Ent.sp(x, y, 30); var rr = 60.0 * G.game.view.ppx
+			ci.draw_texture_rect(G.game.dot, Rect2(q2.x - rr, q2.y - rr * 0.8, rr * 2, rr * 1.6), false, Color(1.0, 0.75, 0.2, 0.3 + sin(aura * 4) * 0.08))
 		var boss: bool = def.get("boss", false)
 		var rad = (90.0 if boss else 40.0) * G.game.view.ppx
 		var q = Ent.sp(x, y, 20)

@@ -18,14 +18,16 @@ func say(s: String) -> void:
 
 func free_cell(x: int, y: int) -> bool:
 	var W: World = G.world
-	return x >= 0 and y >= 0 and x < W.W * 2 and y < W.H * 2 and not W.solid_at(x * 16 + 8, y * 16 + 8)
+	# clearance for Cheoyong's body, so the path never threads a gap he cannot fit through
+	return x >= 0 and y >= 0 and x < W.W * 2 and y < W.H * 2 and not W.blocked(x * 16 + 8, y * 16 + 8, 9)
 
 # A* on the 16px collision grid using Godot's AStarGrid2D
 var astar: AStarGrid2D
 var astar_flags := ""
 func find_path(from: Vector2, to: Vector2):
 	var W: World = G.world
-	var key := str(W.flags.get("gate_open", false)) + str(W.flags.get("paths_open", false)) + str(W.flags.get("house_open", false))
+	var key := W.map_id
+	for gt in W.GATES: key += str(W.flags.get(gt.flag, false))
 	if astar == null or key != astar_flags:
 		astar_flags = key
 		astar = AStarGrid2D.new()
@@ -64,9 +66,15 @@ func plan():
 			var d: float = p.dist_to(e)
 			if d < bd: bd = d; best = e
 		if best: return {"pos": Vector2(best.x, best.y)}
-		var sp: Array = Story.SPAWNS[z].list
+		var sp: Array = g.story.spawns()[z].list
 		var s: Array = sp[int(g.time / 6) % sp.size()]
 		return {"pos": Vector2(s[1], s[2]) * T}
+	if f.get("ch1_done", false) or (f.get("yeoksin_done", false) and g.map_id != "seorabeol"):
+		var ob: Dictionary = g.story.objective()
+		if ob.has("talk") and g.npc(ob.talk) != null and not g.npc(ob.talk).hidden: return npc.call(ob.talk)
+		if ob.has("hunt"): return hunt.call(ob.hunt)
+		if ob.get("target") != null: return {"pos": ob.target}
+		return {"pos": Vector2(g.player.x, g.player.y)}
 	if not f.get("q1", false): return npc.call("yongwang")
 	if not f.get("q2", false): return hunt.call("beach") if int(f.get("kills_beach", 0)) < 6 else npc.call("yongwang")
 	if not f.get("king_met", false): return {"pos": Vector2(61, 50) * T}
@@ -82,29 +90,65 @@ func plan():
 	if not f.get("yeoksin_done", false): return {"pos": Vector2(20, 26) * T}
 	return npc.call("wife_home")
 
+var prog_t := 0.0
+var ignore := {}
+var last_foe = null
+var last_foe_hp := 0.0
+var foe_t := 0.0
 func tick(dt: float) -> void:
 	Inp.bot = {"x": 0.0, "y": 0.0, "down": {}}
+	prog_t += dt
+	if prog_t > 20.0 and G.state == "play":
+		prog_t = 0
+		var g0 = G.game
+		print("PROGRESS t=%d map=%s pos=%d,%d lvl=%d hp=%d/%d coins=%d obj=%s" % [g0.time, g0.map_id, g0.player.x / 32, g0.player.y / 32, g0.player.lvl, g0.player.hp, g0.player.max_hp, g0.player.coins, g0.story.objective().text])
+		if G.has("debugbot"): print("  goal=%s path=%s stuck=%.1f" % [goal / 32 if goal else null, path.size() if path else -1, stuck_t])
+		# a single-chapter test stops once that chapter is finished
+		var ch = int(G.param("chapter", "0"))
+		if ch >= 2 and ch < 6 and g0.flags.get("c%d_done" % ch, false):
+			print("CHAPTER DONE %d game_time=%d lvl=%d" % [ch, g0.time, g0.player.lvl]); get_tree().quit()
 	match G.state:
 		"title": Inp.press("confirm"); return
-		"intro", "ending":
+		"ending":
+			print("REACHED ENDING game_time=%d lvl=%d" % [G.game.time, G.game.player.lvl]); get_tree().quit(); return
+		"intro":
 			if randf() < 0.05: Inp.press("confirm")
 			return
 		"play": pass
 		_: return
 	var g = G.game; var p = g.player
 	if g.ui.shop or g.ui.menu: Inp.press("menu"); return
+	if g.ui.choice:
+		var want = g.story.objective().get("travel", "")
+		var c = g.ui.choice
+		var idx: int = c.options.size() - 1
+		for i in c.options.size():
+			if c.options[i].get("map", "") == want: idx = i
+		c.sel = idx
+		cf += dt
+		if cf > 0.3: cf = 0; Inp.press("confirm")
+		return
 	if g.ui.dialog or g.ui.banner:
 		cf += dt
 		if cf > 0.25: cf = 0; Inp.press("confirm")
 		return
 	if g.frozen or p.state == "dead": return
 	var foe = null; var fd := 260.0
+	for k in ignore.keys():
+		if g.time > ignore[k]: ignore.erase(k)
 	for e in g.enemies:
-		if e.dead or e.state == "kneel" or e.kneeling or e.alpha == 0: continue
+		if e.dead or e.state == "kneel" or e.kneeling or e.alpha == 0 or ignore.has(e): continue
 		var d: float = p.dist_to(e)
 		if d < fd or e == g.boss: fd = min(fd, d); foe = e
 		if e == g.boss: break
 	if p.heung >= 100 and foe and (not (g.boss is Object) or g.boss.ult_vulnerable or g.boss.type != "yeoksin"): Inp.press("ult"); return
+	# a yokai we cannot get at (across a slope or a wall) is left alone for a while
+	if foe and foe != g.boss:
+		if foe == last_foe and foe.hp >= last_foe_hp:
+			foe_t += dt
+			if foe_t > 6.0: ignore[foe] = g.time + 25.0; foe_t = 0; foe = null
+		else: foe_t = 0
+		last_foe = foe; last_foe_hp = foe.hp if foe else 0.0
 	var gl = plan()
 	if foe:
 		gl = {"pos": Vector2(foe.x, foe.y)}

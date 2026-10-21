@@ -22,7 +22,8 @@
 - `godot/`: 웹판과 같은 에셋·스토리·전투를 Godot 4.4(GL Compatibility)로 옮긴 판. 사용법은 `godot/README.md`.
 - 컨테이너 준비: `sh tools/setup_godot.sh` (dl.google.com이 막혀 Android SDK 없이 비-Gradle 내보내기 → uber-apk-signer로 서명).
 - 검증: `godot --headless --path godot -- --auto --skipintro --speed=8 --mute` 가 `REACHED ENDING` 을 찍어야 한다.
-- 게임 규칙을 바꾸면 `src/js`와 `godot/scripts` 양쪽을 맞춘다.
+- 1장(서라벌)의 규칙을 바꾸면 `src/js`와 `godot/scripts` 양쪽을 맞춘다. 2~6장(경주 순례)·부적·향가는 고도판 전용이다(웹 JS판은 1장 분량의 가벼운 판으로 둔다).
+- 2~6장 한 장만: `godot --headless --path godot -- --chapter=n --auto --speed=8 --mute` (`PROGRESS` 줄로 진행 확인).
 
 ## 작업 방식
 - `main`에서 브랜치 → 커밋·푸시 → PR → 바로 머지(merge 커밋).

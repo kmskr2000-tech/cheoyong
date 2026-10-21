@@ -36,10 +36,81 @@ const BOSSES := {
 	"pond": {"type": "imugi", "flag": "boss_imugi", "at": [59, 19.5], "need": "kills_pond", "trigger": [59, 22]},
 }
 
-var g  # the Game node
+# 향가 (chapters 2-6): one per chapter, each strengthens a dance
+const HYANGGA := {
+	"chan": {"name": "찬기파랑가", "by": "충담사", "line": "잣나무 가지 높아 눈도 덮지 못할 화랑이여", "effect": "소리결이 세 갈래로 퍼지고 더 세진다"},
+	"jemang": {"name": "제망매가", "by": "월명사", "line": "한 가지에 났건만 가는 곳을 모르는구나", "effect": "탈춤 회오리가 맞힐 때마다 체력이 돌아온다"},
+	"heonhwa": {"name": "헌화가", "by": "소 끄는 노인", "line": "붉은 바위 끝에 꽃을 꺾어 바치오리다", "effect": "구르면 꽃잎 막이 피해를 절반으로 막는다"},
+	"docheon": {"name": "도천수관음가", "by": "희명", "line": "천 개의 손 가운데 하나만 내어 주소서", "effect": "소매 공격이 이따금 두 번 친다"},
+	"dosol": {"name": "도솔가", "by": "월명사", "line": "오늘 노래 불러 뿌린 꽃이여, 곧은 마음을 따르라", "effect": "처용가가 더 세지고 흥이 빨리 찬다"},
+}
+const HYANGGA_ORDER := ["chan", "jemang", "heonhwa", "docheon", "dosol"]
+
+var g  # the Game
+var chapters := {}  # map id -> Chapter
 
 func _init(game) -> void:
 	g = game
+	for i in range(2, 7):
+		var path := "res://scripts/chapters/ch%d.gd" % i
+		if ResourceLoader.exists(path):
+			var c = load(path).new(game)
+			chapters[c.map] = c
+
+func chapter():
+	return chapters.get(g.map_id)
+
+# the chapter the story is in now (null during chapter 1 and after the ending)
+func main_chapter():
+	if not fl("ch1_done"): return null
+	for m in Maps.ORDER:
+		if chapters.has(m) and not chapters[m].done(): return chapters[m]
+	return null
+
+func hyangga_count() -> int:
+	var c := 0
+	for k in HYANGGA_ORDER:
+		if fl("hy_" + k): c += 1
+	return c
+
+# ---------- per-map data ----------
+func npcs() -> Array:
+	var list: Array = NPCS if g.map_id == "seorabeol" else (chapter().npcs() if chapter() else [])
+	var st: Dictionary = Maps.STATION.get(g.map_id, {})
+	if st:
+		list = list + [["mabu", "mabu", st.mabu[0], st.mabu[1], "역참 마부", "south", func(f): return f.get("ch1_done", false)]]
+	return list
+
+func spawns() -> Dictionary:
+	if g.map_id == "seorabeol": return SPAWNS
+	return chapter().spawns() if chapter() else {}
+
+func bosses() -> Dictionary:
+	if g.map_id == "seorabeol": return BOSSES
+	return chapter().bosses() if chapter() else {}
+
+func on_purify(e) -> void:
+	if chapter(): chapter().on_purify(e)
+
+# where the mabu stands on this map
+func mabu_pos():
+	var st: Dictionary = Maps.STATION.get(g.map_id, {})
+	return at(st.mabu[0], st.mabu[1]) if st else null
+
+func travel_objective(to_map: String) -> Dictionary:
+	return {"text": "역참 마부에게 — %s(으)로" % Maps.NAMES[to_map], "target": mabu_pos(), "talk": "mabu", "travel": to_map}
+
+func open_travel() -> void:
+	var opts = []
+	for m in Maps.ORDER:
+		if m == g.map_id: continue
+		if m == "seorabeol" or fl("map_" + m):
+			opts.append({"label": Maps.NAMES[m], "map": m, "fn": func(): g.travel(m)})
+	if opts.is_empty():
+		g.ui.say([["역참 마부", "아직 갈 만한 곳이 없소. 길이 열리면 말씀하시오."]])
+		return
+	opts.append({"label": "그만두겠소", "fn": func(): pass})
+	g.ui.choose("어디로 모실까요?", opts)
 
 static func at(tx: float, ty: float) -> Vector2: return Vector2(tx * T, ty * T)
 
@@ -48,6 +119,16 @@ func num(k: String) -> int: return int(g.flags.get(k, 0))
 
 # ---------- objective shown on the HUD (with guide arrow target) ----------
 func objective() -> Dictionary:
+	if fl("ch1_done"):
+		var c = main_chapter()
+		if c == null: return {"text": "", "target": null}
+		if not c.started() or c.map != g.map_id:
+			return travel_objective(c.map) if g.map_id != c.map else {"text": c.title, "target": null}
+		return c.objective()
+	if fl("yeoksin_done") and g.map_id != "seorabeol": return travel_objective("seorabeol")
+	return objective1()
+
+func objective1() -> Dictionary:
 	if not fl("q1"): return {"text": "용왕에게 말을 걸어 보시오", "target": at(106.5, 70.5)}
 	if not fl("q2"):
 		if num("kills_beach") < 6: return {"text": "개운포의 요괴 정화 (%d/6)" % num("kills_beach"), "target": null}
@@ -73,6 +154,12 @@ func objective() -> Dictionary:
 
 # ---------- talking ----------
 func interact(npc) -> void:
+	if npc.id == "mabu":
+		g.ui.say([["역참 마부", "말은 늘 준비돼 있소. 어디로 가시려오?"]], func(): open_travel())
+		return
+	if g.map_id != "seorabeol":
+		if chapter() and not chapter().talk(npc): g.ui.say([[npc.name, "……"]])
+		return
 	var f: Dictionary = g.flags; var p = g.player
 	var say = func(lines, done = null): g.ui.say(lines, done)
 	match npc.id:
@@ -154,10 +241,25 @@ func interact(npc) -> void:
 			else: say.call([["산신령", "여우숲의 구미호가 사람 넋을 홀리고 있소."], ["산신령", "숲의 요괴를 여섯 정화하면 놈이 숲 안쪽 제단에 나타날 게요."]])
 		"villager": say.call([["아낙", "저잣거리 상인한테 약과 사 두시오. 밤길엔 그게 약이라오."]])
 		"wife_home":
-			say.call([["아내", "처용 님… 노랫소리가 들렸소."], ["처용", "돌아왔소."]], func(): g.start_ending())
+			if fl("ch1_done"):
+				say.call([["아내", "남산이며 토함산이며… 먼 길이겠지요. 몸조심하시오." if not fl("c6_done") else "이제 정말 끝났구려. 어서 들어오시오."]])
+				return
+			say.call([
+				["아내", "처용 님… 노랫소리가 들렸소."],
+				["처용", "돌아왔소."],
+				["아내", "그런데… 역신이 흩어지며 웃는 소리를 들었소. '내 뿌리는 신라 땅 곳곳에 있다'고."],
+				["아내", "남산 아래 마을에서 쇠붙이가 사라지고 사람들이 앓는다는 소문도 들리오."],
+				["처용", "…다녀오겠소."],
+				["아내", "남문 곁 역참에 마부가 있소. 신라의 노래들이 그대를 도울 게요."],
+				["@", "제1장 서라벌 — 끝. 역신의 뿌리를 찾아 신라 곳곳의 향가를 모으자."],
+			], func():
+				f.ch1_done = true; f.map_namsan = true; g.refresh_npcs(); g.ui.toast("이동할 수 있는 곳: 남산"); g.save_game())
 
 # ---------- triggers (every frame) ----------
-func update(_dt: float) -> void:
+func update(dt: float) -> void:
+	if g.map_id != "seorabeol":
+		if chapter(): chapter().update(dt)
+		return
 	var p = g.player
 	if g.frozen or g.boss: return
 	if fl("q2") and not fl("king_event") and Vector2(p.x, p.y).distance_to(at(61, 50)) < 260: king_event()
@@ -206,6 +308,7 @@ func boss_intro(zone: String) -> void:
 		g.start_boss_fight(boss, pos.x, pos.y + 40))
 
 func boss_defeated(boss) -> void:
+	if g.map_id != "seorabeol" and chapter() and chapter().boss_defeated(boss): return
 	var f: Dictionary = g.flags; var p = g.player
 	var done = func(): g.end_boss_fight(); g.save_game()
 	match boss.type:
@@ -277,5 +380,6 @@ func yeoksin_kneel(_boss) -> void:
 	g.cutscene_say([
 		["역신", "이럴 수가… 화내지 않고, 노래하다니."],
 		["역신", "맹세하겠소. 처용의 얼굴이 그려진 문에는 다시는 들지 않으리다."],
-		["@", "역신이 무릎 꿇고, 새벽 안개처럼 흩어졌다."],
+		["역신", "…흐흐. 허나 이 몸은 그림자일 뿐. 내 뿌리는 신라 땅 곳곳에 내렸느니라."],
+		["@", "역신의 그림자가 무릎 꿇고, 새벽 안개처럼 흩어졌다."],
 	], func(): g.end_boss_fight(); g.refresh_npcs(); g.save_game())

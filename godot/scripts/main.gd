@@ -42,7 +42,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_resize)
 	_resize()
 	game.new_game()
-	if G.has("play") or G.has("quest") or G.has("at"):
+	if G.has("play") or G.has("quest") or G.has("at") or G.has("chapter"):
 		game.apply_debug()
 		set_state("play")
 		if G.param("enemies") != "":

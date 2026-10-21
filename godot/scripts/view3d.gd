@@ -58,7 +58,7 @@ func _heights() -> void:
 			if t == World.SEA: hv[i] = -0.7; fixed[i] = 1
 			elif t == World.POND: hv[i] = base.pond - 0.6; fixed[i] = 1
 			elif z and cell_walk:
-				hv[i] = base[z.id] + (G.noise(x * 0.35, y * 0.35, 21) - 0.5) * 0.35
+				hv[i] = z.get("h", base.get(z.id, 1.0)) + (G.noise(x * 0.35, y * 0.35, 21) - 0.5) * 0.35
 				if t == World.SAND: hv[i] = 0.08 + (G.noise(x * 0.3, y * 0.3, 22)) * 0.15
 				fixed[i] = 1
 			else: hv[i] = 1.0
@@ -162,6 +162,7 @@ func _terrain() -> MeshInstance3D:
 	mi.mesh = st.commit()
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = at.tex
+	m.albedo_color = world.spec.get("tint", Color.WHITE)
 	m.roughness = 1.0
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	mi.material_override = m
@@ -197,7 +198,7 @@ func _props() -> void:
 			n.position = to3(p.x, p.y)
 			if p.kind == "gate": n.position.z -= 0.1
 			add_child(n)
-			if b.doors and p.get("gate", "") != "":
+			if b.doors and p.get("gate", "") != "":  # doors vanish once their gate flag is set
 				if not gates.has(p.gate): gates[p.gate] = []
 				gates[p.gate].append(b.doors)
 			continue
@@ -310,8 +311,9 @@ func _camera_and_light() -> void:
 	RenderingServer.global_shader_parameter_set("sprite_tint", Color(1, 1, 1))
 
 # zone mood: brighter day in the town and on the beach, dusk in the cursed places
-func set_mood(zid: String, dt: float) -> void:
-	var dark: float = {"beach": 0.0, "town": 0.1, "ruin": 0.55, "pond": 0.4, "forest": 0.6, "house": 0.5}.get(zid, 0.2)
+func set_mood(z, dt: float) -> void:
+	var zid: String = z.id if z else "beach"
+	var dark: float = z.get("dark", 0.2) if z and z.has("dark") else {"beach": 0.0, "town": 0.1, "ruin": 0.55, "pond": 0.4, "forest": 0.6, "house": 0.5}.get(zid, 0.2)
 	var k := 1 - exp(-2.0 * dt)
 	sun.light_energy = lerpf(sun.light_energy, 1.25 - dark * 0.7, k)
 	env.ambient_light_energy = lerpf(env.ambient_light_energy, 0.45 - dark * 0.15, k)
@@ -385,6 +387,7 @@ func sprite(name: String, anim: String, dir: String, t: float, x: float, y: floa
 	var a: float = o.get("alpha", 1.0)
 	m.set_shader_parameter("alpha", a)
 	m.set_shader_parameter("dark", o.get("dark", 0.0))
+	m.set_shader_parameter("tint", o.get("tint", Color.WHITE))
 	var k: float = o.get("scale", 1.0) * c.scale / T
 	var sq: float = o.get("squash", 1.0)
 	mi.scale = Vector3(c.w * k, c.h * k * sq, 1)
