@@ -1,6 +1,6 @@
 // Upright sprite facing the camera (HD-2D style). Feet sit on the node origin; casts a silhouette shadow.
 shader_type spatial;
-render_mode unshaded, cull_disabled, depth_draw_opaque;
+render_mode cull_disabled, depth_draw_opaque, diffuse_lambert_wrap, specular_disabled;
 
 uniform sampler2D tex : source_color, filter_linear_mipmap;
 uniform sampler2D white : source_color, filter_linear_mipmap;
@@ -32,8 +32,13 @@ void fragment() {
 	uv = region.xy + uv * region.zw;
 	vec4 c = texture(tex, uv);
 	vec3 col = c.rgb * mix(vec3(1.0), vec3(0.55, 0.42, 0.7), dark) * sprite_tint.rgb;
-	col = mix(col, vec3(1.0), clamp(flash, 0.0, 1.0) * texture(white, uv).a);
+	float fa = clamp(flash, 0.0, 1.0) * texture(white, uv).a;
+	col = mix(col, vec3(1.0), fa);
 	ALBEDO = col;
+	// lit like the ground under it (receives the sun, shadows and lantern light) plus a little self light
+	NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.35, 0.0)).xyz);
+	EMISSION = col * 0.18 + vec3(fa);
+	ROUGHNESS = 1.0;
 	// partial alpha (blink, fade) as an ordered dither so the sprite stays depth-sorted and keeps its shadow
 	float bayer = fract(dot(floor(FRAGCOORD.xy), vec2(0.5, 0.25)) + 0.125 * mod(floor(FRAGCOORD.y), 2.0));
 	if (v_alpha < 0.999 && v_alpha <= bayer) discard;

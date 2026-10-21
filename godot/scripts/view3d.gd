@@ -17,6 +17,9 @@ var sprite_shader: Shader
 var quad: QuadMesh
 var pool: Array = []
 var used_n := 0
+var blob_pool: Array = []
+var blob_n := 0
+var blob_mat: ShaderMaterial
 var tall := []                 # tall props that fade when the player walks behind them
 var gates := {}                # gate id -> nodes hidden once the gate opens
 var ppx := 1.0                 # screen pixels per game pixel
@@ -188,6 +191,16 @@ func _water() -> MeshInstance3D:
 func _props() -> void:
 	var by := {}
 	for p in world.props:
+		if Buildings.has(p.kind):
+			var b := Buildings.make(p.kind)
+			var n: Node3D = b.node
+			n.position = to3(p.x, p.y)
+			if p.kind == "gate": n.position.z -= 0.1
+			add_child(n)
+			if b.doors and p.get("gate", "") != "":
+				if not gates.has(p.gate): gates[p.gate] = []
+				gates[p.gate].append(b.doors)
+			continue
 		if Assets.props.has(p.kind) and not p.k.get("flat", false):
 			var key: String = p.kind + "|" + p.get("gate", "")
 			if not by.has(key): by[key] = []
@@ -219,6 +232,28 @@ func _props() -> void:
 		if gate != "":
 			if not gates.has(gate): gates[gate] = []
 			gates[gate].append(mmi)
+	# soft contact shadows under the billboard props
+	var blobs := []
+	for p in world.props:
+		var sh: float = p.k.get("shadow", 0)
+		if sh > 0 and not Buildings.has(p.kind) and Assets.props.has(p.kind): blobs.append(p)
+	var bm := MultiMesh.new()
+	bm.transform_format = MultiMesh.TRANSFORM_3D
+	bm.use_colors = true
+	var pm0 := PlaneMesh.new(); pm0.size = Vector2(1, 1)
+	bm.mesh = pm0
+	bm.instance_count = blobs.size()
+	for i in blobs.size():
+		var p: Dictionary = blobs[i]
+		var sh: float = p.k.shadow * 2.4 / T
+		bm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sh, 1, sh * 0.7)), to3(p.x, p.y - 3) + Vector3(0, 0.04, 0)))
+		bm.set_instance_color(i, Color(1, 1, 1, 1))
+	var bmi := MultiMeshInstance3D.new()
+	bmi.multimesh = bm
+	var bmat := ShaderMaterial.new(); bmat.shader = load("res://shaders/blob.gdshader")
+	bmi.material_override = bmat
+	bmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(bmi)
 	# flat props (lotus, bones, flowers) lie on the ground as decals
 	for p in world.props:
 		if not (Assets.props.has(p.kind) and p.k.get("flat", false)): continue
@@ -245,7 +280,7 @@ func _camera_and_light() -> void:
 	add_child(cam3)
 	cam3.make_current()
 	sun = DirectionalLight3D.new()
-	sun.rotation = Vector3(deg_to_rad(-58), deg_to_rad(-30), 0)
+	sun.rotation = Vector3(deg_to_rad(-50), deg_to_rad(-80), 0)  # from the west: shadows fall east, fronts stay lit
 	sun.light_color = Color(1.0, 0.92, 0.8)
 	sun.light_energy = 1.25
 	sun.shadow_enabled = true
@@ -309,7 +344,23 @@ func project(px: float, py: float, z := 0.0) -> Vector2:
 
 # ---------- dynamic sprites (a pool of billboards refilled every frame) ----------
 func begin_frame() -> void:
-	used_n = 0
+	used_n = 0; blob_n = 0
+
+# contact shadow under a character (radius in game pixels)
+func blob(x: float, y: float, r: float, a := 1.0) -> void:
+	if blob_mat == null:
+		blob_mat = ShaderMaterial.new(); blob_mat.shader = load("res://shaders/blob.gdshader")
+	if blob_n >= blob_pool.size():
+		var n := MeshInstance3D.new()
+		var pm := PlaneMesh.new(); pm.size = Vector2(1, 1)
+		n.mesh = pm; n.material_override = blob_mat
+		n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(n); blob_pool.append(n)
+	var mi: MeshInstance3D = blob_pool[blob_n]
+	blob_n += 1
+	mi.visible = a > 0.05
+	mi.position = to3(x, y) + Vector3(0, 0.05, 0)
+	mi.scale = Vector3(r * 2.4 / T, 1, r * 1.5 / T)
 
 func sprite(name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
 	var f := Assets.frame(name, anim, dir, t, o.get("fps", 10.0), o.get("loop", true))
@@ -345,6 +396,8 @@ func sprite(name: String, anim: String, dir: String, t: float, x: float, y: floa
 func end_frame() -> void:
 	for i in range(used_n, pool.size()):
 		pool[i].visible = false
+	for i in range(blob_n, blob_pool.size()):
+		blob_pool[i].visible = false
 
 # tall props near the player fade (dithered) so the hero stays visible behind trees and roofs
 func fade_props(px: float, py: float) -> void:

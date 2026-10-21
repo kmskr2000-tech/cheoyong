@@ -35,6 +35,7 @@ static func sfx(n: String) -> void:
 # draws a character frame with its feet at (x, y) as an upright billboard in the 3D view (shadows come from the sun)
 static func draw_sprite(name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
 	G.game.view.sprite(name, anim, dir, t, x, y, o)
+	if o.get("blob", 0.0) > 0: G.game.view.blob(x, y, o.blob, o.get("alpha", 1.0))
 
 # screen position of a ground point, z pixels above it (screen-aligned, like the sprites)
 static func sp(x: float, y: float, z := 0.0) -> Vector2:
@@ -359,7 +360,7 @@ class Player extends Actor:
 		elif state == "dead": an = "idle"
 		if an == "idle": fps = 6
 		var squash = 0.82 if state == "roll" else (max(0.5, 1 - state_t) if state == "dead" else 1.0)
-		Ent.draw_sprite("cheoyong", an, d, anim_t, x, y, {"fps": fps, "loop": loop, "flash": flash, "alpha": 0.45 if blink else 1.0, "squash": squash})
+		Ent.draw_sprite("cheoyong", an, d, anim_t, x, y, {"fps": fps, "loop": loop, "flash": flash, "alpha": 0.45 if blink else 1.0, "squash": squash, "blob": 16.0})
 
 # ---------- projectiles ----------
 class SoundWave:
@@ -648,7 +649,7 @@ class Enemy extends Actor:
 		var fl: float = (sin(aura * 2.5) * 4 + 8) if def.get("float", false) else 0.0
 		var squash = (1 - min(0.28, k * 0.5)) if state == "kneel" else (1 - spawn_t if spawn_t > 0 else 1.0)
 		var a = alpha * (max(0.0, 1 - max(0.0, k - 0.9) * 1.6) if state == "kneel" else (1 - min(1.0, spawn_t) if spawn_t > 0 else 1.0))
-		Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"fps": fps, "loop": loop, "flash": max(flash, 0.55 if tell else 0.0), "squash": squash, "z": fl, "alpha": a, "dark": 0.0 if state == "kneel" or calm else 0.15})
+		Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"fps": fps, "loop": loop, "flash": max(flash, 0.55 if tell else 0.0), "squash": squash, "z": fl, "alpha": a, "dark": 0.0 if state == "kneel" or calm else 0.15, "blob": 44.0 if def.get("boss", false) else r * 1.5})
 		if state == "kneel" and k < 1:
 			Ent.draw_sprite(sprite, an, dir, anim_t, x, y, {"flash": 1.0, "squash": squash, "alpha": sin(k * PI) * 0.7, "z": fl})
 
@@ -681,7 +682,7 @@ class Npc extends Actor:
 		if dist_to(p) < 110: face_to(atan2(p.y - y, p.x - x))
 		else: dir = dir_home
 	func draw3d() -> void:
-		Ent.draw_sprite(sprite, "idle", dir, anim_t, x, y, {"alpha": alpha})
+		Ent.draw_sprite(sprite, "idle", dir, anim_t, x, y, {"alpha": alpha, "blob": 12.0 if sprite == "dog" else 15.0})
 	func draw(ci: CanvasItem) -> void:
 		if id == "dog": return
 		var f: Font = Assets.font_bold
