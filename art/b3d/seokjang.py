@@ -139,6 +139,18 @@ def make_pose(R):
             R["hips"].location.z = 0.42 + (0.06 if i in (2, 3) else -0.05 if i in (4, 5) else 0)
             rot(R["legs"]["L"], -12 if i in (4, 5) else 0)
             rot(R["legs"]["R"], 14 if i in (4, 5) else 0)
+        elif anim == "kneel":
+            # purified: drops to one knee, sword planted, head bowed
+            k = min(1.0, i / max(1, n - 2))
+            e = k * k * (3 - 2 * k)
+            R["hips"].location.z = 0.42 - 0.2 * e
+            rot(R["legs"]["L"], -75 * e)
+            rot(R["legs"]["R"], 70 * e)
+            rot(R["torso"], 18 * e)
+            rot(R["head"], 22 * e)
+            rot(R["arms"]["R"], -35 * e, 0, -6 * e)
+            rot(R["arms"]["L"], -10 * e, 0, 12 * e)
+            rot(R["grip"], -70 + 60 * e)
     return pose
 
 
@@ -146,6 +158,9 @@ if __name__ == "__main__":
     out, only, res = C.args()
     C.reset()
     R = build()
+    if out.endswith(".glb"):
+        C.export_glb(R["root"], make_pose(R), {"idle": (1, 10, True), "walk": (6, 9, True), "attack": (7, 14, False), "kneel": (8, 9, False)}, out)
+        raise SystemExit
     C.setup_render(res, ortho=2.35)
     C.frame(R["root"], make_pose(R))
     C.render_all(R["root"], make_pose(R), {"idle": (1, C.DIRS8), "walking": (6, C.D5), "attack": (7, C.D3)}, out, only)

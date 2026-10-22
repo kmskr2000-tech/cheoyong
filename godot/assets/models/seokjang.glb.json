@@ -1,0 +1,22 @@
+{
+ "idle": {
+  "start": 0.0,
+  "len": 0.1,
+  "loop": true
+ },
+ "walk": {
+  "start": 0.2,
+  "len": 0.6666666666666666,
+  "loop": true
+ },
+ "attack": {
+  "start": 0.9666666666666667,
+  "len": 0.5,
+  "loop": false
+ },
+ "kneel": {
+  "start": 1.5666666666666667,
+  "len": 0.9,
+  "loop": false
+ }
+}

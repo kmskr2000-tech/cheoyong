@@ -25,10 +25,12 @@ var gates := {}                # gate id -> nodes hidden once the gate opens
 var ppx := 1.0                 # screen pixels per game pixel
 var target := Vector3.ZERO     # camera focus (metres)
 var world: World
+var models: Models
 
 func setup(w: World) -> void:
 	world = w; W = World.W; H = World.H
 	sprite_shader = load("res://shaders/billboard.gdshader")
+	models = Models.new(self)
 	quad = QuadMesh.new(); quad.size = Vector2(1, 1)
 	_heights()
 	add_child(_terrain())
@@ -347,6 +349,7 @@ func project(px: float, py: float, z := 0.0) -> Vector2:
 # ---------- dynamic sprites (a pool of billboards refilled every frame) ----------
 func begin_frame() -> void:
 	used_n = 0; blob_n = 0
+	models.begin_frame()
 
 # contact shadow under a character (radius in game pixels)
 func blob(x: float, y: float, r: float, a := 1.0) -> void:
@@ -365,6 +368,9 @@ func blob(x: float, y: float, r: float, a := 1.0) -> void:
 	mi.scale = Vector3(r * 2.4 / T, 1, r * 1.5 / T)
 
 func sprite(name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
+	if Models.has(name):
+		models.draw(self, name, anim, dir, t, x, y, Ent.head_y(name), o)
+		return
 	var f := Assets.frame(name, anim, dir, t, o.get("fps", 10.0), o.get("loop", true))
 	if f.is_empty(): return
 	if used_n >= pool.size():
@@ -397,6 +403,7 @@ func sprite(name: String, anim: String, dir: String, t: float, x: float, y: floa
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if a < 0.5 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 func end_frame() -> void:
+	models.end_frame()
 	for i in range(used_n, pool.size()):
 		pool[i].visible = false
 	for i in range(blob_n, blob_pool.size()):

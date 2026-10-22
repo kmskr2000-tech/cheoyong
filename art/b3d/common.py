@@ -162,3 +162,43 @@ def render_all(root, pose, anims, out, only=None):
                 s.render.filepath = os.path.abspath(path)
                 bpy.ops.render.render(write_still=True)
             print("rendered", anim, d, n, flush=True)
+
+
+def export_glb(root, pose, anims, path):
+    """Bake every pose animation one after another on a single timeline and write a GLB plus <path>.json
+    with each clip's [start, length] in seconds and loop flag (Godot seeks inside the one exported animation).
+    anims: {name: (frames, fps, loop)}. Procedural node colours are dropped for flat base colours (Godot shades it toon)."""
+    import json
+    s = bpy.context.scene
+    root.rotation_euler = (0, 0, 0)
+    pivots = [o for o in s.objects if o.type == "EMPTY" and o is not root]
+    for m in bpy.data.materials:
+        nt = m.node_tree
+        for l in list(nt.links):
+            if l.to_socket.name in ("Base Color", "Emission Strength") and l.to_node.type == "BSDF_PRINCIPLED":
+                nt.links.remove(l)
+    s.render.fps = 30
+    f = 1
+    clips = {}
+    for name, (n, fps, loop) in anims.items():
+        step = s.render.fps / fps
+        start = f
+        frames = list(range(n)) + ([0] if loop or n == 1 else [n - 1])
+        for k, i in enumerate(frames):
+            pose(name, i, n)
+            fr = round(start + k * step)
+            for o in pivots:
+                o.keyframe_insert("rotation_euler", frame=fr)
+                o.keyframe_insert("location", frame=fr)
+        end = round(start + (len(frames) - 1) * step)
+        clips[name] = {"start": (start - 1) / s.render.fps, "len": (end - start) / s.render.fps, "loop": loop}
+        f = end + 3
+    s.frame_start, s.frame_end = 1, f
+    for o in pivots:  # stepped poses read like hand-keyed frames; keep them linear between keys
+        ad = o.animation_data
+        for fc in getattr(ad.action, "fcurves", []) or []:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+    bpy.ops.export_scene.gltf(filepath=os.path.abspath(path), export_format="GLB", export_apply=True,
+                              export_animation_mode="SCENE", export_anim_scene_split_object=False, export_force_sampling=True, export_yup=True)
+    json.dump(clips, open(os.path.abspath(path) + ".json", "w"), indent=1)
