@@ -22,7 +22,10 @@ static func has(name: String) -> bool:
 		var p := "res://assets/models/%s.glb" % name
 		if ResourceLoader.exists(p):
 			var clips = JSON.parse_string(FileAccess.get_file_as_string(p + ".json"))
-			defs[name] = {"scene": load(p), "clips": clips if clips else {}}
+			if not clips: clips = {}
+			var k: float = clips.get("_scale", 1.0)  # chibi heads read smaller than the sprite they replace
+			clips.erase("_scale")
+			defs[name] = {"scene": load(p), "clips": clips, "k": k}
 		else:
 			defs[name] = {}
 	return not defs[name].is_empty()
@@ -41,6 +44,13 @@ func _make(name: String) -> Dictionary:
 	parent.add_child(node)
 	var mats := []
 	var meshes := node.find_children("*", "MeshInstance3D", true, false)
+	var ap: AnimationPlayer = null
+	var aps := node.find_children("*", "AnimationPlayer", true, false)
+	if aps.size() > 0:
+		ap = aps[0]
+		var an: String = ap.get_animation_list()[0]
+		ap.play(an); ap.pause()
+		ap.seek(d.clips.get("idle", {"start": 0.0}).start, true)  # the GLB rest pose is whatever was posed last
 	var aabb := AABB()
 	var first := true
 	for mi in meshes:
@@ -56,6 +66,11 @@ func _make(name: String) -> Dictionary:
 					sm.set_shader_parameter("emission_energy", src.emission_energy_multiplier)
 			m3.set_surface_override_material(s, sm)
 			mats.append(sm)
+		var b: AABB = m3.global_transform * m3.get_aabb()
+		aabb = b if first else aabb.merge(b)
+		first = false
+		if m3.get_aabb().get_longest_axis_size() < 0.16:  # eyes, mouth, blush: an ink hull would swamp them
+			continue
 		var hull := MeshInstance3D.new()
 		hull.mesh = _hull(m3.mesh)
 		var ol := ShaderMaterial.new(); ol.shader = outline
@@ -63,16 +78,7 @@ func _make(name: String) -> Dictionary:
 		hull.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		m3.add_child(hull)
 		mats.append(ol)
-		var b: AABB = m3.global_transform * m3.get_aabb()
-		aabb = b if first else aabb.merge(b)
-		first = false
 	if not d.has("h"): d.h = max(0.1, aabb.end.y - node.global_position.y)
-	var ap: AnimationPlayer = null
-	var aps := node.find_children("*", "AnimationPlayer", true, false)
-	if aps.size() > 0:
-		ap = aps[0]
-		var an: String = ap.get_animation_list()[0]
-		ap.play(an); ap.pause()
 	return {"node": node, "mats": mats, "ap": ap, "meshes": meshes}
 
 static func _hull(mesh: Mesh) -> Mesh:
@@ -106,7 +112,7 @@ func draw(view, name: String, anim: String, dir: String, t: float, x: float, y: 
 	var d: Dictionary = defs[name]
 	var node: Node3D = e.node
 	node.visible = a > 0.02
-	var k: float = height_px / T / d.h * o.get("scale", 1.0)
+	var k: float = height_px / T / d.h * o.get("scale", 1.0) * d.k
 	node.scale = Vector3(k, k * o.get("squash", 1.0), k)
 	node.position = view.to3(x, y, o.get("z", 0.0))
 	var ang: float = G.DIR8.find(dir) * PI / 4.0
@@ -123,5 +129,11 @@ func draw(view, name: String, anim: String, dir: String, t: float, x: float, y: 
 		var clips: Dictionary = d.clips
 		var c = clips.get(anim, clips.get("attack" if anim == "cast" else "idle", null))
 		if c:
-			var lt: float = fmod(t, c.len) if c.loop and c.len > 0 else min(t, c.len)
-			e.ap.seek(c.start + lt, true)
+			# progress through the clip in the caller's frame terms: t * fps frames over the sprite's frame count
+			var n: float = c.get("n", 1)
+			if anim != "idle" and Assets.chars.has(name):
+				var sn: int = Assets.anim_len(name, anim, dir)
+				if sn > 0: n = sn
+			var p: float = t * o.get("fps", c.get("fps", 10.0)) / max(1.0, n)
+			p = fposmod(p, 1.0) if c.loop else clampf(p, 0.0, 1.0)
+			e.ap.seek(c.start + p * c.len, true)

@@ -164,7 +164,7 @@ def render_all(root, pose, anims, out, only=None):
             print("rendered", anim, d, n, flush=True)
 
 
-def export_glb(root, pose, anims, path):
+def export_glb(root, pose, anims, path, scale=1.0):
     """Bake every pose animation one after another on a single timeline and write a GLB plus <path>.json
     with each clip's [start, length] in seconds and loop flag (Godot seeks inside the one exported animation).
     anims: {name: (frames, fps, loop)}. Procedural node colours are dropped for flat base colours (Godot shades it toon)."""
@@ -191,7 +191,7 @@ def export_glb(root, pose, anims, path):
                 o.keyframe_insert("rotation_euler", frame=fr)
                 o.keyframe_insert("location", frame=fr)
         end = round(start + (len(frames) - 1) * step)
-        clips[name] = {"start": (start - 1) / s.render.fps, "len": (end - start) / s.render.fps, "loop": loop}
+        clips[name] = {"start": (start - 1) / s.render.fps, "len": (end - start) / s.render.fps, "loop": loop, "n": n, "fps": fps}
         f = end + 3
     s.frame_start, s.frame_end = 1, f
     for o in pivots:  # stepped poses read like hand-keyed frames; keep them linear between keys
@@ -201,4 +201,6 @@ def export_glb(root, pose, anims, path):
                 kp.interpolation = "LINEAR"
     bpy.ops.export_scene.gltf(filepath=os.path.abspath(path), export_format="GLB", export_apply=True,
                               export_animation_mode="SCENE", export_anim_scene_split_object=False, export_force_sampling=True, export_yup=True)
+    if scale != 1.0:
+        clips["_scale"] = scale
     json.dump(clips, open(os.path.abspath(path) + ".json", "w"), indent=1)

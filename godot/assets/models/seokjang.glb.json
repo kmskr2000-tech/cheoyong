@@ -2,21 +2,29 @@
  "idle": {
   "start": 0.0,
   "len": 0.1,
-  "loop": true
+  "loop": true,
+  "n": 1,
+  "fps": 10
  },
  "walk": {
   "start": 0.2,
   "len": 0.6666666666666666,
-  "loop": true
+  "loop": true,
+  "n": 6,
+  "fps": 9
  },
  "attack": {
   "start": 0.9666666666666667,
   "len": 0.5,
-  "loop": false
+  "loop": false,
+  "n": 7,
+  "fps": 14
  },
  "kneel": {
   "start": 1.5666666666666667,
   "len": 0.9,
-  "loop": false
+  "loop": false,
+  "n": 8,
+  "fps": 9
  }
 }

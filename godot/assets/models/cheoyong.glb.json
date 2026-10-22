@@ -1,0 +1,38 @@
+{
+ "idle": {
+  "start": 0.0,
+  "len": 1.3333333333333333,
+  "loop": true,
+  "n": 8,
+  "fps": 6
+ },
+ "walk": {
+  "start": 1.4333333333333333,
+  "len": 0.6,
+  "loop": true,
+  "n": 6,
+  "fps": 10
+ },
+ "attack": {
+  "start": 2.1333333333333333,
+  "len": 0.3,
+  "loop": false,
+  "n": 6,
+  "fps": 20
+ },
+ "cast": {
+  "start": 2.533333333333333,
+  "len": 1.0,
+  "loop": true,
+  "n": 8,
+  "fps": 8
+ },
+ "kneel": {
+  "start": 3.6333333333333333,
+  "len": 0.9,
+  "loop": false,
+  "n": 8,
+  "fps": 9
+ },
+ "_scale": 1.2
+}
