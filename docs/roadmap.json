@@ -2,116 +2,116 @@
  "_note": "Hand-kept work list for the status board (tools/status.py). status: done | doing | todo | blocked",
  "items": [
   {
-   "id": "w1",
-   "area": "그래픽",
-   "title": "Blender 설치·스킬·셋업 스크립트",
+   "id": "a1",
+   "area": "화풍",
+   "title": "진지한 HD-2D로 전환(툰 치비 3D 제외)",
    "status": "done",
-   "detail": "bpy 5.2 + blender 래퍼 + blender-* 스킬 22개, tools/setup_blender.sh"
+   "detail": "필름 색보정·낮은 해·긴 그림자·공기 입자, 도트 인물 먹선. 툰 3D 파이프라인은 art/b3d에 보존"
   },
   {
-   "id": "w2",
-   "area": "그래픽",
-   "title": "석장승 Blender 도트(8방향·걷기·공격)",
+   "id": "a2",
+   "area": "화풍",
+   "title": "HUD 먹·주홍·금선 톤",
    "status": "done",
-   "detail": "art/b3d/seokjang.py → post.py → art/raw/chibi/seokjang"
+   "detail": "체력·기·흥 막대, 명조체 퀘스트 표시"
   },
   {
-   "id": "w3",
-   "area": "그래픽",
-   "title": "Godot 3D 모델 경로 + 툰 셰이더",
+   "id": "s1",
+   "area": "이야기",
+   "title": "영화식 대화·장 제목 카드·타이틀",
    "status": "done",
-   "detail": "models.gd, toon.gdshader(2단 셀), outline.gdshader(잉크 외곽선)"
+   "detail": "레터박스, 타자 효과, 고운바탕·송명 서체, 지도 이동 암전, 인트로·엔딩 재연출"
   },
   {
-   "id": "w4",
-   "area": "그래픽",
-   "title": "툰 3D 처용(사람형 치비 키트)",
+   "id": "p1",
+   "area": "출시",
+   "title": "게임패드·설정·제작진",
    "status": "done",
-   "detail": "art/b3d/chibi.py, cheoyong.py — 갓·모란·옥색 저고리·피리"
+   "detail": "쉬어 가기 메뉴(음량·전체 화면·흔들림·대사 속도), user://settings.cfg, 1600x900 창"
   },
   {
-   "id": "w5",
-   "area": "그래픽",
-   "title": "요괴 4종 3D: 해룡·물귀신·그슨대·꼭두각시",
-   "status": "todo",
-   "detail": "원래 요청분. 걷기 5·공격 3·무릎(보스)"
+   "id": "p2",
+   "area": "출시",
+   "title": "PC 빌드(Linux·Windows)",
+   "status": "done",
+   "detail": "build/desktop/ — Linux 109MB(헤드리스 2장 통과), Windows 136MB(내보내기만)"
   },
   {
-   "id": "w6",
-   "area": "그래픽",
-   "title": "사람 NPC 툰 3D 전환(약 20명)",
-   "status": "todo",
-   "detail": "치비 키트로 색·모자만 바꿔 대량 제작"
+   "id": "p3",
+   "area": "출시",
+   "title": "스팀 상점 키트",
+   "status": "done",
+   "detail": "docs/steam/store.md 문구 초안, tools/steam_art.py 캡슐 이미지, --nohud 스크린샷 훅"
   },
   {
-   "id": "w7",
-   "area": "그래픽",
-   "title": "나머지 요괴·보스 툰 3D 전환",
-   "status": "todo",
-   "detail": "도깨비·구미호·이무기·역신·불가사리·어둑시니·삼족오 등"
-  },
-  {
-   "id": "w8",
-   "area": "그래픽",
-   "title": "지형·건물·소품 툰 전환",
-   "status": "todo",
-   "detail": "도트 타일 → 툰 색면, 건물·나무는 karchive/Blender"
-  },
-  {
-   "id": "w9",
-   "area": "에셋",
-   "title": "karchive GLB 에셋 받기",
+   "id": "p4",
+   "area": "출시",
+   "title": "Steamworks 등록·앱 ID·상점 심사",
    "status": "blocked",
-   "detail": "네트워크 정책이 karchive.vibeline.co.kr, karchive-assets.vibeline.co.kr 차단(403). 허용 도메인 추가 필요. 사용 시 크레딧 표기 필수"
+   "detail": "사용자 계정에서만 가능(등록비 100달러)"
   },
   {
-   "id": "w10",
+   "id": "p5",
+   "area": "출시",
+   "title": "Windows 아이콘·제품명 삽입",
+   "status": "todo",
+   "detail": "rcedit 필요(이 컨테이너엔 없음). Windows PC에서 편집기 설정 후 재내보내기"
+  },
+  {
+   "id": "p6",
+   "area": "출시",
+   "title": "실기기 테스트(Windows·Steam Deck·패드)",
+   "status": "todo",
+   "detail": "헤드리스 검증만 함. 실제 화면·성능·패드 확인 필요"
+  },
+  {
+   "id": "g1",
+   "area": "그래픽",
+   "title": "새 요괴 그림: 해룡·물귀신·역신 본체",
+   "status": "todo",
+   "detail": "지금은 다른 요괴 그림을 색만 바꿔 대용. PixelLab 크레딧 충전 후 같은 화풍으로 생성"
+  },
+  {
+   "id": "g2",
+   "area": "그래픽",
+   "title": "그슨대·꼭두각시 진짜 애니메이션",
+   "status": "todo",
+   "detail": "지금은 이미지 변형 임시 애니"
+  },
+  {
+   "id": "e1",
    "area": "에셋",
-   "title": "SpriteCook 연결",
+   "title": "karchive GLB 에셋",
    "status": "blocked",
-   "detail": "MCP 인증 필요(claude.ai 커넥터 설정). 무료 40크레딧/월"
+   "detail": "네트워크 정책 차단(403). 진지한 화풍과 맞는 것만 선별 필요"
   },
   {
-   "id": "w11",
+   "id": "e2",
    "area": "에셋",
    "title": "PixelLab 크레딧",
    "status": "blocked",
    "detail": "이번 달 생성 크레딧 0"
   },
   {
-   "id": "w12",
-   "area": "개발환경",
-   "title": "Blender 세션 시작 훅 등록",
-   "status": "blocked",
-   "detail": ".claude/settings.json 수정이 권한 검사에서 거부. 사용자가 직접 추가하거나 허용 필요"
-  },
-  {
-   "id": "w14",
-   "area": "배포",
-   "title": "GitHub 푸시",
-   "status": "blocked",
-   "detail": "세션의 GitHub 권한이 끊겨 푸시 403. claude.ai에서 GitHub 재연결 필요. 커밋은 로컬에 쌓여 있음"
-  },
-  {
-   "id": "w16",
+   "id": "v1",
    "area": "검증",
    "title": "처음부터 전체 플레이가 가끔 멈춤",
    "status": "todo",
-   "detail": "저장 없이 처음부터 두 번 돌림: 한 번은 5.4분에 엔딩 도달, 한 번은 30분 넘게 엔딩 못 감(자동 조종이 어딘가에서 걸림). 재현·원인 조사 필요"
+   "detail": "저장 없이 처음부터 여러 번 중 한 번 30분 넘게 엔딩 못 감. 자동 조종 걸림 지점 조사"
   },
   {
-   "id": "w13",
-   "area": "배포",
-   "title": "작업 브랜치 PR·머지",
-   "status": "todo",
-   "detail": "claude/shin-cheoyongga-spritecook-anim-p8pv09 — 화풍 확정 후"
+   "id": "d1",
+   "area": "개발환경",
+   "title": "Blender 세션 시작 훅 등록",
+   "status": "blocked",
+   "detail": ".claude/settings.json 수정이 권한 검사에서 거부. 사용자가 직접 추가"
   },
   {
-   "id": "w15",
+   "id": "d2",
    "area": "개발환경",
    "title": "개발 현황판",
    "status": "done",
-   "detail": "tools/status.py → build/status/*.json → 현황판 아티팩트"
+   "detail": "tools/status.py → 현황판 아티팩트"
   }
  ]
 }
