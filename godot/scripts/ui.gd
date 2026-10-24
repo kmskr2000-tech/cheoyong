@@ -8,7 +8,8 @@ var shop = null
 var menu = false
 var menu_page = 0
 var choice = null          # {"title", "options": [{"label", "fn"}], "sel", "rects"}
-var chapter_banner = null  # {"text", "t"}
+var chapter_banner = null  # unused: chapter starts show a title card (cine.gd)
+var cine: Control          # cinematic layer: letterbox, dialogue box, captions, title cards, fades
 var shop_lv = 1
 var glow = null
 var toasts = []
@@ -33,6 +34,17 @@ const GOLD := Color("#ffd27a")
 const PAPER := Color("#f3e6c4")
 
 func modal() -> bool: return dialog != null or shop != null or menu or choice != null
+
+func _ready() -> void:
+	cine = Control.new()
+	cine.set_script(load("res://scripts/cine.gd"))
+	cine.ui = self
+	add_child(cine)
+
+# cinematic hooks (see cine.gd): chapter title card, fade through black, "the world stands still"
+func start_card(c: Dictionary) -> void: cine.start_card(c)
+func fade_through(fn: Callable) -> void: cine.fade_through(fn)
+func blocking() -> bool: return cine != null and cine.blocking()
 
 # who is talking: the fixed cast, then NPCs on this map, then the boss
 func speaker_sprite(sp: String) -> String:
@@ -97,7 +109,7 @@ func ring(x: float, y: float, r: float, lit: bool) -> void:
 # ---------- dialogue ----------
 # lines: [speaker, text, callable?]; "@" is narration, "@verse" shows a verse banner (text = verse number)
 func say(lines: Array, on_done = null) -> void:
-	dialog = {"lines": lines, "i": -1, "done": on_done, "t": 0.0, "shown": 0.0, "wait": false}
+	dialog = {"lines": lines, "i": -1, "done": on_done, "t": 0.0, "shown": 0.0, "wait": false, "age": 0.0, "pause": 0.0}
 	next_line()
 
 func next_line() -> void:
@@ -108,7 +120,7 @@ func next_line() -> void:
 		if d.done is Callable and d.done.is_valid(): d.done.call()
 		return
 	var l: Array = d.lines[d.i]
-	d.t = 0.0; d.shown = 0.0
+	d.t = 0.0; d.shown = 0.0; d.pause = 0.0
 	if l[0] == "@verse":
 		g.flags["verse%d" % l[1]] = true
 		banner = {"n": l[1], "t": 0.0}
@@ -134,11 +146,17 @@ func update_dialog(dt: float) -> void:
 		return
 	var text: String = d.lines[d.i][1]
 	var before = int(d.shown)
-	d.shown = min(float(text.length()), d.shown + dt * 38)
+	# typewriter, about 40 characters a second, with a short breath after punctuation
+	d.pause = max(0.0, d.pause - dt)
+	if d.pause <= 0.0 and d.shown < text.length():
+		d.shown = min(float(text.length()), d.shown + dt * 40)
+		var now := int(d.shown)
+		if now != before and now > 0 and text[now - 1] in ".,!?…—": d.pause = 0.09
 	if int(d.shown) != before and int(d.shown) % 3 == 0 and d.lines[d.i][0] != "@": Sfx.sfx("talk")
 	d.t += dt
+	# first confirm completes the line, the second goes on
 	if conf and d.t > 0.15:
-		if d.shown < text.length(): d.shown = text.length()
+		if d.shown < text.length(): d.shown = text.length(); d.pause = 0.0
 		else: next_line()
 
 # ---------- shop ----------
@@ -372,12 +390,6 @@ func draw_hud() -> void:
 	bar(bx, by + 14, bw, 5, p.gi, p.max_gi, Color("#4cb8ff"))
 	if f.get("has_ult", false): bar(bx, by + 22, bw, 3, p.heung, 100, GOLD if p.heung >= 100 else Color("#ff9ad0"), Color(0.04, 0.04, 0.06, 0.6))
 	bar(0, vh - 3, vw, 3, p.xp, p.exp_need(), Color("#d8c070"), Color(0, 0, 0, 0.4))
-	# zone banner
-	if g.zone_banner and g.zone_banner.t < 3:
-		var k: float = g.zone_banner.t
-		var a: float = min(1.0, min(k * 2, (3 - k) * 1.5))
-		txt(g.zone_banner.name, vw / 2, vh * 0.28, 30, Color(1, 0.96, 0.86, a), 1, Assets.font_black, 5)
-		draw_rect(Rect2(vw / 2 - 90, vh * 0.28 + 12, 180, 2), Color(1, 0.86, 0.6, 0.8 * a))
 	# toasts
 	for i in range(toasts.size() - 1, -1, -1):
 		var t = toasts[i]
@@ -443,62 +455,17 @@ func draw_minimap() -> void:
 	draw_arc(c, R + 1, 0, TAU, 48, Color("#6a5838"), 4, true)
 	draw_arc(c, R + 3, 0, TAU, 48, Color("#d8b878"), 1.5, true)
 
-func portrait(sprite: String, x: float, y: float, size: float) -> void:
+func portrait(sprite: String, x: float, y: float, size: float) -> void: portrait_to(self, sprite, x, y, size)
+
+func portrait_to(ci: CanvasItem, sprite: String, x: float, y: float, size: float, a := 1.0) -> void:
 	if not Assets.chars.has(sprite): return
 	var c: Dictionary = Assets.chars[sprite]
 	var f = Assets.frame(sprite, "idle", "south", 0)
 	var crop: float = max(28.0, round((c.foot - c.top) * 0.5))
 	var src = Rect2(f.src.position.x + c.cx - crop / 2, f.src.position.y + c.top - 2, crop, crop)
-	draw_texture_rect_region(c.tex, Rect2(x, y, size, size), src)
+	ci.draw_texture_rect_region(c.tex, Rect2(x, y, size, size), src, Color(1, 1, 1, a))
 
-func draw_dialog() -> void:
-	var d = dialog
-	if d == null or d.wait: return
-	var l: Array = d.lines[d.i]
-	var sp: String = l[0]; var text: String = l[1]
-	var w: float = min(820.0, vw - 40); var h = 120.0; var x = (vw - w) / 2; var y = vh - h - 16
-	panel(x, y, w, h, 0.9)
-	var tx = x + 22
-	if sp != "@":
-		var spr := speaker_sprite(sp)
-		if spr != "" and Assets.chars.has(spr):
-			draw_rect(Rect2(x + 14, y + 14, 92, 92), Color(0.16, 0.17, 0.27, 0.9))
-			portrait(spr, x + 16, y + 16, 88)
-			draw_rect(Rect2(x + 14, y + 14, 92, 92), Color(0.84, 0.7, 0.43, 0.7), false, 1)
-			tx = x + 122
-		txt(sp, tx, y + 34, 17, GOLD, 0, Assets.font_black)
-	var shown = text.substr(0, int(d.shown))
-	var narr = sp == "@"
-	var lines = wrap_text(shown, 17, w - (tx - x) - 26, Assets.font)
-	for i in lines.size():
-		if narr: txt(lines[i], x + w / 2, y + 56 + i * 24, 18, Color("#bfe6ff"), 1, Assets.font)
-		else: txt(lines[i], tx, y + 62 + i * 24, 17, PAPER, 0, Assets.font)
-	if d.shown >= text.length() and int(g.time * 2.5) % 2 == 0:
-		draw_colored_polygon(PackedVector2Array([Vector2(x + w - 26, y + h - 22), Vector2(x + w - 16, y + h - 22), Vector2(x + w - 21, y + h - 15)]), GOLD)
-
-func draw_banner(dt: float) -> void:
-	var b = banner
-	if b == null: return
-	b.t += dt
-	var D = 4.2
-	if b.t > D: banner = null; return
-	var a: float = min(1.0, min(b.t * 1.5, (D - b.t) * 1.5))
-	draw_rect(Rect2(0, 0, vw, vh), Color(0.016, 0.024, 0.063, 0.6 * a))
-	var text: String
-	if b.has("hy"):
-		var H: Dictionary = Story.HYANGGA[b.hy]
-		txt("향가 · %s (%s)" % [H.name, H.by], vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
-		text = H.line
-		txt(H.effect, vw / 2, vh / 2 + 64, 15, Color(0.75, 0.9, 1.0, a * min(1.0, max(0.0, b.t - 1.0))), 1, Assets.font)
-	else:
-		txt("처용가 · 제" + "一二三四五六七八"[b.n - 1] + "구", vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
-		text = Story.VERSES[b.n - 1]
-	var shown = text.substr(0, int(ceil(min(1.0, b.t / 1.2) * text.length())))
-	var fs := 40 if text.length() < 14 else 28
-	txt(shown, vw / 2, vh / 2 + 14, fs, Color(0.63, 0.86, 1, 0.35 * a), 1, Assets.font_black)
-	txt(shown, vw / 2, vh / 2 + 12, fs, Color(0.97, 0.93, 0.82, a), 1, Assets.font_black)
-	var k: float = min(1.0, b.t)
-	draw_rect(Rect2(vw / 2 - 160 * k, vh / 2 + 34, 320 * k, 2), Color(0.84, 0.7, 0.43, 0.8 * a))
+# the dialogue box, verse banners and title cards are drawn by cine.gd
 
 func draw_shop() -> void:
 	var s = shop; var p = g.player
@@ -612,29 +579,25 @@ func draw_menu2(x: float, y: float, w: float, h: float) -> void:
 	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)
 
 func tick(dt: float) -> void:
+	if cine: cine.update(dt)
 	for i in range(toasts.size() - 1, -1, -1):
 		toasts[i].t += dt
 		if toasts[i].t > 2: toasts.remove_at(i)
 
 func _draw() -> void:
+	if cine: cine.queue_redraw()
 	if g == null or G.state != "play": return
 	var dt = get_process_delta_time()
-	if not g.cinema: draw_hud()
-	if dialog == null and shop == null and choice == null and not menu and not g.cinema: draw_buttons()
-	else: Inp.buttons = []
-	if g.cinema:
-		var k: float = min(1.0, g.cinema_t * 2); var bh = 48 * k
-		draw_rect(Rect2(0, 0, vw, bh), Color.BLACK); draw_rect(Rect2(0, vh - bh, vw, bh), Color.BLACK)
-	draw_dialog()
+	# the HUD and the touch buttons fade out while the letterbox is in (the cine layer itself is not dimmed)
+	var ha: float = cine.hud_alpha() if cine else 1.0
+	self_modulate.a = ha
+	if ha > 0.01: draw_hud()
+	var free: bool = shop == null and choice == null and not menu
+	if free and ha > 0.01: draw_buttons()
+	if dialog != null or g.cinema or not free: Inp.buttons = []
 	if shop: draw_shop()
 	if choice: draw_choice()
 	if menu: draw_menu()
-	draw_banner(dt)
-	if chapter_banner:
-		var cb = chapter_banner
-		cb.t += dt
-		if cb.t > 4.5: chapter_banner = null
-		else:
-			var a: float = min(1.0, min(cb.t * 1.5, (4.5 - cb.t) * 1.5))
-			draw_rect(Rect2(0, vh * 0.2, vw, 70), Color(0.02, 0.02, 0.06, 0.55 * a))
-			txt(cb.text, vw / 2, vh * 0.2 + 45, 28, Color(1, 0.93, 0.78, a), 1, Assets.font_black, 5)
+	if banner:
+		banner.t += dt
+		if banner.t > 4.2: banner = null

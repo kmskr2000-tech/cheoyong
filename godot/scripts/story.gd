@@ -45,6 +45,8 @@ const HYANGGA := {
 	"dosol": {"name": "도솔가", "by": "월명사", "line": "오늘 노래 불러 뿌린 꽃이여, 곧은 마음을 따르라", "effect": "처용가가 더 세지고 흥이 빨리 찬다"},
 }
 const HYANGGA_ORDER := ["chan", "jemang", "heonhwa", "docheon", "dosol"]
+# title card of chapter 1 (the chapters of the pilgrimage build theirs in Chapter.card)
+const CARD1 := {"n": 1, "title": "제1장 · 서라벌", "quote": "서라벌 밝은 달에 밤 늦도록 노닐다가", "by": "처용가"}
 
 var g  # the Game
 var chapters := {}  # map id -> Chapter

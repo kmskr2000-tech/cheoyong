@@ -18,6 +18,13 @@ func num(k: String) -> int: return int(g.flags.get(k, 0))
 func setf(k: String, v = true) -> void: g.flags[k] = v
 func p(): return g.player
 
+# title card shown when the chapter begins: the chapter, then a line of the hyangga it brings
+func card() -> Dictionary:
+	var parts := title.split(" — ")
+	var key: String = Story.HYANGGA_ORDER[clampi(n - 2, 0, Story.HYANGGA_ORDER.size() - 1)]
+	var H: Dictionary = Story.HYANGGA[key]
+	return {"n": n, "title": parts[0], "quote": H.line, "by": "%s  ·  %s" % [H.name, H.by]}
+
 # ---------- data (override) ----------
 # [id, sprite, tile x, tile y, name, facing, visibility callable or null]
 func npcs() -> Array: return []
