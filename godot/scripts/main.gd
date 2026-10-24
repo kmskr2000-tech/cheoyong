@@ -1,6 +1,6 @@
 # Main: state machine (title -> intro -> play -> ending), title/intro/ending overlays, test hooks.
 # Test hooks (after "--" on the command line, or ?query on the web):
-#   play, quest=n, at=x,y, flags=a,b, lvl=n, heung, enemies=imp,snake, boss=gumiho, ending, mute, god, auto, speed=n
+#   play, quest=n, at=x,y, flags=a,b, lvl=n, heung, enemies=imp,snake, boss=gumiho, ending, credits, menu[=page], padsim=A@1.0,START@2.5, mute, god, auto, speed=n
 #   capture=out.png frames=N  -> run N fixed frames, save a screenshot, print a status line, quit
 #   keys=hold:right@0.3-1.4,interact@1.9  -> scripted input by game time (actions or up/down/left/right)
 extends Node
@@ -52,6 +52,7 @@ func _ready() -> void:
 			var b = game.spawn_boss(G.param("boss"), game.player.x + 220, game.player.y, null)
 			game.start_boss_fight(b, game.player.x + 110, game.player.y)
 	elif G.has("ending"): set_state("ending")
+	elif G.has("credits"): set_state("credits")
 	else: set_state("title")
 
 # UI layer: about CSS-pixel sized on phones (readable text, thumb-sized buttons), scaled up on big screens
@@ -141,16 +142,18 @@ func _step(dt: float) -> void:
 		"intro": _intro(dt)
 		"play": game.tick(dt)
 		"ending": _ending(dt)
+		"credits": _credits(dt)
 
 func _title(dt: float) -> void:
 	game.time += dt; game.fx.update(dt)
 	game.cam = Vector2(84 * 32 + sin(st.t * 0.05) * 200, 58 * 32 + cos(st.t * 0.04) * 80)
 	game.clamp_cam()
 	var opts = ["이어하기", "새로 시작"] if st.has_save else ["시작하기"]
+	opts.append("제작진")
 	st.opts = opts
 	st.cool -= dt
 	var mv = Inp.move()
-	if abs(mv.y) > 0.5 and st.cool <= 0: st.sel = (st.sel + 1) % opts.size(); st.cool = 0.25; Sfx.sfx("ui")
+	if abs(mv.y) > 0.5 and st.cool <= 0: st.sel = posmod(st.sel + (1 if mv.y > 0 else -1), opts.size()); st.cool = 0.25; Sfx.sfx("ui")
 	var choose = null
 	if Inp.hit("tap"):
 		for r in st.rects:
@@ -159,6 +162,7 @@ func _title(dt: float) -> void:
 	if choose == null and st.t > 0.4 and (Inp.hit("confirm") or Inp.hit("interact") or Inp.hit("attack")): choose = st.sel
 	if choose != null:
 		Sfx.sfx("verse")
+		if opts[choose] == "제작진": set_state("credits"); return
 		if opts[choose] == "이어하기": game.load_game(); set_state("play")
 		elif G.has("skipintro"): game.new_game(); set_state("play")
 		else: set_state("intro")
@@ -174,6 +178,13 @@ func _intro(dt: float) -> void:
 	if st.st > dur or (st.st > 0.6 and (Inp.hit("confirm") or Inp.hit("tap"))):
 		st.shot += 1; st.st = 0.0
 		if st.shot >= INTRO.size(): game.new_game(); set_state("play"); Sfx.music("sea")
+
+func _credits(dt: float) -> void:
+	st.st += dt
+	game.time += dt; game.fx.update(dt)
+	var mv = Inp.move()
+	st.sc = clampf(st.get("sc", 0.0) + (Credits.SPEED + mv.y * 150.0) * dt, 0.0, Credits.max_scroll(overlay.size.y))
+	if st.st > 0.4 and (Inp.hit("confirm") or Inp.hit("cancel") or Inp.hit("menu") or Inp.hit("tap")): set_state("title")
 
 func _ending(dt: float) -> void:
 	st.st += dt
@@ -224,6 +235,7 @@ func _draw_overlay() -> void:
 			overlay.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.85 if last else 0.35 + (1 - fade) * 0.65))
 			overlay.draw_rect(Rect2(0, 0, vs.x, 56), Color.BLACK); overlay.draw_rect(Rect2(0, vs.y - 56, vs.x, 56), Color.BLACK)
 			_caption(shot.text, max(0.0, st.st - 0.3), last)
+		"credits": Credits.draw(overlay, st.get("sc", 0.0), min(1.0, st.t * 2.0), Inp.pad_used)
 		"ending":
 			overlay.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, 0.6))
 			var shot: Dictionary = ENDING[st.shot]
