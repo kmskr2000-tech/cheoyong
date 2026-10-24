@@ -177,6 +177,7 @@ func _build_nodes() -> void:
 	lc.add_child(light_rect)
 	overlay = _layer(lc, _draw_overlay)
 	var uc = CanvasLayer.new(); uc.layer = 10
+	uc.visible = not G.has("nohud")  # test hook for clean screenshots (store art)
 	add_child(uc)
 	ui = Control.new()
 	ui.set_script(load("res://scripts/ui.gd"))
