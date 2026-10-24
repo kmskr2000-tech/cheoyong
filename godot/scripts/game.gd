@@ -713,7 +713,4 @@ func _draw_overlay(ci: CanvasItem) -> void:
 	if death_t != null:
 		var k: float = min(1.0, death_t / 1.5)
 		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, k * 0.9))
-		var f: Font = Assets.font_black
-		var s = "넋이 흐려진다…"
-		var w = f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
-		ci.draw_string(f, Vector2(vs.x / 2 - w / 2, vs.y / 2), s, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(0.78, 0.72, 0.91, k))
+		Typo.draw(ci, Assets.font_title, "넋이 흐려진다…", vs.x / 2, vs.y / 2, 34, Color(0.78, 0.72, 0.91, k), 0.18)

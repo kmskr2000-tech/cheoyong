@@ -6,7 +6,7 @@ extends Control
 const BAR := 0.11            # letterbox bar height, share of the screen
 const GOLD := Color(0.84, 0.69, 0.42)
 const INK := Color(0.03, 0.027, 0.04)
-const NUM_KO := ["일", "이", "삼", "사", "오", "육", "칠", "팔"]
+const ORD_KO := ["첫째", "둘째", "셋째", "넷째", "다섯째", "여섯째", "일곱째", "여덟째"]
 
 var ui                       # the UI control
 var lb := 0.0                # letterbox amount 0..1 (eased in/out over ~0.4 s)
@@ -115,14 +115,22 @@ func _dialog() -> void:
 	var x: float = (vw - w) / 2
 	var spr: String = "" if narr else ui.speaker_sprite(sp)
 	var portrait: bool = spr != "" and Assets.chars.has(spr)
-	var tx: float = x + (138.0 if portrait else 34.0)
+	var compact: bool = vh < 460.0          # phones in landscape: a lower, tighter box so the scene stays visible
+	var ps := 78.0 if compact else 96.0     # portrait frame
+	var tx: float = x + (ps + 42.0 if portrait else 34.0)
 	var tw: float = x + w - 34.0 - tx
 	var font: Font = Assets.font_serif
-	var fs := 18
-	var lines: Array = Typo.wrap(font, text, fs, tw - (0 if not narr else 40))
-	if lines.size() > 3: fs = 16; lines = Typo.wrap(font, text, fs, tw)
+	var fs := 16 if compact else 18
+	var wkey := "%s|%d|%d|%s" % [text, fs, int(tw), narr]   # wrapping is cached per line of dialogue
+	if d.get("wk", "") != wkey:
+		var ls: Array = Typo.wrap(font, text, fs, tw - (0 if not narr else 40))
+		if ls.size() > 3 and not compact: fs = 16; ls = Typo.wrap(font, text, fs, tw)
+		d.wk = wkey; d.wl = ls; d.wfs = fs
+	var lines: Array = d.wl
+	fs = d.wfs
 	var lh: float = fs * 1.55
-	var h: float = maxf(128.0, 58.0 + lines.size() * lh + 12.0)
+	var t0 := 54.0 if compact else 62.0     # first baseline below the top rule
+	var h: float = maxf(ps + 24.0 if portrait else (92.0 if compact else 110.0), t0 + (lines.size() - 1) * lh + 28.0)
 	var y: float = vh - vh * BAR - h - 12.0 + (1.0 - a) * 8.0
 	# panel: dark ink, gold rule on top, faint rule at the foot
 	for i in 3: draw_rect(Rect2(x - i * 3, y - i * 3 + 6, w + i * 6, h + i * 6), Color(0, 0, 0, 0.10 * a))
@@ -132,12 +140,12 @@ func _dialog() -> void:
 	draw_line(Vector2(x, y + h - 0.5), Vector2(x + w, y + h - 0.5), Color(GOLD, 0.26 * a), 1.0)
 	draw_line(Vector2(x + 0.5, y), Vector2(x + 0.5, y + h), Color(GOLD, 0.10 * a), 1.0)
 	draw_line(Vector2(x + w - 0.5, y), Vector2(x + w - 0.5, y + h), Color(GOLD, 0.10 * a), 1.0)
-	if portrait: _portrait_frame(x + 20, y + (h - 96) / 2, 96, spr, a)
-	var ty: float = y + 62.0
+	if portrait: _portrait_frame(x + 20, y + (h - ps) / 2, ps, spr, a)
+	var ty: float = y + t0
 	if not narr:
-		var nw: float = Typo.width(Assets.font_serif_bold, sp, 18, 0.12)
-		Typo.draw(self, Assets.font_serif_bold, sp, tx, y + 33, 18, Color(0.96, 0.80, 0.50, a), 0.12, 0)
-		draw_line(Vector2(tx, y + 42), Vector2(tx + nw + 18, y + 42), Color(GOLD, 0.45 * a), 1.0)
+		var nw: float = Typo.width(Assets.font_serif_bold, sp, fs, 0.12)
+		Typo.draw(self, Assets.font_serif_bold, sp, tx, y + t0 - 29, fs, Color(0.96, 0.80, 0.50, a), 0.12, 0)
+		draw_line(Vector2(tx, y + t0 - 20), Vector2(tx + nw + 18, y + t0 - 20), Color(GOLD, 0.45 * a), 1.0)
 	else:
 		ty = y + (h - lines.size() * lh) / 2 + fs
 	# typewriter: reveal the characters in order across the wrapped lines
@@ -161,7 +169,7 @@ func _banner_dim() -> void:
 	var b = ui.banner
 	if b == null: return
 	var a: float = minf(1.0, minf(b.t * 1.5, (4.2 - b.t) * 1.5))
-	draw_rect(Rect2(0, 0, ui.vw, ui.vh), Color(0.01, 0.012, 0.03, 0.74 * a))
+	draw_rect(Rect2(0, 0, ui.vw, ui.vh), Color(0.01, 0.012, 0.03, 0.82 * a))
 
 func _banner() -> void:
 	var b = ui.banner
@@ -177,7 +185,7 @@ func _banner() -> void:
 		text = H.line
 		Typo.draw(self, Assets.font_serif, H.effect, cx, cy + 74, 15, Color(0.76, 0.88, 0.98, a * clampf(b.t - 1.4, 0.0, 1.0)), 0.03)
 	else:
-		head = "처용가  ·  제%s구" % NUM_KO[b.n - 1]
+		head = "처용가  ·  %s 구절" % ORD_KO[b.n - 1]
 		text = Story.VERSES[b.n - 1]
 	var shown := int(ceil(minf(1.0, b.t / 1.6) * text.length()))
 	var fs := 46 if text.length() < 14 else 34

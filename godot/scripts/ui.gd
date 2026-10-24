@@ -580,6 +580,9 @@ func draw_menu2(x: float, y: float, w: float, h: float) -> void:
 
 func tick(dt: float) -> void:
 	if cine: cine.update(dt)
+	if banner:   # verse and hyangga banners run on game time (like everything else), so --speed and captures agree
+		banner.t += dt
+		if banner.t > 4.2: banner = null
 	for i in range(toasts.size() - 1, -1, -1):
 		toasts[i].t += dt
 		if toasts[i].t > 2: toasts.remove_at(i)
@@ -587,7 +590,6 @@ func tick(dt: float) -> void:
 func _draw() -> void:
 	if cine: cine.queue_redraw()
 	if g == null or G.state != "play": return
-	var dt = get_process_delta_time()
 	# the HUD and the touch buttons fade out while the letterbox is in (the cine layer itself is not dimmed)
 	var ha: float = cine.hud_alpha() if cine else 1.0
 	self_modulate.a = ha
@@ -598,6 +600,3 @@ func _draw() -> void:
 	if shop: draw_shop()
 	if choice: draw_choice()
 	if menu: draw_menu()
-	if banner:
-		banner.t += dt
-		if banner.t > 4.2: banner = null

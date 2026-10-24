@@ -36,12 +36,14 @@ static func draw(ci: CanvasItem, font: Font, s: String, x: float, y: float, size
 		ci.draw_string(font, Vector2(px, y), t, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 		return
 	var n := s.length() if shown < 0 else mini(shown, s.length())
+	var xs := PackedFloat32Array()
 	var cx := px
 	for i in n:
-		var ch := s[i]
-		if outline > 0: ci.draw_string_outline(font, Vector2(cx, y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size, outline, oc)
-		ci.draw_string(font, Vector2(cx, y), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
-		cx += font.get_string_size(ch, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + sp * size
+		xs.append(cx)
+		cx += font.get_string_size(s[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + sp * size
+	if outline > 0:   # all edges first, so a neighbour's edge never cuts into a letter
+		for i in n: ci.draw_string_outline(font, Vector2(xs[i], y), s[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, outline, oc)
+	for i in n: ci.draw_string(font, Vector2(xs[i], y), s[i], HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 # largest size <= size whose width fits max_w
 static func fit(font: Font, s: String, size: int, max_w: float, sp := 0.0) -> int:

@@ -1,6 +1,6 @@
 # Main: state machine (title -> intro -> play -> ending), title/intro/ending overlays, test hooks.
 # Test hooks (after "--" on the command line, or ?query on the web):
-#   play, quest=n, at=x,y, flags=a,b, lvl=n, heung, enemies=imp,snake, boss=gumiho, ending, intro, card=n, mute, god, auto, speed=n
+#   play, quest=n, at=x,y, flags=a,b, lvl=n, heung, enemies=imp,snake, boss=gumiho, ending, intro, card=n, verse=n, hyangga=key, say=text, who=name, mute, god, auto, speed=n
 #   capture=out.png frames=N  -> run N fixed frames, save a screenshot, print a status line, quit
 #   keys=hold:right@0.3-1.4,interact@1.9  -> scripted input by game time (actions or up/down/left/right)
 extends Node
@@ -61,6 +61,9 @@ func _ready() -> void:
 		if G.has("card"):   # card=n: show chapter n's title card
 			var cn := int(G.param("card", "1"))
 			game.ui.start_card(Story.CARD1 if cn <= 1 else game.story.chapters[Maps.ORDER[cn - 1]].card())
+		if G.has("verse"): game.ui.say([["@verse", int(G.param("verse", "1"))]])    # verse=n: the verse banner
+		if G.has("hyangga"): game.ui.say([["@hyangga", G.param("hyangga", "chan")]])  # hyangga=key: the hyangga banner
+		if G.has("say"): game.ui.say([[G.param("who", "할미"), G.param("say").uri_decode()]])   # say=text who=name: one dialogue line
 		if G.param("boss") != "":
 			var b = game.spawn_boss(G.param("boss"), game.player.x + 220, game.player.y, null)
 			game.start_boss_fight(b, game.player.x + 110, game.player.y)
@@ -315,6 +318,7 @@ func _draw_overlay() -> void:
 			var out: float = 1.0 if last else Typo.smooth((ENDING_DUR - st.st) / 1.4)
 			_caption(shot.text, max(0.0, st.st - 0.5), last, out)
 			if last:
+				Typo.rule(overlay, vs.x / 2, vs.y * 0.5 + 24, 220, Color(GOLD, 0.6 * Typo.smooth((st.st - 0.6) / 1.4)), Typo.smooth((st.st - 0.6) / 1.4))
 				var ca: float = Typo.smooth((st.st - 2.4) / 1.6)
 				Typo.draw(overlay, Assets.font_serif, "그림: PixelLab 생성  ·  소리: 합성 국악  ·  엔진: Godot", vs.x / 2, vs.y - 52, 13, Color(0.82, 0.78, 0.70, 0.7 * ca), 0.1)
 				Typo.draw(overlay, Assets.font_serif, "처용 Lv.%d  ·  정화한 요괴 %d" % [game.player.lvl, int(game.flags.get("kills_total", 0))], vs.x / 2, vs.y - 32, 13, Color(0.82, 0.78, 0.70, 0.7 * ca), 0.1)
