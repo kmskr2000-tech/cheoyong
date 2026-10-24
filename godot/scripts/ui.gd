@@ -156,9 +156,9 @@ func update_dialog(dt: float) -> void:
 	# typewriter, about 40 characters a second, with a short breath after punctuation
 	d.pause = max(0.0, d.pause - dt)
 	if d.pause <= 0.0 and d.shown < text.length():
-		d.shown = min(float(text.length()), d.shown + dt * 40)
+		d.shown = min(float(text.length()), d.shown + dt * 40 * G.text_speed)  # 대사 속도 setting; >= 100 is instant
 		var now := int(d.shown)
-		if now != before and now > 0 and text[now - 1] in ".,!?…—": d.pause = 0.09
+		if now != before and now > 0 and text[now - 1] in ".,!?…—" and G.text_speed < 100: d.pause = 0.09 / G.text_speed
 	if int(d.shown) != before and int(d.shown) % 3 == 0 and d.lines[d.i][0] != "@": Sfx.sfx("talk")
 	d.t += dt
 	# first confirm completes the line, the second goes on
