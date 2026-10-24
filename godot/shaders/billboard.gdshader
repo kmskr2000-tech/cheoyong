@@ -32,6 +32,17 @@ void fragment() {
 	if (v_flip > 0.5) uv.x = 1.0 - uv.x;
 	uv = region.xy + uv * region.zw;
 	vec4 c = texture(tex, uv);
+	// ink outline: a transparent texel next to an opaque one turns into a dark line (kept inside this frame's region)
+	if (c.a < 0.35) {
+		vec2 ts = 1.0 / vec2(textureSize(tex, 0));
+		vec2 lo = region.xy + ts * 0.5, hi = region.xy + region.zw - ts * 0.5;
+		float n = 0.0;
+		n = max(n, texture(tex, clamp(uv + vec2(ts.x, 0.0), lo, hi)).a);
+		n = max(n, texture(tex, clamp(uv - vec2(ts.x, 0.0), lo, hi)).a);
+		n = max(n, texture(tex, clamp(uv + vec2(0.0, ts.y), lo, hi)).a);
+		n = max(n, texture(tex, clamp(uv - vec2(0.0, ts.y), lo, hi)).a);
+		if (n > 0.5) c = vec4(0.07, 0.05, 0.08, 0.92);
+	}
 	float lum = dot(c.rgb, vec3(0.3, 0.55, 0.15));
 	float amt = 0.65 * (1.0 - step(2.995, tint.r + tint.g + tint.b));
 	vec3 base = mix(c.rgb, lum * tint.rgb * 1.6, amt);

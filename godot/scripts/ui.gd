@@ -7,8 +7,13 @@ var banner = null
 var shop = null
 var menu = false
 var menu_page = 0
+var menu_focus := ""       # id of the menu rect the keyboard / pad cursor is on ("" = pick the page default)
+var menu_rects_page := -1  # the page menu_rects was last built for
+var menu_drag := ""        # id of the slider track being dragged
+var settings_menu := SettingsMenu.new()
 var choice = null          # {"title", "options": [{"label", "fn"}], "sel", "rects"}
-var chapter_banner = null  # {"text", "t"}
+var chapter_banner = null  # unused: chapter starts show a title card (cine.gd)
+var cine: Control          # cinematic layer: letterbox, dialogue box, captions, title cards, fades
 var shop_lv = 1
 var glow = null
 var toasts = []
@@ -33,6 +38,17 @@ const GOLD := Color("#ffd27a")
 const PAPER := Color("#f3e6c4")
 
 func modal() -> bool: return dialog != null or shop != null or menu or choice != null
+
+func _ready() -> void:
+	cine = Control.new()
+	cine.set_script(load("res://scripts/cine.gd"))
+	cine.ui = self
+	add_child(cine)
+
+# cinematic hooks (see cine.gd): chapter title card, fade through black, "the world stands still"
+func start_card(c: Dictionary) -> void: cine.start_card(c)
+func fade_through(fn: Callable) -> void: cine.fade_through(fn)
+func blocking() -> bool: return cine != null and cine.blocking()
 
 # who is talking: the fixed cast, then NPCs on this map, then the boss
 func speaker_sprite(sp: String) -> String:
@@ -71,11 +87,14 @@ func fit(s: String, size: int, w: float) -> String:
 	while s.length() > 2 and tw(s + "…", size) > w: s = s.substr(0, s.length() - 1)
 	return s + "…"
 
-func bar(x: float, y: float, w: float, h: float, v: float, mx: float, col: Color, back := Color(0.04, 0.04, 0.06, 0.7)) -> void:
-	draw_rect(Rect2(x - 1, y - 1, w + 2, h + 2), back)
+func bar(x: float, y: float, w: float, h: float, v: float, mx: float, col: Color, back := Color(0.04, 0.035, 0.05, 0.78)) -> void:
+	# ink well with a hairline of old gold, a lacquer fill that darkens toward its lower edge
+	draw_rect(Rect2(x - 2, y - 2, w + 4, h + 4), back)
+	if h >= 5: draw_rect(Rect2(x - 2, y - 2, w + 4, h + 4), Color(0.72, 0.6, 0.38, 0.55), false, 1)
 	var fw: float = max(0.0, w * v / mx)
 	draw_rect(Rect2(x, y, fw, h), col)
-	draw_rect(Rect2(x, y, fw, ceil(h / 3.0)), Color(1, 1, 1, 0.18))
+	draw_rect(Rect2(x, y + h * 0.55, fw, h * 0.45), Color(0, 0, 0, 0.28))
+	draw_rect(Rect2(x, y, fw, 1), Color(1, 0.95, 0.85, 0.22))
 
 func plate(x: float, y: float, w: float, h: float, a := 0.55) -> void:
 	var sb = StyleBoxFlat.new()
@@ -97,7 +116,7 @@ func ring(x: float, y: float, r: float, lit: bool) -> void:
 # ---------- dialogue ----------
 # lines: [speaker, text, callable?]; "@" is narration, "@verse" shows a verse banner (text = verse number)
 func say(lines: Array, on_done = null) -> void:
-	dialog = {"lines": lines, "i": -1, "done": on_done, "t": 0.0, "shown": 0.0, "wait": false}
+	dialog = {"lines": lines, "i": -1, "done": on_done, "t": 0.0, "shown": 0.0, "wait": false, "age": 0.0, "pause": 0.0}
 	next_line()
 
 func next_line() -> void:
@@ -108,7 +127,7 @@ func next_line() -> void:
 		if d.done is Callable and d.done.is_valid(): d.done.call()
 		return
 	var l: Array = d.lines[d.i]
-	d.t = 0.0; d.shown = 0.0
+	d.t = 0.0; d.shown = 0.0; d.pause = 0.0
 	if l[0] == "@verse":
 		g.flags["verse%d" % l[1]] = true
 		banner = {"n": l[1], "t": 0.0}
@@ -134,11 +153,17 @@ func update_dialog(dt: float) -> void:
 		return
 	var text: String = d.lines[d.i][1]
 	var before = int(d.shown)
-	d.shown = min(float(text.length()), d.shown + dt * 38)
+	# typewriter, about 40 characters a second, with a short breath after punctuation
+	d.pause = max(0.0, d.pause - dt)
+	if d.pause <= 0.0 and d.shown < text.length():
+		d.shown = min(float(text.length()), d.shown + dt * 40 * G.text_speed)  # 대사 속도 setting; >= 100 is instant
+		var now := int(d.shown)
+		if now != before and now > 0 and text[now - 1] in ".,!?…—" and G.text_speed < 100: d.pause = 0.09 / G.text_speed
 	if int(d.shown) != before and int(d.shown) % 3 == 0 and d.lines[d.i][0] != "@": Sfx.sfx("talk")
 	d.t += dt
+	# first confirm completes the line, the second goes on
 	if conf and d.t > 0.15:
-		if d.shown < text.length(): d.shown = text.length()
+		if d.shown < text.length(): d.shown = text.length(); d.pause = 0.0
 		else: next_line()
 
 # ---------- shop ----------
@@ -206,23 +231,81 @@ func update_shop(dt: float) -> void:
 	if s.t > 0.2 and (Inp.hit("confirm") or Inp.hit("interact") or Inp.hit("attack")): buy.call(s.sel)
 
 # ---------- pause menu ----------
+# Pages: 0 body and masks, 1 talismans, 2 settings. Mouse / touch tap the rects; keyboard and pad move a focus cursor
+# (nav_* presses, LB/RB = skill1/2 switch page, A/Enter use, B/Esc/Start close).
 func update_menu() -> void:
-	var p = g.player
 	if Inp.hit("menu"): menu = false; return
 	if Inp.hit("tap"):
+		menu_drag = ""
 		for r in menu_rects:
 			if hit_rect(r):
-				if r.has("page"): menu_page = r.page; Sfx.sfx("ui")
-				if r.has("talis"):
-					var i: int = r.talis
-					if p.equip.has(i): p.equip.erase(i)
-					elif p.equip.size() < 2: p.equip.append(i)
-					else: p.equip[0] = p.equip[1]; p.equip[1] = i
-					Sfx.sfx("ui")
-				if r.has("mask"): p.mask = r.mask; Sfx.sfx("ui")
-				if r.has("close"): menu = false
-				if r.has("sound"): Sfx.toggle()
-	if Inp.hit("mask"): p.cycle_mask()
+				if r.get("type", "") == "track": menu_drag = r.id
+				_menu_activate(r, Inp.tap_pos)
+	elif menu_drag != "" and Inp.ptr_down:
+		for r in menu_rects:
+			if r.get("id", "") == menu_drag: settings_menu.set_from_x(r, Inp.ptr_pos.x)
+	if not Inp.ptr_down: menu_drag = ""
+	if menu_rects_page == menu_page and _menu_focus_rect() == null: _menu_default_focus()
+	if Inp.hit("skill1") and menu_page > 0: menu_page -= 1; menu_focus = ""; Sfx.sfx("ui")
+	if Inp.hit("skill2") and menu_page < 2: menu_page += 1; menu_focus = ""; Sfx.sfx("ui")
+	for d in [["up", Vector2i(0, -1)], ["down", Vector2i(0, 1)], ["left", Vector2i(-1, 0)], ["right", Vector2i(1, 0)]]:
+		if Inp.nav_hit(d[0]): _menu_nav(d[1])
+	if Inp.hit("confirm") and not Inp.hit("tap"):
+		var fr = _menu_focus_rect()
+		if fr != null: _menu_activate(fr, null)
+	if Inp.hit("mask"): g.player.cycle_mask()
+
+func _menu_activate(r: Dictionary, tap) -> void:
+	var p = g.player
+	if r.has("page"): menu_page = r.page; menu_focus = r.get("id", ""); Sfx.sfx("ui")
+	if r.has("talis"):
+		var i: int = r.talis
+		if p.equip.has(i): p.equip.erase(i)
+		elif p.equip.size() < 2: p.equip.append(i)
+		else: p.equip[0] = p.equip[1]; p.equip[1] = i
+		Sfx.sfx("ui")
+	if r.has("mask"): p.mask = r.mask; Sfx.sfx("ui")
+	if r.has("close"): menu = false
+	if r.has("sound"): Sfx.toggle()
+	if r.has("set") or r.has("act"): settings_menu.activate(self, r, tap)
+
+func _menu_focus_rect():
+	for r in menu_rects:
+		if r.get("id", "") == menu_focus and not r.get("nofocus", false): return r
+	return null
+
+func _menu_default_focus() -> void:
+	menu_focus = "close"
+	for r in menu_rects:
+		if r.get("def", false): menu_focus = r.id; return
+
+# slider / toggle rows take left-right as a value change; otherwise jump to the nearest rect in that direction
+func _menu_nav(d: Vector2i) -> void:
+	var fr = _menu_focus_rect()
+	if fr == null: _menu_default_focus(); return
+	if d.x != 0 and settings_menu.adjust(self, fr, d.x): return
+	var c := Vector2(fr.x + fr.w / 2, fr.y + fr.h / 2)
+	var best := ""
+	var best_cost := INF
+	for r in menu_rects:
+		if not r.has("id") or r.get("nofocus", false) or r.id == fr.id: continue
+		var o := Vector2(r.x + r.w / 2, r.y + r.h / 2) - c
+		var along := o.x * d.x + o.y * d.y
+		if along < 2.0: continue
+		var cost := along + (absf(o.x * d.y) + absf(o.y * d.x)) * 2.5
+		if cost < best_cost: best_cost = cost; best = r.id
+	if best != "": menu_focus = best; Sfx.sfx("ui")
+
+func _draw_menu_focus() -> void:
+	if is_touch(): return
+	var fr = _menu_focus_rect()
+	if fr == null: return
+	var a := 0.65 + 0.3 * sin(g.time * 7.0)
+	draw_rect(Rect2(fr.x - 2, fr.y - 2, fr.w + 4, fr.h + 4), Color(1.0, 0.85, 0.45, a), false, 2.0)
+
+# a key letter, or the pad button when a gamepad is in use
+func _kl(action: String, key: String) -> String:
+	return Inp.PAD_LABEL.get(action, key) if Inp.pad_used else key
 
 # ---------- buttons ----------
 func layout_buttons() -> Array:
@@ -290,7 +373,7 @@ func _curve(a: Vector2, b: Vector2, c: Vector2) -> PackedVector2Array:
 
 func draw_buttons() -> void:
 	var B = layout_buttons()
-	Inp.buttons = B
+	Inp.buttons = [] if Inp.pad_used else B   # with a gamepad the buttons are only the cooldown / ult / item readout, no touch areas
 	var touch = is_touch()
 	for b in B:
 		var lit: bool = glow == b.action
@@ -312,7 +395,11 @@ func draw_buttons() -> void:
 		else: icon(b.icon, b.x, b.y, b.r * (0.62 if b.get("main", false) else 0.58))
 		if b.has("gi") and g.player.gi < b.gi: draw_circle(Vector2(b.x, b.y), b.r - 2, Color(0, 0.04, 0.16, 0.55))
 		if b.has("label"): txt(b.label, b.x, b.y + b.r + 13, 11, PAPER, 1, null, 3)
-		if b.has("key") and not touch: txt(b.key, b.x + b.r * 0.72, b.y + b.r * 0.9, 10, Color("#d8ccb0"), 1, null, 3)
+		if not touch:
+			var kt: String = ""
+			if Inp.pad_used: kt = Inp.PAD_LABEL.get(b.action, "") if b.action != "menu" and b.action != "mask" else ""
+			else: kt = b.get("key", "")
+			if kt != "": txt(kt, b.x + b.r * 0.72, b.y + (b.r * 0.9 if not (b.get("slot", false) and Inp.pad_used) else -b.r * 0.35), 10, Color("#d8ccb0"), 1, null, 3)
 		if b.has("count"): txt(str(b.count), b.x + b.r - 2, b.y + b.r - 3, 12, Color.WHITE, 2, null, 3)
 	var st: Dictionary = Inp.stick
 	if touch and st.active:
@@ -335,7 +422,7 @@ func draw_hud() -> void:
 	plate(x - 6, 8, total + 12, 26, 0.5)
 	for it in items:
 		draw_circle(Vector2(x + 8, 21), 5, it[2])
-		txt(it[0] + " ", x + 18, 26, 13, Color("#d8ccb0"), 0, null, 2)
+		txt(it[0] + " ", x + 18, 26, 13, Color("#cdbf9f"), 0, Assets.font_serif, 2)
 		txt(it[1], x + 18 + tw(it[0] + " ", 13), 26, 13, Color.WHITE, 0, null, 2)
 		x += tw(it[0] + " " + it[1], 13) + 28
 	# boss bar
@@ -343,8 +430,8 @@ func draw_hud() -> void:
 		var b = g.boss
 		var w: float = min(420.0, vw - 360); var x0 = vw / 2 - w / 2; var y0 = 44.0
 		plate(x0 - 8, y0 - 4, w + 16, 34, 0.55)
-		txt(("[처용가로 굴복시키시오] " if b.ult_vulnerable else "") + b.def.name, vw / 2, y0 + 11, 13, Color("#ff9a8a"), 1, null, 3)
-		bar(x0, y0 + 17, w, 7, b.hp, b.max_hp, GOLD if b.ult_vulnerable else Color("#d03a3a"))
+		txt(("[처용가로 굴복시키시오] " if b.ult_vulnerable else "") + b.def.name, vw / 2, y0 + 11, 15, Color("#e8c9a8"), 1, Assets.font_serif_bold, 3)
+		bar(x0, y0 + 17, w, 7, b.hp, b.max_hp, GOLD if b.ult_vulnerable else Color("#8f2430"))
 	# quest tracker
 	var ob: Dictionary = g.story.objective()
 	var parts: PackedStringArray = ob.text.split(" — ")
@@ -358,26 +445,20 @@ func draw_hud() -> void:
 	for i in rows.size():
 		var y = qy + 22 + i * 22
 		if i >= main_n:
-			txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#c8b0ff"), 0, Assets.font, 2)
+			txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#b9a8d8"), 0, Assets.font_serif, 2)
 			continue
 		if i == 0:
-			draw_colored_polygon(PackedVector2Array([Vector2(qx + 10, y - 9), Vector2(qx + 18, y - 4), Vector2(qx + 10, y + 1)]), Color("#ffcf5a"))
-			txt(fit("[이야기] " + rows[i], 13, qw - 30), qx + 24, y, 13, Color("#ffe08a"), 0, null, 2)
-		else: txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#e8e0d0"), 0, Assets.font, 2)
+			draw_rect(Rect2(qx + 11, y - 7, 6, 6), Color("#c9a45c"))
+			txt(fit(rows[i], 14, qw - 30), qx + 24, y, 14, Color("#ead6a8"), 0, Assets.font_serif_bold, 2)
+		else: txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#d9d0bf"), 0, Assets.font_serif, 2)
 	# health, gi, heung, exp
 	var bw: float = min(360.0, vw * 0.36); var bx = vw / 2 - bw / 2; var by = vh - 62
-	txt("Lv.%d 처용" % p.lvl, bx - 34, by + 12, 12, Color("#ffe2a0"), 1, null, 2)
-	bar(bx, by, bw, 10, p.hp, p.max_hp, Color("#6fcf4a"))
+	txt("Lv.%d" % p.lvl, bx - 30, by + 12, 13, Color("#ead6a8"), 1, Assets.font_serif_bold, 2)
+	bar(bx, by, bw, 10, p.hp, p.max_hp, Color("#a8343a"))
 	txt("%d / %d" % [ceil(p.hp), p.max_hp], vw / 2, by + 9, 10, Color.WHITE, 1, null, 2)
-	bar(bx, by + 14, bw, 5, p.gi, p.max_gi, Color("#4cb8ff"))
-	if f.get("has_ult", false): bar(bx, by + 22, bw, 3, p.heung, 100, GOLD if p.heung >= 100 else Color("#ff9ad0"), Color(0.04, 0.04, 0.06, 0.6))
+	bar(bx, by + 15, bw, 5, p.gi, p.max_gi, Color("#3d78a8"))
+	if f.get("has_ult", false): bar(bx, by + 24, bw, 3, p.heung, 100, GOLD if p.heung >= 100 else Color("#b86a88"), Color(0.04, 0.04, 0.06, 0.6))
 	bar(0, vh - 3, vw, 3, p.xp, p.exp_need(), Color("#d8c070"), Color(0, 0, 0, 0.4))
-	# zone banner
-	if g.zone_banner and g.zone_banner.t < 3:
-		var k: float = g.zone_banner.t
-		var a: float = min(1.0, min(k * 2, (3 - k) * 1.5))
-		txt(g.zone_banner.name, vw / 2, vh * 0.28, 30, Color(1, 0.96, 0.86, a), 1, Assets.font_black, 5)
-		draw_rect(Rect2(vw / 2 - 90, vh * 0.28 + 12, 180, 2), Color(1, 0.86, 0.6, 0.8 * a))
 	# toasts
 	for i in range(toasts.size() - 1, -1, -1):
 		var t = toasts[i]
@@ -443,62 +524,17 @@ func draw_minimap() -> void:
 	draw_arc(c, R + 1, 0, TAU, 48, Color("#6a5838"), 4, true)
 	draw_arc(c, R + 3, 0, TAU, 48, Color("#d8b878"), 1.5, true)
 
-func portrait(sprite: String, x: float, y: float, size: float) -> void:
+func portrait(sprite: String, x: float, y: float, size: float) -> void: portrait_to(self, sprite, x, y, size)
+
+func portrait_to(ci: CanvasItem, sprite: String, x: float, y: float, size: float, a := 1.0) -> void:
 	if not Assets.chars.has(sprite): return
 	var c: Dictionary = Assets.chars[sprite]
 	var f = Assets.frame(sprite, "idle", "south", 0)
 	var crop: float = max(28.0, round((c.foot - c.top) * 0.5))
 	var src = Rect2(f.src.position.x + c.cx - crop / 2, f.src.position.y + c.top - 2, crop, crop)
-	draw_texture_rect_region(c.tex, Rect2(x, y, size, size), src)
+	ci.draw_texture_rect_region(c.tex, Rect2(x, y, size, size), src, Color(1, 1, 1, a))
 
-func draw_dialog() -> void:
-	var d = dialog
-	if d == null or d.wait: return
-	var l: Array = d.lines[d.i]
-	var sp: String = l[0]; var text: String = l[1]
-	var w: float = min(820.0, vw - 40); var h = 120.0; var x = (vw - w) / 2; var y = vh - h - 16
-	panel(x, y, w, h, 0.9)
-	var tx = x + 22
-	if sp != "@":
-		var spr := speaker_sprite(sp)
-		if spr != "" and Assets.chars.has(spr):
-			draw_rect(Rect2(x + 14, y + 14, 92, 92), Color(0.16, 0.17, 0.27, 0.9))
-			portrait(spr, x + 16, y + 16, 88)
-			draw_rect(Rect2(x + 14, y + 14, 92, 92), Color(0.84, 0.7, 0.43, 0.7), false, 1)
-			tx = x + 122
-		txt(sp, tx, y + 34, 17, GOLD, 0, Assets.font_black)
-	var shown = text.substr(0, int(d.shown))
-	var narr = sp == "@"
-	var lines = wrap_text(shown, 17, w - (tx - x) - 26, Assets.font)
-	for i in lines.size():
-		if narr: txt(lines[i], x + w / 2, y + 56 + i * 24, 18, Color("#bfe6ff"), 1, Assets.font)
-		else: txt(lines[i], tx, y + 62 + i * 24, 17, PAPER, 0, Assets.font)
-	if d.shown >= text.length() and int(g.time * 2.5) % 2 == 0:
-		draw_colored_polygon(PackedVector2Array([Vector2(x + w - 26, y + h - 22), Vector2(x + w - 16, y + h - 22), Vector2(x + w - 21, y + h - 15)]), GOLD)
-
-func draw_banner(dt: float) -> void:
-	var b = banner
-	if b == null: return
-	b.t += dt
-	var D = 4.2
-	if b.t > D: banner = null; return
-	var a: float = min(1.0, min(b.t * 1.5, (D - b.t) * 1.5))
-	draw_rect(Rect2(0, 0, vw, vh), Color(0.016, 0.024, 0.063, 0.6 * a))
-	var text: String
-	if b.has("hy"):
-		var H: Dictionary = Story.HYANGGA[b.hy]
-		txt("향가 · %s (%s)" % [H.name, H.by], vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
-		text = H.line
-		txt(H.effect, vw / 2, vh / 2 + 64, 15, Color(0.75, 0.9, 1.0, a * min(1.0, max(0.0, b.t - 1.0))), 1, Assets.font)
-	else:
-		txt("처용가 · 제" + "一二三四五六七八"[b.n - 1] + "구", vw / 2, vh / 2 - 46, 16, Color(0.84, 0.7, 0.43, a), 1)
-		text = Story.VERSES[b.n - 1]
-	var shown = text.substr(0, int(ceil(min(1.0, b.t / 1.2) * text.length())))
-	var fs := 40 if text.length() < 14 else 28
-	txt(shown, vw / 2, vh / 2 + 14, fs, Color(0.63, 0.86, 1, 0.35 * a), 1, Assets.font_black)
-	txt(shown, vw / 2, vh / 2 + 12, fs, Color(0.97, 0.93, 0.82, a), 1, Assets.font_black)
-	var k: float = min(1.0, b.t)
-	draw_rect(Rect2(vw / 2 - 160 * k, vh / 2 + 34, 320 * k, 2), Color(0.84, 0.7, 0.43, 0.8 * a))
+# the dialogue box, verse banners and title cards are drawn by cine.gd
 
 func draw_shop() -> void:
 	var s = shop; var p = g.player
@@ -531,13 +567,19 @@ func draw_menu() -> void:
 	panel(x, y, w, h, 0.95)
 	menu_rects = []
 	txt("쉬어 가기", x + 24, y + 40, 22, GOLD, 0, Assets.font_black)
-	for i in 2:
-		var tr = {"x": x + 170 + i * 120, "y": y + 16, "w": 110, "h": 34, "page": i}
+	menu_rects_page = menu_page
+	for i in 3:
+		var tr = {"x": x + [170, 290, 440][i], "y": y + 16, "w": 140 if i == 1 else 110, "h": 34, "page": i, "id": "tab%d" % i}
 		menu_rects.append(tr)
 		draw_rect(Rect2(tr.x, tr.y, tr.w, tr.h), Color(0.84, 0.7, 0.43, 0.3) if menu_page == i else Color(1, 1, 1, 0.06))
-		txt(["몸과 탈", "부적·향가·부탁"][i], tr.x + tr.w / 2, tr.y + 23, 13, PAPER, 1)
+		txt(["몸과 탈", "부적·향가·부탁", "설정"][i], tr.x + tr.w / 2, tr.y + 23, 13, PAPER, 1)
 	if menu_page == 1:
 		draw_menu2(x, y, w, h)
+		_draw_menu_focus()
+		return
+	if menu_page == 2:
+		settings_menu.draw(self, x, y, w, h)
+		_draw_menu_focus()
 		return
 	var st = ["레벨 %d  (%d/%d)" % [p.lvl, p.xp, p.exp_need()], "체력 %d/%d" % [ceil(p.hp), p.max_hp], "기 %d/%d" % [p.gi, p.max_gi],
 		"공격 %d" % round(p.atk()), "엽전 %d냥" % p.coins, "약과 %d · 식혜 %d" % [p.items.yakgwa, p.items.sikhye], "정화한 요괴 %d" % int(f.get("kills_total", 0))]
@@ -548,7 +590,7 @@ func draw_menu() -> void:
 	for i in p.masks.size():
 		var M: Dictionary = Ent.MASKS[p.masks[i]]
 		var rx = x + 24 + (i % cols) * (mw + 6); var ry = y + 272 + int(i / cols) * 44
-		menu_rects.append({"x": rx, "y": ry, "w": mw, "h": 40, "mask": p.masks[i]})
+		menu_rects.append({"x": rx, "y": ry, "w": mw, "h": 40, "mask": p.masks[i], "id": "mask%d" % i})
 		draw_rect(Rect2(rx, ry, mw, 40), Color(0.84, 0.7, 0.43, 0.28) if p.mask == p.masks[i] else Color(1, 1, 1, 0.05))
 		txt(M.name, rx + 10, ry + 18, 15, M.color)
 		txt(fit(M.desc, 11, mw - 14), rx + 10, ry + 34, 11, Color("#c8c0b0"), 0, Assets.font)
@@ -558,21 +600,23 @@ func draw_menu() -> void:
 		var got: bool = f.get("verse%d" % (i + 1), false)
 		txt("%d. %s" % [i + 1, Story.VERSES[i] if got else "· · · · · ·"], vx, y + 106 + i * 28, 16, PAPER if got else Color(PAPER, 0.25), 0, Assets.font)
 	txt("익힌 춤", vx, y + 352, 16, GOLD)
-	var sk = ["소매 [J]"]
+	var sk = ["소매 [%s]" % _kl("attack", "J")]
 	for k in ["skill1", "skill2", "skill3"]:
-		if p.skills.get(k, false): sk.append("%s [%s]" % [Ent.SKILLS[k].name, {"skill1": "U", "skill2": "I", "skill3": "O"}[k]])
-	if f.get("has_ult", false): sk.append("처용가 [L]")
+		if p.skills.get(k, false): sk.append("%s [%s]" % [Ent.SKILLS[k].name, _kl(k, {"skill1": "U", "skill2": "I", "skill3": "O"}[k])])
+	if f.get("has_ult", false): sk.append("처용가 [%s]" % _kl("ult", "L"))
 	txt(fit(" · ".join(sk), 13, w / 2 - 40), vx, y + 376, 13, Color("#d8d0c0"), 0, Assets.font)
-	txt(fit("이동 WASD · 구르기 K · 대화 E · 탈 M · 약과 1 · 식혜 2", 13, w / 2 - 40), vx, y + 404, 13, Color("#9a9080"), 0, Assets.font)
-	var sr = {"x": x + w - 250, "y": y + h - 54, "w": 110, "h": 38, "sound": true}
+	var keys_hint := "이동 스틱 · 구르기 B · 대화 X · 탈 Select · 약과 L3 · 식혜 R3" if Inp.pad_used else "이동 WASD · 구르기 K · 대화 E · 탈 M · 약과 1 · 식혜 2"
+	txt(fit(keys_hint, 13, w / 2 - 40), vx, y + 404, 13, Color("#9a9080"), 0, Assets.font)
+	var sr = {"x": x + w - 250, "y": y + h - 54, "w": 110, "h": 38, "sound": true, "id": "sound"}
 	menu_rects.append(sr)
 	draw_rect(Rect2(sr.x, sr.y, sr.w, sr.h), Color(1, 1, 1, 0.08))
 	txt("소리 켜기" if Sfx.off else "소리 끄기", sr.x + sr.w / 2, sr.y + 24, 14, Color("#d8ccb0"), 1)
-	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true}
+	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true, "id": "close"}
 	menu_rects.append(cr)
 	draw_rect(Rect2(cr.x, cr.y, cr.w, cr.h), Color(0.84, 0.7, 0.43, 0.25))
 	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)
 	txt("진행은 자동으로 저장되오", x + w / 2, y + h - 18, 12, Color("#9a9080"), 1, Assets.font)
+	_draw_menu_focus()
 
 # page 2: talismans (tap to wear, two at most), the hyangga gathered, side quests on this map
 func draw_menu2(x: float, y: float, w: float, h: float) -> void:
@@ -582,7 +626,7 @@ func draw_menu2(x: float, y: float, w: float, h: float) -> void:
 	for i in p.talis.size():
 		var T: Dictionary = Ent.TALIS[p.talis[i]]
 		var rx = x + 24 + (i % 2) * 168; var ry = y + 92 + int(i / 2) * 44
-		menu_rects.append({"x": rx, "y": ry, "w": 160, "h": 40, "talis": i})
+		menu_rects.append({"x": rx, "y": ry, "w": 160, "h": 40, "talis": i, "id": "talis%d" % i})
 		var on: bool = p.equip.has(i)
 		draw_rect(Rect2(rx, ry, 160, 40), Color(0.66, 0.5, 1.0, 0.32) if on else Color(1, 1, 1, 0.05))
 		txt(("● " if on else "") + T.name, rx + 10, ry + 18, 14, Color("#e0d0ff") if on else PAPER)
@@ -606,35 +650,30 @@ func draw_menu2(x: float, y: float, w: float, h: float) -> void:
 			txt(fit(t2, 13, w / 2 - 40), vx, y + 356 + row * 22, 13, Color("#9a9080") if st == "done" else PAPER, 0, Assets.font)
 			row += 1
 	if row == 0: txt("맡은 부탁이 없소", vx, y + 356, 13, Color("#9a9080"), 0, Assets.font)
-	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true}
+	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true, "id": "close"}
 	menu_rects.append(cr)
 	draw_rect(Rect2(cr.x, cr.y, cr.w, cr.h), Color(0.84, 0.7, 0.43, 0.25))
 	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)
 
 func tick(dt: float) -> void:
+	if cine: cine.update(dt)
+	if banner:   # verse and hyangga banners run on game time (like everything else), so --speed and captures agree
+		banner.t += dt
+		if banner.t > 4.2: banner = null
 	for i in range(toasts.size() - 1, -1, -1):
 		toasts[i].t += dt
 		if toasts[i].t > 2: toasts.remove_at(i)
 
 func _draw() -> void:
+	if cine: cine.queue_redraw()
 	if g == null or G.state != "play": return
-	var dt = get_process_delta_time()
-	if not g.cinema: draw_hud()
-	if dialog == null and shop == null and choice == null and not menu and not g.cinema: draw_buttons()
-	else: Inp.buttons = []
-	if g.cinema:
-		var k: float = min(1.0, g.cinema_t * 2); var bh = 48 * k
-		draw_rect(Rect2(0, 0, vw, bh), Color.BLACK); draw_rect(Rect2(0, vh - bh, vw, bh), Color.BLACK)
-	draw_dialog()
+	# the HUD and the touch buttons fade out while the letterbox is in (the cine layer itself is not dimmed)
+	var ha: float = cine.hud_alpha() if cine else 1.0
+	self_modulate.a = ha
+	if ha > 0.01: draw_hud()
+	var free: bool = shop == null and choice == null and not menu
+	if free and ha > 0.01: draw_buttons()
+	if dialog != null or g.cinema or not free: Inp.buttons = []
 	if shop: draw_shop()
 	if choice: draw_choice()
 	if menu: draw_menu()
-	draw_banner(dt)
-	if chapter_banner:
-		var cb = chapter_banner
-		cb.t += dt
-		if cb.t > 4.5: chapter_banner = null
-		else:
-			var a: float = min(1.0, min(cb.t * 1.5, (4.5 - cb.t) * 1.5))
-			draw_rect(Rect2(0, vh * 0.2, vw, 70), Color(0.02, 0.02, 0.06, 0.55 * a))
-			txt(cb.text, vw / 2, vh * 0.2 + 45, 28, Color(1, 0.93, 0.78, a), 1, Assets.font_black, 5)

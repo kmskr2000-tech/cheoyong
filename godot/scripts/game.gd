@@ -96,15 +96,16 @@ func load_map(id: String, tx: float, ty: float) -> void:
 
 func travel(id: String) -> void:
 	var st: Dictionary = Maps.STATION[id]
-	fx.screen_flash(1.0, Color(0.02, 0.02, 0.05))
 	Sfx.sfx("door")
-	load_map(id, st.entry[0], st.entry[1])
-	var c = story.chapters.get(id)
-	if c and not c.started():
-		flags["c%d_start" % c.n] = true
-		ui.chapter_banner = {"text": c.title, "t": 0.0}
-		Sfx.sfx("quest")
-	save_game()
+	# fade through black (0.35 s out, 0.35 s in); the first visit to a chapter's map shows its title card
+	ui.fade_through(func():
+		load_map(id, st.entry[0], st.entry[1])
+		var c = story.chapters.get(id)
+		if c and not c.started():
+			flags["c%d_start" % c.n] = true
+			ui.start_card(c.card())
+			Sfx.sfx("quest")
+		save_game())
 
 # rewards from chapters and side quests: {coins, exp, items: {k: n}, talis, mask}
 func give(r: Dictionary) -> void:
@@ -136,6 +137,8 @@ func _layer(parent: Node, fn: Callable, add := false) -> Node2D:
 	parent.add_child(n)
 	return n
 
+var grade_rect: ColorRect
+
 func _build_nodes() -> void:
 	_make_view()
 	# screen-space overlays over the 3D view: tilt-shift blur first, then ground marks, particles, bars, texts
@@ -159,6 +162,15 @@ func _build_nodes() -> void:
 	_layer(world_root, _draw_guide)
 	var lc = CanvasLayer.new(); lc.layer = 5
 	add_child(lc)
+	# film grade over everything below the UI (see shaders/grade.gdshader); view3d.set_mood drives it
+	var gc = CanvasLayer.new(); gc.layer = 6
+	add_child(gc)
+	grade_rect = ColorRect.new()
+	grade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var gm := ShaderMaterial.new(); gm.shader = load("res://shaders/grade.gdshader")
+	grade_rect.material = gm
+	gc.add_child(grade_rect)
+	view.grade = gm
 	light_rect = ColorRect.new()
 	light_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	light_mat = ShaderMaterial.new(); light_mat.shader = load("res://shaders/light.gdshader")
@@ -166,6 +178,7 @@ func _build_nodes() -> void:
 	lc.add_child(light_rect)
 	overlay = _layer(lc, _draw_overlay)
 	var uc = CanvasLayer.new(); uc.layer = 10
+	uc.visible = not G.has("nohud")  # test hook for clean screenshots (store art)
 	add_child(uc)
 	ui = Control.new()
 	ui.set_script(load("res://scripts/ui.gd"))
@@ -486,6 +499,7 @@ func tick(dt: float) -> void:
 	time += dt
 	if cinema: cinema_t += dt
 	ui.tick(dt)
+	if ui.blocking(): return   # a title card or a fade-out: the world stands still
 	if ui.menu: ui.update_menu(); return
 	if ui.shop: ui.update_shop(dt); return
 	if ui.choice: ui.update_choice(dt); return
@@ -586,7 +600,7 @@ func update_cam(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	var c = cam + view_size() / 2
-	view.follow(c.x, c.y, fx.shake)
+	view.follow(c.x, c.y, fx.shake * G.shake_scale)
 	view.set_mood(zone, dt)
 	view.begin_frame()
 	if player != null:
@@ -602,6 +616,7 @@ func _process(dt: float) -> void:
 		if view.gates.has(gt.id):
 			for n in view.gates[gt.id]: n.visible = not flags.get(gt.flag, false)
 	tilt.size = view_size()
+	grade_rect.size = view_size()
 	_update_lights()
 
 # screen position of a ground point (game pixels), z pixels above it along the screen's up axis
@@ -711,7 +726,4 @@ func _draw_overlay(ci: CanvasItem) -> void:
 	if death_t != null:
 		var k: float = min(1.0, death_t / 1.5)
 		ci.draw_rect(Rect2(Vector2.ZERO, vs), Color(0, 0, 0, k * 0.9))
-		var f: Font = Assets.font_black
-		var s = "넋이 흐려진다…"
-		var w = f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, 28).x
-		ci.draw_string(f, Vector2(vs.x / 2 - w / 2, vs.y / 2), s, HORIZONTAL_ALIGNMENT_LEFT, -1, 28, Color(0.78, 0.72, 0.91, k))
+		Typo.draw(ci, Assets.font_title, "넋이 흐려진다…", vs.x / 2, vs.y / 2, 34, Color(0.78, 0.72, 0.91, k), 0.18)

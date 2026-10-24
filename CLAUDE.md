@@ -25,6 +25,10 @@
 - 검증: `godot --headless --path godot -- --auto --skipintro --speed=8 --mute` 가 `REACHED ENDING` 을 찍어야 한다.
 - 1장(서라벌)의 규칙을 바꾸면 `src/js`와 `godot/scripts` 양쪽을 맞춘다. 2~6장(경주 순례)·부적·향가는 고도판 전용이다(웹 JS판은 1장 분량의 가벼운 판으로 둔다).
 - 2~6장 한 장만: `godot --headless --path godot -- --chapter=n --auto --speed=8 --mute` (`PROGRESS` 줄로 진행 확인).
+- 저장 파일이 있으면 자동 조종이 타이틀에서 "이어하기"를 고른다. 처음부터 검증할 땐 `XDG_DATA_HOME=/tmp/<이름>`으로 저장 폴더를 따로 쓰고 비운 뒤 돌린다(여러 검증을 동시에 돌릴 때도 각자 다른 폴더). 내보내기(`--export-release`)는 템플릿 경로 때문에 XDG 없이.
+- PC 빌드: `godot --headless --path godot --export-release "Linux" ../build/desktop/linux/cheoyong.x86_64`, `"Windows Desktop" ../build/desktop/windows/cheoyong.exe`.
+- 화풍: 진지한 HD-2D(도트 인물 + 3D 지형 + 필름 색보정 `shaders/grade.gdshader`). 귀여운 툰 치비 3D는 쓰지 않는다(`art/b3d`에 파이프라인만 남김).
+- 개발 현황판: `python3 tools/status.py [--verify]` → `build/status/*.json`. 스팀 상점 키트: `docs/steam/store.md`, `tools/steam_art.py`.
 
 ## 작업 방식
 - `main`에서 브랜치 → 커밋·푸시 → PR → 바로 머지(merge 커밋).

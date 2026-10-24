@@ -25,16 +25,23 @@ var gates := {}                # gate id -> nodes hidden once the gate opens
 var ppx := 1.0                 # screen pixels per game pixel
 var target := Vector3.ZERO     # camera focus (metres)
 var world: World
+var models: Models
+var grade: ShaderMaterial      # film grade pass (game.gd); eased per zone in set_mood
+var grade_t := 0.0
+var motes: CPUParticles3D       # sunlit dust drifting through the air (day)
+var flies: CPUParticles3D       # fireflies / cursed embers (dusk and dread places)
 
 func setup(w: World) -> void:
 	world = w; W = World.W; H = World.H
 	sprite_shader = load("res://shaders/billboard.gdshader")
+	models = Models.new(self)
 	quad = QuadMesh.new(); quad.size = Vector2(1, 1)
 	_heights()
 	add_child(_terrain())
 	add_child(_water())
 	_props()
 	_camera_and_light()
+	_ambient()
 
 # ---------- height field ----------
 func vh(x: int, y: int) -> float: return hv[clampi(y, 0, H) * (W + 1) + clampi(x, 0, W)]
@@ -281,11 +288,11 @@ func _camera_and_light() -> void:
 	add_child(cam3)
 	cam3.make_current()
 	sun = DirectionalLight3D.new()
-	sun.rotation = Vector3(deg_to_rad(-50), deg_to_rad(-80), 0)  # from the west: shadows fall east, fronts stay lit
+	sun.rotation = Vector3(deg_to_rad(-36), deg_to_rad(-80), 0)  # low western sun: long shadows fall east, fronts stay lit
 	sun.light_color = Color(1.0, 0.92, 0.8)
 	sun.light_energy = 1.25
 	sun.shadow_enabled = true
-	sun.shadow_opacity = 0.75
+	sun.shadow_opacity = 0.88
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	sun.directional_shadow_max_distance = 60
 	add_child(sun)
@@ -310,16 +317,82 @@ func _camera_and_light() -> void:
 		add_child(l); lamps.append(l)
 	RenderingServer.global_shader_parameter_set("sprite_tint", Color(1, 1, 1))
 
+# ambient air: two particle fields that follow the camera focus
+func _air(col: Color, size: float, amount: int, life: float, vel: float) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	var qm := QuadMesh.new(); qm.size = Vector2(size, size)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = _dot_tex()
+	qm.material = m
+	p.mesh = qm
+	p.amount = amount
+	p.lifetime = life
+	p.preprocess = life
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(15, 2.2, 11)
+	p.direction = Vector3(0.4, 0.3, 0.1)
+	p.spread = 180
+	p.gravity = Vector3.ZERO
+	p.initial_velocity_min = vel * 0.3; p.initial_velocity_max = vel
+	p.local_coords = false
+	var g := Gradient.new()
+	g.set_color(0, Color(col, 0.0)); g.set_color(1, Color(col, 0.0))
+	g.add_point(0.25, col); g.add_point(0.75, col)
+	p.color_ramp = g
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(p)
+	return p
+
+func _dot_tex() -> Texture2D:
+	var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	for y in 16:
+		for x in 16:
+			var d := Vector2(x - 7.5, y - 7.5).length() / 7.5
+			var a := clampf(1.0 - d, 0.0, 1.0)
+			img.set_pixel(x, y, Color(1, 1, 1, a * a))
+	return ImageTexture.create_from_image(img)
+
+func _ambient() -> void:
+	motes = _air(Color(1.0, 0.86, 0.6, 0.55), 0.09, 110, 7.0, 0.25)
+	flies = _air(Color(0.75, 1.0, 0.55, 0.9), 0.16, 46, 5.0, 0.45)
+
 # zone mood: brighter day in the town and on the beach, dusk in the cursed places
 func set_mood(z, dt: float) -> void:
 	var zid: String = z.id if z else "beach"
 	var dark: float = z.get("dark", 0.2) if z and z.has("dark") else {"beach": 0.0, "town": 0.1, "ruin": 0.55, "pond": 0.4, "forest": 0.6, "house": 0.5}.get(zid, 0.2)
 	var k := 1 - exp(-2.0 * dt)
-	sun.light_energy = lerpf(sun.light_energy, 1.25 - dark * 0.7, k)
-	env.ambient_light_energy = lerpf(env.ambient_light_energy, 0.45 - dark * 0.15, k)
+	sun.light_energy = lerpf(sun.light_energy, 1.12 - dark * 0.72, k)
+	env.ambient_light_energy = lerpf(env.ambient_light_energy, 0.36 - dark * 0.14, k)
 	env.fog_density = lerpf(env.fog_density, 0.002 + dark * 0.01, k)
 	var tint := Color(1, 1, 1).lerp(Color(0.78, 0.74, 0.92), dark)
 	RenderingServer.global_shader_parameter_set("sprite_tint", tint)
+	if motes:
+		var mm := motes.mesh.material as StandardMaterial3D
+		var fm := flies.mesh.material as StandardMaterial3D
+		var ma := lerpf(mm.albedo_color.a, clampf(1.0 - dark * 1.6, 0.0, 1.0), k)
+		var fa := lerpf(fm.albedo_color.a, clampf((dark - 0.25) * 2.0, 0.0, 1.0), k)
+		mm.albedo_color = Color(1, 1, 1, ma)
+		# dread places breed violet embers instead of green fireflies
+		var fc := Color(1, 1, 1).lerp(Color(0.95, 0.5, 1.3), clampf((dark - 0.45) * 3.0, 0.0, 1.0))
+		fm.albedo_color = Color(fc, fa)
+		motes.emitting = ma > 0.02
+		flies.emitting = fa > 0.02
+	if grade:
+		grade_t += dt
+		grade.set_shader_parameter("time", grade_t)
+		var g := {"exposure": 0.96 - dark * 0.14, "contrast": 1.1 + dark * 0.12, "saturation": 0.8 - dark * 0.26,
+			"shadow_tint": Vector3(0.9, 0.93, 1.08).lerp(Vector3(0.76, 0.8, 1.16), dark),
+			"highlight_tint": Vector3(1.06, 1.0, 0.9).lerp(Vector3(1.0, 0.94, 1.04), dark),
+			"vignette": 0.34 + dark * 0.26}
+		for key in g:
+			var cur = grade.get_shader_parameter(key)
+			if cur == null: cur = g[key]
+			grade.set_shader_parameter(key, lerp(cur, g[key], k) if typeof(cur) == typeof(g[key]) else g[key])
 
 # place the nearest coloured lights (lanterns, spirits) on the omni light pool
 func set_lamps(lights: Array) -> void:
@@ -337,6 +410,9 @@ func set_lamps(lights: Array) -> void:
 func follow(px: float, py: float, shake := 0.0) -> void:
 	ppx = get_viewport().get_visible_rect().size.y / ORTHO / T
 	target = Vector3(px / T, height_px(px, py) / T, py / T)
+	if motes:
+		motes.position = target + Vector3(0, 1.4, 0)
+		flies.position = target + Vector3(0, 0.9, 0)
 	var off := Vector3(0, sin(PITCH), cos(PITCH)) * 40.0
 	cam3.position = target + off + Vector3(randf() - 0.5, randf() - 0.5, 0) * shake / T
 
@@ -347,6 +423,7 @@ func project(px: float, py: float, z := 0.0) -> Vector2:
 # ---------- dynamic sprites (a pool of billboards refilled every frame) ----------
 func begin_frame() -> void:
 	used_n = 0; blob_n = 0
+	models.begin_frame()
 
 # contact shadow under a character (radius in game pixels)
 func blob(x: float, y: float, r: float, a := 1.0) -> void:
@@ -365,6 +442,9 @@ func blob(x: float, y: float, r: float, a := 1.0) -> void:
 	mi.scale = Vector3(r * 2.4 / T, 1, r * 1.5 / T)
 
 func sprite(name: String, anim: String, dir: String, t: float, x: float, y: float, o := {}) -> void:
+	if Models.has(name):
+		models.draw(self, name, anim, dir, t, x, y, Ent.head_y(name), o)
+		return
 	var f := Assets.frame(name, anim, dir, t, o.get("fps", 10.0), o.get("loop", true))
 	if f.is_empty(): return
 	if used_n >= pool.size():
@@ -397,6 +477,7 @@ func sprite(name: String, anim: String, dir: String, t: float, x: float, y: floa
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if a < 0.5 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 func end_frame() -> void:
+	models.end_frame()
 	for i in range(used_n, pool.size()):
 		pool[i].visible = false
 	for i in range(blob_n, blob_pool.size()):
