@@ -1,18 +1,110 @@
 {
  "_note": "Hand-kept work list for the status board (tools/status.py). status: done | doing | todo | blocked",
  "items": [
-  {"id": "w1", "area": "그래픽", "title": "Blender 설치·스킬·셋업 스크립트", "status": "done", "detail": "bpy 5.2 + blender 래퍼 + blender-* 스킬 22개, tools/setup_blender.sh"},
-  {"id": "w2", "area": "그래픽", "title": "석장승 Blender 도트(8방향·걷기·공격)", "status": "done", "detail": "art/b3d/seokjang.py → post.py → art/raw/chibi/seokjang"},
-  {"id": "w3", "area": "그래픽", "title": "Godot 3D 모델 경로 + 툰 셰이더", "status": "done", "detail": "models.gd, toon.gdshader(2단 셀), outline.gdshader(잉크 외곽선)"},
-  {"id": "w4", "area": "그래픽", "title": "툰 3D 처용(사람형 치비 키트)", "status": "done", "detail": "art/b3d/chibi.py, cheoyong.py — 갓·모란·옥색 저고리·피리"},
-  {"id": "w5", "area": "그래픽", "title": "요괴 4종 3D: 해룡·물귀신·그슨대·꼭두각시", "status": "todo", "detail": "원래 요청분. 걷기 5·공격 3·무릎(보스)"},
-  {"id": "w6", "area": "그래픽", "title": "사람 NPC 툰 3D 전환(약 20명)", "status": "todo", "detail": "치비 키트로 색·모자만 바꿔 대량 제작"},
-  {"id": "w7", "area": "그래픽", "title": "나머지 요괴·보스 툰 3D 전환", "status": "todo", "detail": "도깨비·구미호·이무기·역신·불가사리·어둑시니·삼족오 등"},
-  {"id": "w8", "area": "그래픽", "title": "지형·건물·소품 툰 전환", "status": "todo", "detail": "도트 타일 → 툰 색면, 건물·나무는 karchive/Blender"},
-  {"id": "w9", "area": "에셋", "title": "karchive GLB 에셋 받기", "status": "blocked", "detail": "네트워크 정책이 karchive.vibeline.co.kr, karchive-assets.vibeline.co.kr 차단(403). 허용 도메인 추가 필요. 사용 시 크레딧 표기 필수"},
-  {"id": "w10", "area": "에셋", "title": "SpriteCook 연결", "status": "blocked", "detail": "MCP 인증 필요(claude.ai 커넥터 설정). 무료 40크레딧/월"},
-  {"id": "w11", "area": "에셋", "title": "PixelLab 크레딧", "status": "blocked", "detail": "이번 달 생성 크레딧 0"},
-  {"id": "w12", "area": "개발환경", "title": "Blender 세션 시작 훅 등록", "status": "blocked", "detail": ".claude/settings.json 수정이 권한 검사에서 거부. 사용자가 직접 추가하거나 허용 필요"},
-  {"id": "w13", "area": "배포", "title": "작업 브랜치 PR·머지", "status": "todo", "detail": "claude/shin-cheoyongga-spritecook-anim-p8pv09 — 화풍 확정 후"}
+  {
+   "id": "w1",
+   "area": "그래픽",
+   "title": "Blender 설치·스킬·셋업 스크립트",
+   "status": "done",
+   "detail": "bpy 5.2 + blender 래퍼 + blender-* 스킬 22개, tools/setup_blender.sh"
+  },
+  {
+   "id": "w2",
+   "area": "그래픽",
+   "title": "석장승 Blender 도트(8방향·걷기·공격)",
+   "status": "done",
+   "detail": "art/b3d/seokjang.py → post.py → art/raw/chibi/seokjang"
+  },
+  {
+   "id": "w3",
+   "area": "그래픽",
+   "title": "Godot 3D 모델 경로 + 툰 셰이더",
+   "status": "done",
+   "detail": "models.gd, toon.gdshader(2단 셀), outline.gdshader(잉크 외곽선)"
+  },
+  {
+   "id": "w4",
+   "area": "그래픽",
+   "title": "툰 3D 처용(사람형 치비 키트)",
+   "status": "done",
+   "detail": "art/b3d/chibi.py, cheoyong.py — 갓·모란·옥색 저고리·피리"
+  },
+  {
+   "id": "w5",
+   "area": "그래픽",
+   "title": "요괴 4종 3D: 해룡·물귀신·그슨대·꼭두각시",
+   "status": "todo",
+   "detail": "원래 요청분. 걷기 5·공격 3·무릎(보스)"
+  },
+  {
+   "id": "w6",
+   "area": "그래픽",
+   "title": "사람 NPC 툰 3D 전환(약 20명)",
+   "status": "todo",
+   "detail": "치비 키트로 색·모자만 바꿔 대량 제작"
+  },
+  {
+   "id": "w7",
+   "area": "그래픽",
+   "title": "나머지 요괴·보스 툰 3D 전환",
+   "status": "todo",
+   "detail": "도깨비·구미호·이무기·역신·불가사리·어둑시니·삼족오 등"
+  },
+  {
+   "id": "w8",
+   "area": "그래픽",
+   "title": "지형·건물·소품 툰 전환",
+   "status": "todo",
+   "detail": "도트 타일 → 툰 색면, 건물·나무는 karchive/Blender"
+  },
+  {
+   "id": "w9",
+   "area": "에셋",
+   "title": "karchive GLB 에셋 받기",
+   "status": "blocked",
+   "detail": "네트워크 정책이 karchive.vibeline.co.kr, karchive-assets.vibeline.co.kr 차단(403). 허용 도메인 추가 필요. 사용 시 크레딧 표기 필수"
+  },
+  {
+   "id": "w10",
+   "area": "에셋",
+   "title": "SpriteCook 연결",
+   "status": "blocked",
+   "detail": "MCP 인증 필요(claude.ai 커넥터 설정). 무료 40크레딧/월"
+  },
+  {
+   "id": "w11",
+   "area": "에셋",
+   "title": "PixelLab 크레딧",
+   "status": "blocked",
+   "detail": "이번 달 생성 크레딧 0"
+  },
+  {
+   "id": "w12",
+   "area": "개발환경",
+   "title": "Blender 세션 시작 훅 등록",
+   "status": "blocked",
+   "detail": ".claude/settings.json 수정이 권한 검사에서 거부. 사용자가 직접 추가하거나 허용 필요"
+  },
+  {
+   "id": "w14",
+   "area": "배포",
+   "title": "GitHub 푸시",
+   "status": "blocked",
+   "detail": "세션의 GitHub 권한이 끊겨 푸시 403. claude.ai에서 GitHub 재연결 필요. 커밋은 로컬에 쌓여 있음"
+  },
+  {
+   "id": "w13",
+   "area": "배포",
+   "title": "작업 브랜치 PR·머지",
+   "status": "todo",
+   "detail": "claude/shin-cheoyongga-spritecook-anim-p8pv09 — 화풍 확정 후"
+  },
+  {
+   "id": "w15",
+   "area": "개발환경",
+   "title": "개발 현황판",
+   "status": "done",
+   "detail": "tools/status.py → build/status/*.json → 현황판 아티팩트"
+  }
  ]
 }
