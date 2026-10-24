@@ -136,6 +136,8 @@ func _layer(parent: Node, fn: Callable, add := false) -> Node2D:
 	parent.add_child(n)
 	return n
 
+var grade_rect: ColorRect
+
 func _build_nodes() -> void:
 	_make_view()
 	# screen-space overlays over the 3D view: tilt-shift blur first, then ground marks, particles, bars, texts
@@ -159,6 +161,15 @@ func _build_nodes() -> void:
 	_layer(world_root, _draw_guide)
 	var lc = CanvasLayer.new(); lc.layer = 5
 	add_child(lc)
+	# film grade over everything below the UI (see shaders/grade.gdshader); view3d.set_mood drives it
+	var gc = CanvasLayer.new(); gc.layer = 6
+	add_child(gc)
+	grade_rect = ColorRect.new()
+	grade_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var gm := ShaderMaterial.new(); gm.shader = load("res://shaders/grade.gdshader")
+	grade_rect.material = gm
+	gc.add_child(grade_rect)
+	view.grade = gm
 	light_rect = ColorRect.new()
 	light_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	light_mat = ShaderMaterial.new(); light_mat.shader = load("res://shaders/light.gdshader")
@@ -602,6 +613,7 @@ func _process(dt: float) -> void:
 		if view.gates.has(gt.id):
 			for n in view.gates[gt.id]: n.visible = not flags.get(gt.flag, false)
 	tilt.size = view_size()
+	grade_rect.size = view_size()
 	_update_lights()
 
 # screen position of a ground point (game pixels), z pixels above it along the screen's up axis
