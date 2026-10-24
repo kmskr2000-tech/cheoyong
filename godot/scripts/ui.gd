@@ -7,6 +7,10 @@ var banner = null
 var shop = null
 var menu = false
 var menu_page = 0
+var menu_focus := ""       # id of the menu rect the keyboard / pad cursor is on ("" = pick the page default)
+var menu_rects_page := -1  # the page menu_rects was last built for
+var menu_drag := ""        # id of the slider track being dragged
+var settings_menu := SettingsMenu.new()
 var choice = null          # {"title", "options": [{"label", "fn"}], "sel", "rects"}
 var chapter_banner = null  # {"text", "t"}
 var shop_lv = 1
@@ -209,23 +213,81 @@ func update_shop(dt: float) -> void:
 	if s.t > 0.2 and (Inp.hit("confirm") or Inp.hit("interact") or Inp.hit("attack")): buy.call(s.sel)
 
 # ---------- pause menu ----------
+# Pages: 0 body and masks, 1 talismans, 2 settings. Mouse / touch tap the rects; keyboard and pad move a focus cursor
+# (nav_* presses, LB/RB = skill1/2 switch page, A/Enter use, B/Esc/Start close).
 func update_menu() -> void:
-	var p = g.player
 	if Inp.hit("menu"): menu = false; return
 	if Inp.hit("tap"):
+		menu_drag = ""
 		for r in menu_rects:
 			if hit_rect(r):
-				if r.has("page"): menu_page = r.page; Sfx.sfx("ui")
-				if r.has("talis"):
-					var i: int = r.talis
-					if p.equip.has(i): p.equip.erase(i)
-					elif p.equip.size() < 2: p.equip.append(i)
-					else: p.equip[0] = p.equip[1]; p.equip[1] = i
-					Sfx.sfx("ui")
-				if r.has("mask"): p.mask = r.mask; Sfx.sfx("ui")
-				if r.has("close"): menu = false
-				if r.has("sound"): Sfx.toggle()
-	if Inp.hit("mask"): p.cycle_mask()
+				if r.get("type", "") == "track": menu_drag = r.id
+				_menu_activate(r, Inp.tap_pos)
+	elif menu_drag != "" and Inp.ptr_down:
+		for r in menu_rects:
+			if r.get("id", "") == menu_drag: settings_menu.set_from_x(r, Inp.ptr_pos.x)
+	if not Inp.ptr_down: menu_drag = ""
+	if menu_rects_page == menu_page and _menu_focus_rect() == null: _menu_default_focus()
+	if Inp.hit("skill1") and menu_page > 0: menu_page -= 1; menu_focus = ""; Sfx.sfx("ui")
+	if Inp.hit("skill2") and menu_page < 2: menu_page += 1; menu_focus = ""; Sfx.sfx("ui")
+	for d in [["up", Vector2i(0, -1)], ["down", Vector2i(0, 1)], ["left", Vector2i(-1, 0)], ["right", Vector2i(1, 0)]]:
+		if Inp.nav_hit(d[0]): _menu_nav(d[1])
+	if Inp.hit("confirm") and not Inp.hit("tap"):
+		var fr = _menu_focus_rect()
+		if fr != null: _menu_activate(fr, null)
+	if Inp.hit("mask"): g.player.cycle_mask()
+
+func _menu_activate(r: Dictionary, tap) -> void:
+	var p = g.player
+	if r.has("page"): menu_page = r.page; menu_focus = r.get("id", ""); Sfx.sfx("ui")
+	if r.has("talis"):
+		var i: int = r.talis
+		if p.equip.has(i): p.equip.erase(i)
+		elif p.equip.size() < 2: p.equip.append(i)
+		else: p.equip[0] = p.equip[1]; p.equip[1] = i
+		Sfx.sfx("ui")
+	if r.has("mask"): p.mask = r.mask; Sfx.sfx("ui")
+	if r.has("close"): menu = false
+	if r.has("sound"): Sfx.toggle()
+	if r.has("set") or r.has("act"): settings_menu.activate(self, r, tap)
+
+func _menu_focus_rect():
+	for r in menu_rects:
+		if r.get("id", "") == menu_focus and not r.get("nofocus", false): return r
+	return null
+
+func _menu_default_focus() -> void:
+	menu_focus = "close"
+	for r in menu_rects:
+		if r.get("def", false): menu_focus = r.id; return
+
+# slider / toggle rows take left-right as a value change; otherwise jump to the nearest rect in that direction
+func _menu_nav(d: Vector2i) -> void:
+	var fr = _menu_focus_rect()
+	if fr == null: _menu_default_focus(); return
+	if d.x != 0 and settings_menu.adjust(self, fr, d.x): return
+	var c := Vector2(fr.x + fr.w / 2, fr.y + fr.h / 2)
+	var best := ""
+	var best_cost := INF
+	for r in menu_rects:
+		if not r.has("id") or r.get("nofocus", false) or r.id == fr.id: continue
+		var o := Vector2(r.x + r.w / 2, r.y + r.h / 2) - c
+		var along := o.x * d.x + o.y * d.y
+		if along < 2.0: continue
+		var cost := along + (absf(o.x * d.y) + absf(o.y * d.x)) * 2.5
+		if cost < best_cost: best_cost = cost; best = r.id
+	if best != "": menu_focus = best; Sfx.sfx("ui")
+
+func _draw_menu_focus() -> void:
+	if is_touch(): return
+	var fr = _menu_focus_rect()
+	if fr == null: return
+	var a := 0.65 + 0.3 * sin(g.time * 7.0)
+	draw_rect(Rect2(fr.x - 2, fr.y - 2, fr.w + 4, fr.h + 4), Color(1.0, 0.85, 0.45, a), false, 2.0)
+
+# a key letter, or the pad button when a gamepad is in use
+func _kl(action: String, key: String) -> String:
+	return Inp.PAD_LABEL.get(action, key) if Inp.pad_used else key
 
 # ---------- buttons ----------
 func layout_buttons() -> Array:
@@ -293,7 +355,7 @@ func _curve(a: Vector2, b: Vector2, c: Vector2) -> PackedVector2Array:
 
 func draw_buttons() -> void:
 	var B = layout_buttons()
-	Inp.buttons = B
+	Inp.buttons = [] if Inp.pad_used else B   # with a gamepad the buttons are only the cooldown / ult / item readout, no touch areas
 	var touch = is_touch()
 	for b in B:
 		var lit: bool = glow == b.action
@@ -315,7 +377,11 @@ func draw_buttons() -> void:
 		else: icon(b.icon, b.x, b.y, b.r * (0.62 if b.get("main", false) else 0.58))
 		if b.has("gi") and g.player.gi < b.gi: draw_circle(Vector2(b.x, b.y), b.r - 2, Color(0, 0.04, 0.16, 0.55))
 		if b.has("label"): txt(b.label, b.x, b.y + b.r + 13, 11, PAPER, 1, null, 3)
-		if b.has("key") and not touch: txt(b.key, b.x + b.r * 0.72, b.y + b.r * 0.9, 10, Color("#d8ccb0"), 1, null, 3)
+		if not touch:
+			var kt: String = ""
+			if Inp.pad_used: kt = Inp.PAD_LABEL.get(b.action, "") if b.action != "menu" and b.action != "mask" else ""
+			else: kt = b.get("key", "")
+			if kt != "": txt(kt, b.x + b.r * 0.72, b.y + (b.r * 0.9 if not (b.get("slot", false) and Inp.pad_used) else -b.r * 0.35), 10, Color("#d8ccb0"), 1, null, 3)
 		if b.has("count"): txt(str(b.count), b.x + b.r - 2, b.y + b.r - 3, 12, Color.WHITE, 2, null, 3)
 	var st: Dictionary = Inp.stick
 	if touch and st.active:
@@ -534,13 +600,19 @@ func draw_menu() -> void:
 	panel(x, y, w, h, 0.95)
 	menu_rects = []
 	txt("쉬어 가기", x + 24, y + 40, 22, GOLD, 0, Assets.font_black)
-	for i in 2:
-		var tr = {"x": x + 170 + i * 120, "y": y + 16, "w": 110, "h": 34, "page": i}
+	menu_rects_page = menu_page
+	for i in 3:
+		var tr = {"x": x + [170, 290, 440][i], "y": y + 16, "w": 140 if i == 1 else 110, "h": 34, "page": i, "id": "tab%d" % i}
 		menu_rects.append(tr)
 		draw_rect(Rect2(tr.x, tr.y, tr.w, tr.h), Color(0.84, 0.7, 0.43, 0.3) if menu_page == i else Color(1, 1, 1, 0.06))
-		txt(["몸과 탈", "부적·향가·부탁"][i], tr.x + tr.w / 2, tr.y + 23, 13, PAPER, 1)
+		txt(["몸과 탈", "부적·향가·부탁", "설정"][i], tr.x + tr.w / 2, tr.y + 23, 13, PAPER, 1)
 	if menu_page == 1:
 		draw_menu2(x, y, w, h)
+		_draw_menu_focus()
+		return
+	if menu_page == 2:
+		settings_menu.draw(self, x, y, w, h)
+		_draw_menu_focus()
 		return
 	var st = ["레벨 %d  (%d/%d)" % [p.lvl, p.xp, p.exp_need()], "체력 %d/%d" % [ceil(p.hp), p.max_hp], "기 %d/%d" % [p.gi, p.max_gi],
 		"공격 %d" % round(p.atk()), "엽전 %d냥" % p.coins, "약과 %d · 식혜 %d" % [p.items.yakgwa, p.items.sikhye], "정화한 요괴 %d" % int(f.get("kills_total", 0))]
@@ -551,7 +623,7 @@ func draw_menu() -> void:
 	for i in p.masks.size():
 		var M: Dictionary = Ent.MASKS[p.masks[i]]
 		var rx = x + 24 + (i % cols) * (mw + 6); var ry = y + 272 + int(i / cols) * 44
-		menu_rects.append({"x": rx, "y": ry, "w": mw, "h": 40, "mask": p.masks[i]})
+		menu_rects.append({"x": rx, "y": ry, "w": mw, "h": 40, "mask": p.masks[i], "id": "mask%d" % i})
 		draw_rect(Rect2(rx, ry, mw, 40), Color(0.84, 0.7, 0.43, 0.28) if p.mask == p.masks[i] else Color(1, 1, 1, 0.05))
 		txt(M.name, rx + 10, ry + 18, 15, M.color)
 		txt(fit(M.desc, 11, mw - 14), rx + 10, ry + 34, 11, Color("#c8c0b0"), 0, Assets.font)
@@ -561,21 +633,23 @@ func draw_menu() -> void:
 		var got: bool = f.get("verse%d" % (i + 1), false)
 		txt("%d. %s" % [i + 1, Story.VERSES[i] if got else "· · · · · ·"], vx, y + 106 + i * 28, 16, PAPER if got else Color(PAPER, 0.25), 0, Assets.font)
 	txt("익힌 춤", vx, y + 352, 16, GOLD)
-	var sk = ["소매 [J]"]
+	var sk = ["소매 [%s]" % _kl("attack", "J")]
 	for k in ["skill1", "skill2", "skill3"]:
-		if p.skills.get(k, false): sk.append("%s [%s]" % [Ent.SKILLS[k].name, {"skill1": "U", "skill2": "I", "skill3": "O"}[k]])
-	if f.get("has_ult", false): sk.append("처용가 [L]")
+		if p.skills.get(k, false): sk.append("%s [%s]" % [Ent.SKILLS[k].name, _kl(k, {"skill1": "U", "skill2": "I", "skill3": "O"}[k])])
+	if f.get("has_ult", false): sk.append("처용가 [%s]" % _kl("ult", "L"))
 	txt(fit(" · ".join(sk), 13, w / 2 - 40), vx, y + 376, 13, Color("#d8d0c0"), 0, Assets.font)
-	txt(fit("이동 WASD · 구르기 K · 대화 E · 탈 M · 약과 1 · 식혜 2", 13, w / 2 - 40), vx, y + 404, 13, Color("#9a9080"), 0, Assets.font)
-	var sr = {"x": x + w - 250, "y": y + h - 54, "w": 110, "h": 38, "sound": true}
+	var keys_hint := "이동 스틱 · 구르기 B · 대화 X · 탈 Select · 약과 L3 · 식혜 R3" if Inp.pad_used else "이동 WASD · 구르기 K · 대화 E · 탈 M · 약과 1 · 식혜 2"
+	txt(fit(keys_hint, 13, w / 2 - 40), vx, y + 404, 13, Color("#9a9080"), 0, Assets.font)
+	var sr = {"x": x + w - 250, "y": y + h - 54, "w": 110, "h": 38, "sound": true, "id": "sound"}
 	menu_rects.append(sr)
 	draw_rect(Rect2(sr.x, sr.y, sr.w, sr.h), Color(1, 1, 1, 0.08))
 	txt("소리 켜기" if Sfx.off else "소리 끄기", sr.x + sr.w / 2, sr.y + 24, 14, Color("#d8ccb0"), 1)
-	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true}
+	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true, "id": "close"}
 	menu_rects.append(cr)
 	draw_rect(Rect2(cr.x, cr.y, cr.w, cr.h), Color(0.84, 0.7, 0.43, 0.25))
 	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)
 	txt("진행은 자동으로 저장되오", x + w / 2, y + h - 18, 12, Color("#9a9080"), 1, Assets.font)
+	_draw_menu_focus()
 
 # page 2: talismans (tap to wear, two at most), the hyangga gathered, side quests on this map
 func draw_menu2(x: float, y: float, w: float, h: float) -> void:
@@ -585,7 +659,7 @@ func draw_menu2(x: float, y: float, w: float, h: float) -> void:
 	for i in p.talis.size():
 		var T: Dictionary = Ent.TALIS[p.talis[i]]
 		var rx = x + 24 + (i % 2) * 168; var ry = y + 92 + int(i / 2) * 44
-		menu_rects.append({"x": rx, "y": ry, "w": 160, "h": 40, "talis": i})
+		menu_rects.append({"x": rx, "y": ry, "w": 160, "h": 40, "talis": i, "id": "talis%d" % i})
 		var on: bool = p.equip.has(i)
 		draw_rect(Rect2(rx, ry, 160, 40), Color(0.66, 0.5, 1.0, 0.32) if on else Color(1, 1, 1, 0.05))
 		txt(("● " if on else "") + T.name, rx + 10, ry + 18, 14, Color("#e0d0ff") if on else PAPER)
@@ -609,7 +683,7 @@ func draw_menu2(x: float, y: float, w: float, h: float) -> void:
 			txt(fit(t2, 13, w / 2 - 40), vx, y + 356 + row * 22, 13, Color("#9a9080") if st == "done" else PAPER, 0, Assets.font)
 			row += 1
 	if row == 0: txt("맡은 부탁이 없소", vx, y + 356, 13, Color("#9a9080"), 0, Assets.font)
-	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true}
+	var cr = {"x": x + w - 130, "y": y + h - 54, "w": 110, "h": 38, "close": true, "id": "close"}
 	menu_rects.append(cr)
 	draw_rect(Rect2(cr.x, cr.y, cr.w, cr.h), Color(0.84, 0.7, 0.43, 0.25))
 	txt("돌아가기", cr.x + cr.w / 2, cr.y + 25, 15, GOLD, 1)

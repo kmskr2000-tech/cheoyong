@@ -598,7 +598,7 @@ func update_cam(dt: float) -> void:
 
 func _process(dt: float) -> void:
 	var c = cam + view_size() / 2
-	view.follow(c.x, c.y, fx.shake)
+	view.follow(c.x, c.y, fx.shake * G.shake_scale)
 	view.set_mood(zone, dt)
 	view.begin_frame()
 	if player != null:

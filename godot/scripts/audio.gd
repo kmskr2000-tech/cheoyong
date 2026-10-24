@@ -14,13 +14,28 @@ var muted := false
 
 func _ready() -> void:
 	muted = G.has("mute")
-	music_a = _player(); music_b = _player(); amb = _player()
-	for i in 10: pool.append(_player())
+	for n in ["Music", "SFX"]: _ensure_bus(n)
+	music_a = _player("Music"); music_b = _player("Music"); amb = _player("SFX")
+	for i in 10: pool.append(_player("SFX"))
 
-func _player() -> AudioStreamPlayer:
+func _player(bus := "Master") -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new()
+	p.bus = bus
 	add_child(p)
 	return p
+
+# Music and SFX buses feed Master; the settings menu sets their volume (0-100) without touching the per-sound levels.
+func _ensure_bus(name: String) -> void:
+	if AudioServer.get_bus_index(name) >= 0: return
+	AudioServer.add_bus()
+	var i := AudioServer.bus_count - 1
+	AudioServer.set_bus_name(i, name)
+	AudioServer.set_bus_send(i, "Master")
+
+func set_volume(bus: String, pct: int) -> void:
+	var i := AudioServer.get_bus_index(bus)
+	if i < 0: return
+	AudioServer.set_bus_volume_db(i, -80.0 if pct <= 0 else linear_to_db(pct / 100.0))
 
 func _stream(name: String, loop: bool) -> AudioStream:
 	if cache.has(name): return cache[name]

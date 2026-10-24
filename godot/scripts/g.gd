@@ -11,6 +11,10 @@ var game = null   # set by main: the Game node
 var world = null  # World (map data)
 var state := "loading"
 
+# user options (set by Settings from user://settings.cfg and the pause menu)
+var shake_scale := 1.0  # multiply camera shake by this (0 = screen shake off)
+var text_speed := 1.0   # dialogue typewriter speed multiplier (1 normal, 2.5 fast, >= 100 instant)
+
 func _ready() -> void:
 	# --key=value after "--" on the command line, or ?key=value on the web
 	for a in OS.get_cmdline_user_args():
