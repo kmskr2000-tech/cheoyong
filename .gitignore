@@ -4,3 +4,4 @@ __pycache__/
 build/
 godot/.godot/
 *.import
+art/b3d/out/
