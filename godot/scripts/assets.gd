@@ -8,6 +8,9 @@ var font: Font
 var font_bold: Font
 var font_black: Font
 var font_dmg: Font
+var font_serif: Font       # Gowun Batang: dialogue, narration, story text
+var font_serif_bold: Font
+var font_title: Font       # Song Myung: chapter titles, verses, the title screen
 
 const DIR_IDX := {"east": 0, "south-east": 1, "south": 2, "south-west": 3, "west": 4, "north-west": 5, "north": 6, "north-east": 7}
 const MIRROR := {"east": "west", "west": "east", "south-east": "south-west", "south-west": "south-east", "north-east": "north-west", "north-west": "north-east"}
@@ -17,7 +20,10 @@ func _ready() -> void:
 	font_bold = load("res://fonts/Pretendard-Bold.otf")
 	font_black = load("res://fonts/Pretendard-Black.otf")
 	# MSDF keeps text sharp when the canvas is scaled down on phones or up on tablets
-	for f in [font, font_bold, font_black]:
+	font_serif = load("res://fonts/GowunBatang-Regular.ttf")
+	font_serif_bold = load("res://fonts/GowunBatang-Bold.ttf")
+	font_title = load("res://fonts/SongMyung-Regular.ttf")
+	for f in [font, font_bold, font_black, font_serif, font_serif_bold, font_title]:
 		f.multichannel_signed_distance_field = true
 		f.msdf_pixel_range = 16
 		f.msdf_size = 48
