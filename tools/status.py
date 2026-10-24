@@ -102,6 +102,10 @@ def verify():
     runs = {"ch%d" % n: start(["--chapter=%d" % n]) for n in range(2, 7)}
     for name, p in runs.items():
         finish(name, p, t0)
+    # a save makes the title menu offer "이어하기", which autopilot picks: start the full run from nothing
+    save = os.path.expanduser("~/.local/share/godot/app_userdata/신 처용가/save.json")
+    if os.path.exists(save):
+        os.replace(save, save + ".bak")
     t0 = time.time()
     finish("ending", start(["--skipintro"]), t0)
 
