@@ -71,11 +71,14 @@ func fit(s: String, size: int, w: float) -> String:
 	while s.length() > 2 and tw(s + "…", size) > w: s = s.substr(0, s.length() - 1)
 	return s + "…"
 
-func bar(x: float, y: float, w: float, h: float, v: float, mx: float, col: Color, back := Color(0.04, 0.04, 0.06, 0.7)) -> void:
-	draw_rect(Rect2(x - 1, y - 1, w + 2, h + 2), back)
+func bar(x: float, y: float, w: float, h: float, v: float, mx: float, col: Color, back := Color(0.04, 0.035, 0.05, 0.78)) -> void:
+	# ink well with a hairline of old gold, a lacquer fill that darkens toward its lower edge
+	draw_rect(Rect2(x - 2, y - 2, w + 4, h + 4), back)
+	if h >= 5: draw_rect(Rect2(x - 2, y - 2, w + 4, h + 4), Color(0.72, 0.6, 0.38, 0.55), false, 1)
 	var fw: float = max(0.0, w * v / mx)
 	draw_rect(Rect2(x, y, fw, h), col)
-	draw_rect(Rect2(x, y, fw, ceil(h / 3.0)), Color(1, 1, 1, 0.18))
+	draw_rect(Rect2(x, y + h * 0.55, fw, h * 0.45), Color(0, 0, 0, 0.28))
+	draw_rect(Rect2(x, y, fw, 1), Color(1, 0.95, 0.85, 0.22))
 
 func plate(x: float, y: float, w: float, h: float, a := 0.55) -> void:
 	var sb = StyleBoxFlat.new()
@@ -335,7 +338,7 @@ func draw_hud() -> void:
 	plate(x - 6, 8, total + 12, 26, 0.5)
 	for it in items:
 		draw_circle(Vector2(x + 8, 21), 5, it[2])
-		txt(it[0] + " ", x + 18, 26, 13, Color("#d8ccb0"), 0, null, 2)
+		txt(it[0] + " ", x + 18, 26, 13, Color("#cdbf9f"), 0, Assets.font_serif, 2)
 		txt(it[1], x + 18 + tw(it[0] + " ", 13), 26, 13, Color.WHITE, 0, null, 2)
 		x += tw(it[0] + " " + it[1], 13) + 28
 	# boss bar
@@ -343,8 +346,8 @@ func draw_hud() -> void:
 		var b = g.boss
 		var w: float = min(420.0, vw - 360); var x0 = vw / 2 - w / 2; var y0 = 44.0
 		plate(x0 - 8, y0 - 4, w + 16, 34, 0.55)
-		txt(("[처용가로 굴복시키시오] " if b.ult_vulnerable else "") + b.def.name, vw / 2, y0 + 11, 13, Color("#ff9a8a"), 1, null, 3)
-		bar(x0, y0 + 17, w, 7, b.hp, b.max_hp, GOLD if b.ult_vulnerable else Color("#d03a3a"))
+		txt(("[처용가로 굴복시키시오] " if b.ult_vulnerable else "") + b.def.name, vw / 2, y0 + 11, 15, Color("#e8c9a8"), 1, Assets.font_serif_bold, 3)
+		bar(x0, y0 + 17, w, 7, b.hp, b.max_hp, GOLD if b.ult_vulnerable else Color("#8f2430"))
 	# quest tracker
 	var ob: Dictionary = g.story.objective()
 	var parts: PackedStringArray = ob.text.split(" — ")
@@ -358,19 +361,19 @@ func draw_hud() -> void:
 	for i in rows.size():
 		var y = qy + 22 + i * 22
 		if i >= main_n:
-			txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#c8b0ff"), 0, Assets.font, 2)
+			txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#b9a8d8"), 0, Assets.font_serif, 2)
 			continue
 		if i == 0:
-			draw_colored_polygon(PackedVector2Array([Vector2(qx + 10, y - 9), Vector2(qx + 18, y - 4), Vector2(qx + 10, y + 1)]), Color("#ffcf5a"))
-			txt(fit("[이야기] " + rows[i], 13, qw - 30), qx + 24, y, 13, Color("#ffe08a"), 0, null, 2)
-		else: txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#e8e0d0"), 0, Assets.font, 2)
+			draw_rect(Rect2(qx + 11, y - 7, 6, 6), Color("#c9a45c"))
+			txt(fit(rows[i], 14, qw - 30), qx + 24, y, 14, Color("#ead6a8"), 0, Assets.font_serif_bold, 2)
+		else: txt(fit(rows[i], 12, qw - 30), qx + 24, y, 12, Color("#d9d0bf"), 0, Assets.font_serif, 2)
 	# health, gi, heung, exp
 	var bw: float = min(360.0, vw * 0.36); var bx = vw / 2 - bw / 2; var by = vh - 62
-	txt("Lv.%d 처용" % p.lvl, bx - 34, by + 12, 12, Color("#ffe2a0"), 1, null, 2)
-	bar(bx, by, bw, 10, p.hp, p.max_hp, Color("#6fcf4a"))
+	txt("Lv.%d" % p.lvl, bx - 30, by + 12, 13, Color("#ead6a8"), 1, Assets.font_serif_bold, 2)
+	bar(bx, by, bw, 10, p.hp, p.max_hp, Color("#a8343a"))
 	txt("%d / %d" % [ceil(p.hp), p.max_hp], vw / 2, by + 9, 10, Color.WHITE, 1, null, 2)
-	bar(bx, by + 14, bw, 5, p.gi, p.max_gi, Color("#4cb8ff"))
-	if f.get("has_ult", false): bar(bx, by + 22, bw, 3, p.heung, 100, GOLD if p.heung >= 100 else Color("#ff9ad0"), Color(0.04, 0.04, 0.06, 0.6))
+	bar(bx, by + 15, bw, 5, p.gi, p.max_gi, Color("#3d78a8"))
+	if f.get("has_ult", false): bar(bx, by + 24, bw, 3, p.heung, 100, GOLD if p.heung >= 100 else Color("#b86a88"), Color(0.04, 0.04, 0.06, 0.6))
 	bar(0, vh - 3, vw, 3, p.xp, p.exp_need(), Color("#d8c070"), Color(0, 0, 0, 0.4))
 	# zone banner
 	if g.zone_banner and g.zone_banner.t < 3:
