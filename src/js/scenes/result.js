@@ -6,7 +6,7 @@ import { STORY } from '../story.js';
 import { Save } from '../save.js';
 
 const RANK = { '하': 0, '중': 1, '상': 2 };
-let api, n, cfg, kneels, avg, grade, tt, last, lastC, fled;
+let api, n, cfg, kneels, avg, grade, tt, last, fled;
 
 const stepDt = (now) => { const d = Math.min(0.25, Math.max(0, now - last)); last = now; return d; };
 
@@ -25,7 +25,9 @@ function save(N) {
   if (N) masks[n] = N.houses.map((h, i) => (h.masked ? i : -1)).filter((i) => i >= 0);
   const best = { ...(s.best || {}) };
   if (best[n] == null || RANK[grade] > RANK[best[n]]) best[n] = grade;
-  try { Save.write({ night: Math.max(s.night || 1, n + 1), masks, best }); } catch (e) { /* 저장 불가 */ }
+  const cleared = n >= STORY.nights.length; // 마지막 밤을 넘기면 night 는 5 에 두고 cleared 표시
+  const night = cleared ? STORY.nights.length : Math.max(s.night || 1, n + 1);
+  try { Save.write({ night, cleared, masks, best }); } catch (e) { /* 저장 불가 */ }
 }
 
 function go() {
@@ -42,9 +44,6 @@ function go() {
 }
 
 function proceed() {
-  const now = api.Audio.now();
-  if (now - lastC < 0.15) return;
-  lastC = now;
   if (tt < 1.8) { tt = 1.8; return; } // 첫 확인은 카드를 끝까지 펼친다
   api.Audio.play('confirm');
   go();
@@ -58,7 +57,7 @@ export default {
     cfg = STORY.nights[n - 1];
     calc(N);
     save(N);
-    tt = 0; lastC = -9; last = api.Audio.now();
+    tt = 0; last = api.Audio.now();
     api.Audio.play('mask');
   },
   exit() {},
@@ -99,6 +98,6 @@ export default {
     }
   },
   onAction(name) { if (name === 'confirm') proceed(); },
-  onPointer(x, y, type) { if (type === 'down') proceed(); },
+  onPointer(x, y, type) { if (type === 'up') proceed(); },
   debug() { return { n, kneels, avg, grade }; },
 };

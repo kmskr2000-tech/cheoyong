@@ -5,7 +5,7 @@ import { dialogBox } from '../render/text.js';
 import { STORY } from '../story.js';
 
 const CPS = 28; // 초당 글자 수
-let api, lines, idx, chars, next, night, tt, last, lastC, done, houses;
+let api, lines, idx, chars, next, night, tt, last, done, houses;
 
 const stepDt = (now) => { const d = Math.min(0.25, Math.max(0, now - last)); last = now; return d; };
 const layout = (n) => (n === 1
@@ -21,9 +21,6 @@ function finish() {
 function skipAll() { idx = lines.length; finish(); }
 
 function confirm() {
-  const now = api.Audio.now();
-  if (now - lastC < 0.12) return; // 탭 중복 방지
-  lastC = now;
   const cur = lines[idx];
   if (!cur) return finish();
   if (chars < cur.text.length) { chars = cur.text.length; return; }
@@ -38,7 +35,7 @@ export default {
     lines = params.lines || [];
     next = params.next;
     night = params.night;
-    idx = 0; chars = 0; tt = 0; done = false; lastC = -9;
+    idx = 0; chars = 0; tt = 0; done = false;
     last = api.Audio.now();
     houses = night ? layout(STORY.nights[night - 1].houses) : [];
   },
@@ -66,6 +63,6 @@ export default {
     if (name === 'confirm') confirm();
     else if (name === 'back') skipAll();
   },
-  onPointer(x, y, type) { if (type === 'down') confirm(); },
+  onPointer(x, y, type) { if (type === 'up') confirm(); },
   debug() { return { idx, total: lines.length }; },
 };

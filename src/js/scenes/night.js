@@ -80,6 +80,7 @@ function applyResult(res) {
     api.Audio.play('mask');
   } else if (res.outcome === 'flee') {
     N.fled++;
+    N.lastSpread += 10; // 달아나게 두면 전파가 앞당겨진다
     h.haunted = null;
     const nb = neighbours(i).filter(eligible);
     let moved = i;
@@ -130,8 +131,7 @@ export default {
       N = G.night;
       cfg = STORY.nights[N.n - 1];
       if (!rand) rand = mulberry((G.seed | 0) + N.n * 7919);
-      N.lastSpread = 0;
-      applyResult(params.result);
+      applyResult(params.result); // lastSpread 는 춤을 다녀와도 이어서 쌓인다
     } else {
       createNight(params.n || 1);
     }

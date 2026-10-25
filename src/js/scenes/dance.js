@@ -147,7 +147,7 @@ export default {
     spirit = params.spirit || 'fever';
     N = G.night || null;
     houseIdx = (params.direct || !N) ? undefined : params.houseIdx; // ?dance= 로 바로 온 경우엔 결과 후 타이틀로
-    const n = (N && N.n) || params.n || 1;
+    const n = (N && N.n) || params.n || params.night || 1;
     chart = makeChart(spirit, n, G.seed != null ? G.seed : 1);
     const beatSec = 60 / chart.bpm;
     startTime = api.Audio.now() + Math.max(2.0, 4 * beatSec + 0.15); // 카운트인 4박이 들어갈 만큼
@@ -168,7 +168,9 @@ export default {
     spState = 'lurk'; spT = 0; spDur = 0; lastSpawn = -1;
     tutorial = !!(N && N.n === 1 && (N.kneels || 0) + (N.fled || 0) === 0);
   },
-  exit() { try { api.Audio.stopJangdan(); } catch (e) { /* 이미 멈춤 */ } },
+  exit() {
+    try { api.Audio.cancelPending?.(); api.Audio.stopJangdan(); } catch (e) { /* 이미 멈춤 */ }
+  },
   update(dt, now) {
     const d = stepDt(now);
     tt += d;
@@ -270,9 +272,10 @@ export default {
 
     // 처용
     const el = now - poseT;
-    const p = el < POSE_DUR ? pose : (inSong ? 'sing' : 'idle');
-    drawCheoyong(ctx, CH_X, BASE_Y, 0.9, p, now, { phase: el < POSE_DUR ? clamp(el / POSE_DUR, 0, 1) : 0 });
-
+    const posing = el < POSE_DUR;
+    const p = posing ? pose : (inSong ? 'sing' : 'idle');
+    const pph = posing ? clamp(el / POSE_DUR, 0, 1) : (inSong ? 0.5 + 0.08 * Math.sin(now * 2) : 0); // 노래: 전체 자세 + 가벼운 흔들림
+    drawCheoyong(ctx, CH_X, BASE_Y, 0.9, p, now, { phase: pph });
 
     // HUD
     drawGauges(ctx, now);
@@ -296,7 +299,6 @@ export default {
       ctx.fillText(hint, 480, 268);
       ctx.restore();
     }
-    if (api.Input && api.Input.drawTouchLanes) api.Input.drawTouchLanes(ctx, now - poseT < 0.15 ? lastLane : -1);
   },
   onLane(lane, at) {
     if (ended || leaving || api.Audio.now() < startTime - 0.2) return; // 카운트인 중엔 무시
@@ -306,9 +308,11 @@ export default {
     pump(api.Audio.now());
   },
   onAction(name) {
-    if (name !== 'back' || ended) return;
+    if (name !== 'back' || ended || leaving) return;
+    api.Audio.cancelPending?.();
     api.Audio.stopJangdan();
-    leave(null);
+    if (houseIdx === undefined) return leave(null); // ?dance= 직행: 타이틀로
+    beginEnd('flee');                                // 포기 = 달아남 (덕은 현재 값으로 기록)
   },
   onPointer() {},
   debug() { return { judge, chart, startTime }; },

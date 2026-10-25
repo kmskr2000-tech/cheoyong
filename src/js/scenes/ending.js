@@ -9,7 +9,7 @@ const SCROLL = 40;                               // px/s
 const VERSE_START = 1.0, VERSE_EVERY = 3.0;
 const CPS = 28;
 
-let api, tt, last, lastC, phase, verseEnd, idx, chars, endT;
+let api, tt, last, phase, verseEnd, idx, chars, endT;
 
 const stepDt = (now) => { const d = Math.min(0.25, Math.max(0, now - last)); last = now; return d; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -21,9 +21,7 @@ function showEnd() {
 }
 
 function confirm() {
-  const now = api.Audio.now();
-  if (now - lastC < 0.15) return;
-  lastC = now;
+  if (phase === 'verses') { phase = 'talk'; return; } // 구절 중 확인 = 마무리 대사로
   if (phase === 'talk') {
     const cur = STORY.ending[idx];
     if (chars < cur.text.length) { chars = cur.text.length; return; }
@@ -39,7 +37,7 @@ function confirm() {
 export default {
   enter(params, a) {
     api = a;
-    tt = 0; lastC = -9; phase = 'verses'; idx = 0; chars = 0; endT = 0;
+    tt = 0; phase = 'verses'; idx = 0; chars = 0; endT = 0;
     verseEnd = VERSE_START + VERSE_EVERY * STORY.verses.length;
     last = api.Audio.now();
     api.fx.clear();
@@ -63,10 +61,10 @@ export default {
     const hs = [];
     for (let i = 0; i < COUNT; i++) {
       const x = ((((i * GAP - scroll) % LOOP) + LOOP) % LOOP) - 100;
-      if (x > -120 && x < W + 120) hs.push({ x, w: 120 });
+      if (x > -120 && x < W + 120) hs.push({ x, w: 120, i });
     }
     drawStreet(ctx, W, H, tt, { houses: hs, horizonY: 420 });
-    hs.forEach((h) => drawHouse(ctx, h.x, 430, h.w, tt, { lit: true, haunted: false, masked: true, home: false }));
+    hs.forEach((h) => drawHouse(ctx, h.x, 430, h.w, tt, { lit: true, haunted: false, masked: true, home: false, seed: h.i }));
 
     // 새벽 빛
     const g = ctx.createLinearGradient(0, 0, 0, H);
@@ -103,7 +101,6 @@ export default {
     } else if (phase === 'talk') {
       const cur = STORY.ending[Math.min(idx, STORY.ending.length - 1)];
       const prog = cur.text.length ? Math.min(1, chars / cur.text.length) : 1;
-      if (cur.who === STORY.names.cheoyong) drawCheoyong(ctx, 170, 410, 0.8, 'idle', tt, { phase: 0 });
       dialogBox(ctx, W, H, cur.who, cur.text, tt, { progress: prog });
     } else {
       const a = clamp((tt - endT) / 1.2, 0, 1);
@@ -122,6 +119,6 @@ export default {
     if (name === 'confirm') confirm();
     else if (name === 'back' && phase === 'verses') phase = 'talk';
   },
-  onPointer(x, y, type) { if (type === 'down') confirm(); },
+  onPointer(x, y, type) { if (type === 'up') confirm(); },
   debug() { return { phase, idx }; },
 };
