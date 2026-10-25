@@ -6,3 +6,4 @@ godot/.godot/
 *.import
 art/b3d/out/
 .claude/worktrees/
+src/dev/
