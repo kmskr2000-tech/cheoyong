@@ -1,34 +1,19 @@
-# 신 처용가 — 작업 기준 (2026-10-20 리셋, 2.5D 웹 RPG)
+# 처용무 — 밤의 문 (2026-10-25 리셋, 리듬 액션 · 그림자극)
 
-- 설계 기준: `docs/game-design.md`. 코드 구조: `docs/architecture.md`.
-- 이전 Godot/웹판은 git 기록(리셋 이전 커밋)에만 있다.
+- 설계: `docs/game-design.md`. 모듈 계약: `docs/architecture.md`. 계약을 바꾸면 문서를 먼저 고친다.
+- 이전 판(2.5D RPG, Godot)은 git 기록(이 리셋 이전 커밋)에만 있다.
 - 대사 톤: 가벼운 시대극(~하오/~소/~오). 처용은 한 문장, 말이 적다.
-- 처용은 죽이지 않고 정화한다. 보스는 무릎 꿇는다.
+- 처용은 치지 않고 춤춘다. 역신은 죽지 않고 무릎 꿇는다. 승리의 보상은 문에 걸리는 탈이다.
 
-## 그래픽
-- 인물·요괴·지형·소품: PixelLab API로 생성(env `PIXELLAB_API_KEY`, `tools/pl.py`). 파이프라인은 `docs/architecture.md`.
-  `art/gen_chars.py` · `art/gen_tiles.py` · `art/gen_props.py` → `art/raw/` → `python3 art/pack.py` → `src/assets/`.
-- 다운로드는 `api.pixellab.ai`의 zip 내보내기만 쓴다(backblaze 호스트는 막힘). 동시 작업 8개 제한(429면 기다림).
+## 그래픽·소리
+- 그림자극: 한지 역광 위의 검은 인형 실루엣 + 오방색. 이미지·오디오 파일 없음, 전부 Canvas 2D·WebAudio 절차 생성(`src/js/render/`, `src/js/audio.js`).
+- 처용탈만 온색. 색 상수는 `render/paper.js`의 `COLORS`.
 
-## 실행·빌드·검증
-- 개발: `npx http-server . -p 8080` → `http://localhost:8080/src/index.html` (논리 높이 600, UI는 따로 CSS 픽셀 기준 배율)
-- 단일 HTML 빌드: `node tools/build.mjs` → `dist/index.html`
-- 스모크 테스트: `node tests/smoke.mjs` (Playwright, 스크린샷 `tests/out/`)
-- 끝까지 플레이: `node tests/playthrough.mjs [분]` — 자동 조종(`?auto&god&speed=6`)이 타이틀부터 엔딩까지 진행
-- 한 장면: `node tests/shot.mjs "<query>" out.png <초> [KeyJ@1] [hold:KeyD@0.5-2]`
-- URL 테스트 훅: `?play`, `?quest=n`(1~6), `?at=x,y`(타일), `?flags=a,b`, `?enemies=imp,snake`, `?boss=gumiho`, `?heung`, `?lvl=n`, `?touch`, `?ending`, `?mute`
-
-## Godot 판 (모바일)
-- `godot/`: 웹판과 같은 에셋·스토리·전투를 Godot 4.4(GL Compatibility)로 옮긴 판. 사용법은 `godot/README.md`.
-- 컨테이너 준비: `sh tools/setup_godot.sh` (dl.google.com이 막혀 Android SDK 없이 비-Gradle 내보내기 → uber-apk-signer로 서명).
-  클라우드 세션은 `.claude/settings.json`의 SessionStart 훅이 고도가 없으면 백그라운드로 이 스크립트를 돌린다(로그 `/tmp/setup_godot.log`). `godot --version`이 나올 때까지 기다린 뒤 쓴다.
-- 검증: `godot --headless --path godot -- --auto --skipintro --speed=8 --mute` 가 `REACHED ENDING` 을 찍어야 한다.
-- 1장(서라벌)의 규칙을 바꾸면 `src/js`와 `godot/scripts` 양쪽을 맞춘다. 2~6장(경주 순례)·부적·향가는 고도판 전용이다(웹 JS판은 1장 분량의 가벼운 판으로 둔다).
-- 2~6장 한 장만: `godot --headless --path godot -- --chapter=n --auto --speed=8 --mute` (`PROGRESS` 줄로 진행 확인).
-- 저장 파일이 있으면 자동 조종이 타이틀에서 "이어하기"를 고른다. 처음부터 검증할 땐 `XDG_DATA_HOME=/tmp/<이름>`으로 저장 폴더를 따로 쓰고 비운 뒤 돌린다(여러 검증을 동시에 돌릴 때도 각자 다른 폴더). 내보내기(`--export-release`)는 템플릿 경로 때문에 XDG 없이.
-- PC 빌드: `godot --headless --path godot --export-release "Linux" ../build/desktop/linux/cheoyong.x86_64`, `"Windows Desktop" ../build/desktop/windows/cheoyong.exe`.
-- 화풍: 진지한 HD-2D(도트 인물 + 3D 지형 + 필름 색보정 `shaders/grade.gdshader`). 귀여운 툰 치비 3D는 쓰지 않는다(`art/b3d`에 파이프라인만 남김).
-- 개발 현황판: `python3 tools/status.py [--verify]` → `build/status/*.json`. 스팀 상점 키트: `docs/steam/store.md`, `tools/steam_art.py`.
+## 실행·검증
+- 개발: `npx http-server . -p 8080` → `http://localhost:8080/src/index.html`
+- 단위: `node tests/unit.mjs` · 스모크: `node tests/smoke.mjs`(Playwright, 스크린샷 `tests/out/`) · 한 장면: `node tests/shot.mjs "<query>" out.png <초> [KeyJ@1]`
+- 빌드: `node tools/build.mjs` → `dist/index.html`
+- URL 훅: `?night=n` `?dance=fever|chill|cough|pox|yeoksin` `?auto` `?mute` `?speed=k`(뮤트일 때만) `?ending` `?touch` `?seed=n`
 
 ## 작업 방식
 - `main`에서 브랜치 → 커밋·푸시 → PR → 바로 머지(merge 커밋).

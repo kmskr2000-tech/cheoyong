@@ -1,261 +1,225 @@
-// Audio: everything is synthesized with WebAudio (daegeum flute, gayageum pluck, janggu, jing, wind chime).
-'use strict';
-G.audio = (() => {
-  let ctx = null, master = null, musicBus = null, sfxBus = null, ambBus = null;
-  let current = null; // current music track name
-  let timer = null, nextT = 0, step = 0, track = null;
-  const A = {};
-  const muted = G.params.has('mute');
+// WebAudio 합성 전용(파일 없음). 장구·박·피리. AudioContext가 없어도 절대 throw 하지 않는다.
+const PENTA = [311.13, 349.23, 415.30, 466.16, 523.25]; // Eb F Ab Bb C
+const LOOKAHEAD = 0.1;   // 초
+const TICK_MS = 25;
 
-  // A gyemyeonjo-flavoured scale (A C D E G) over several octaves, as semitone offsets from A3
-  const SCALE = [0, 3, 5, 7, 10];
-  const note = (deg, oct = 0) => {
-    const o = Math.floor(deg / 5);
-    const i = ((deg % 5) + 5) % 5;
-    return 220 * Math.pow(2, (SCALE[i] + 12 * (o + oct)) / 12);
-  };
+let ctx = null, master = null, noiseBuf = null;
+let bias = 0;                         // now() = 원천 시계 + bias (원천이 바뀌어도 끊김 없게)
+let userOff = 0;                      // 사용자 보정(초). Audio.setOffset
+let lat = 0;                          // 출력 지연(초). init·재개·장단 시작 때만 표본(rebase 안에서)
+let speed = 1;
+let fakeBase = 0, perfBase = perfNow();
+let frozen = false, paused = false;   // 탭 숨김·창 포커스 잃음 → 시계 정지
+const pending = new Map();            // 예약만 된 소스 노드 → 시작 시각(ctx 원시 시간)
+let jd = null;                        // 장단 상태
+let pluckN = 0;
 
-  A.unlock = () => {
-    if (muted) return;
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      ctx = new AC();
-      master = ctx.createGain(); master.gain.value = 0.8; master.connect(ctx.destination);
-      const comp = ctx.createDynamicsCompressor(); comp.connect(master);
-      // simple reverb: feedback delay pair
-      const rev = ctx.createGain(); rev.gain.value = 0.25;
-      const d1 = ctx.createDelay(); d1.delayTime.value = 0.13;
-      const d2 = ctx.createDelay(); d2.delayTime.value = 0.29;
-      const fb = ctx.createGain(); fb.gain.value = 0.38;
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
-      rev.connect(d1); d1.connect(d2); d2.connect(lp); lp.connect(fb); fb.connect(d1); lp.connect(comp);
-      A.rev = rev;
-      musicBus = ctx.createGain(); musicBus.gain.value = 0.42; musicBus.connect(comp); musicBus.connect(rev);
-      sfxBus = ctx.createGain(); sfxBus.gain.value = 0.7; sfxBus.connect(comp); sfxBus.connect(rev);
-      ambBus = ctx.createGain(); ambBus.gain.value = 0.25; ambBus.connect(comp);
-      A.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-      const d = A.noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-      if (track) startScheduler();
-    }
-    if (ctx.state === 'suspended') ctx.resume();
-  };
+function perfNow() { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; }
+const fakeT = () => (frozen ? fakeBase : fakeBase + (perfNow() - perfBase) * speed);
+const useCtx = () => !!(ctx && Audio.ready && !Audio.muted);
+// ctx 시계는 출력 지연과 사용자 보정만큼 뒤로 민다(들리는 시각 = 판정 기준 시각). 가짜 시계는 보정 없음.
+const srcT = () => (useCtx() ? ctx.currentTime - lat - userOff : fakeT());
+// 시계 원천이 바뀌는 변경(fn) 전후로 now()가 점프하지 않게 보정
+function rebase(fn) { const before = Audio.now(); fn(); bias += before - Audio.now(); }
+// now() 시각 → ctx 원시 시간(예약용). now() = ctx.currentTime - lat - userOff + bias 의 역.
+const toRaw = (at) => at + lat + userOff - bias;
+function sampleLat() { try { lat = (ctx && (ctx.outputLatency || ctx.baseLatency)) || 0; } catch (e) { lat = 0; } }
+// 소스 노드 시작·정지 예약. 시작이 아직 안 된 것만 cancelPending 이 끊는다.
+function startNode(n, t, stopT) {
+  n.start(t); n.stop(stopT);
+  pending.set(n, t);
+  n.onended = () => pending.delete(n);
+}
+const pitch = (i) => PENTA[((i % 5) + 5) % 5] * Math.pow(2, Math.floor(i / 5));
 
-  // ---------- instruments ----------
-  const env = (g, t, a, peak, dec) => {
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(peak, t + a);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + a + dec);
-  };
-  function pluck(f, t, vol = 0.3, dec = 0.9, bus = musicBus) {
-    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain();
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
-    lp.frequency.setValueAtTime(f * 6, t); lp.frequency.exponentialRampToValueAtTime(f * 1.2, t + dec);
-    o.type = 'triangle'; o2.type = 'sawtooth';
-    o.frequency.setValueAtTime(f * 1.012, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.06);
-    o2.frequency.value = f;
-    const g2 = ctx.createGain(); g2.gain.value = 0.18;
-    o.connect(g); o2.connect(g2); g2.connect(g); g.connect(lp); lp.connect(bus);
-    env(g, t, 0.004, vol, dec);
-    o.start(t); o2.start(t); o.stop(t + dec + 0.1); o2.stop(t + dec + 0.1);
-  }
-  function flute(f, t, len, vol = 0.16, bus = musicBus) {
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    const vib = ctx.createOscillator(), vg = ctx.createGain();
-    o.type = 'sine'; o.frequency.setValueAtTime(f * 0.97, t); o.frequency.linearRampToValueAtTime(f, t + 0.12);
-    vib.frequency.value = 5.2; vg.gain.setValueAtTime(0, t); vg.gain.linearRampToValueAtTime(f * 0.012, t + len * 0.6);
-    vib.connect(vg); vg.connect(o.frequency);
-    const h = ctx.createOscillator(); h.type = 'sine'; h.frequency.value = f * 2; const hg = ctx.createGain(); hg.gain.value = 0.12;
-    h.connect(hg); hg.connect(g);
-    // breath noise
-    const n = ctx.createBufferSource(); n.buffer = A.noiseBuf;
-    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 2; bp.Q.value = 3;
-    const ng = ctx.createGain(); ng.gain.value = 0.25; n.connect(bp); bp.connect(ng); ng.connect(g);
-    o.connect(g); g.connect(bus);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(vol, t + 0.09);
-    g.gain.setValueAtTime(vol, t + len * 0.7);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.25);
-    for (const s of [o, vib, h, n]) { s.start(t); s.stop(t + len + 0.3); }
-  }
-  function drum(t, kind, vol = 0.5, bus = musicBus) {
-    if (kind === 'kung' || kind === 'deong') {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.setValueAtTime(kind === 'deong' ? 120 : 95, t); o.frequency.exponentialRampToValueAtTime(48, t + 0.25);
-      o.connect(g); g.connect(bus); env(g, t, 0.003, vol, 0.35); o.start(t); o.stop(t + 0.45);
-    }
-    if (kind === 'deok' || kind === 'deong') {
-      const n = ctx.createBufferSource(); n.buffer = A.noiseBuf;
-      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 1.2;
-      const g = ctx.createGain(); n.connect(bp); bp.connect(g); g.connect(bus);
-      env(g, t, 0.002, vol * 0.7, 0.09); n.start(t, Math.random()); n.stop(t + 0.15);
-    }
-  }
-  function gong(t, vol = 0.35, f = 98, bus = musicBus) {
-    for (const [m, v] of [[1, 1], [2.02, 0.4], [2.76, 0.25], [4.1, 0.1]]) {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.frequency.setValueAtTime(f * m * 1.02, t); o.frequency.exponentialRampToValueAtTime(f * m, t + 0.6);
-      o.connect(g); g.connect(bus); env(g, t, 0.01, vol * v, 3.5); o.start(t); o.stop(t + 3.8);
-    }
-  }
-  function chime(t, f, vol = 0.12, bus = sfxBus) {
-    for (const m of [1, 2.76, 5.4]) {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = f * m;
-      o.connect(g); g.connect(bus); env(g, t, 0.002, vol / m, 1.4); o.start(t); o.stop(t + 1.5);
-    }
-  }
-  function noiseHit(t, freq, len, vol, type = 'bandpass', bus = sfxBus, sweep = 0) {
-    const n = ctx.createBufferSource(); n.buffer = A.noiseBuf;
-    const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t);
-    if (sweep) f.frequency.exponentialRampToValueAtTime(Math.max(40, freq * sweep), t + len);
-    f.Q.value = 0.9;
-    const g = ctx.createGain(); n.connect(f); f.connect(g); g.connect(bus);
-    env(g, t, 0.005, vol, len); n.start(t, Math.random()); n.stop(t + len + 0.05);
-  }
-  function tone(t, f0, f1, len, vol, type = 'sine', bus = sfxBus) {
-    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type;
-    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + len);
-    o.connect(g); g.connect(bus); env(g, t, 0.005, vol, len); o.start(t); o.stop(t + len + 0.05);
-  }
+// ---------- 소리 부품 ----------
+function env(g, t, peak, attack, decay) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(peak, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
+}
+function tone(type, f0, f1, t, dur, peak, dest = master, attack = 0.004) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, t);
+  if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, peak, attack, dur);
+  o.connect(g); g.connect(dest);
+  startNode(o, t, t + attack + dur + 0.05);
+  return o;
+}
+function noise(t, dur, peak, ftype, f0, q = 1, f1 = null, attack = 0.002) {
+  const s = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain();
+  s.buffer = noiseBuf;
+  fl.type = ftype; fl.Q.value = q; fl.frequency.setValueAtTime(f0, t);
+  if (f1) fl.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  env(g, t, peak, attack, dur);
+  s.connect(fl); fl.connect(g); g.connect(master);
+  s.start(t, Math.random() * 0.5); s.stop(t + attack + dur + 0.05);
+  pending.set(s, t); s.onended = () => pending.delete(s);
+}
 
-  // ---------- music ----------
-  // Each track: tempo (sec per step), length in steps, and a function(step, t) that schedules notes.
-  const R = G.rng(77);
-  const melody = (seed, len, lo, hi) => {
-    const r = G.rng(seed); const m = []; let d = Math.floor((lo + hi) / 2);
-    for (let i = 0; i < len; i++) {
-      if (r() < 0.35) { m.push(null); continue; }
-      d = G.clamp(d + Math.floor(r() * 5) - 2, lo, hi); m.push(d);
-    }
-    return m;
-  };
-  const TRACKS = {
-    title: { spb: 0.42, len: 32, mel: melody(3, 32, 4, 11), fn(s, t, tr) {
-      if (s % 16 === 0) gong(t, 0.18, 73);
-      if (s % 4 === 0) pluck(note(tr.mel2[s / 4 % 8] ?? 0, -1), t, 0.18, 1.6);
-      const n = tr.mel[s]; if (n != null && s % 2 === 0) flute(note(n), t, tr.spb * 2.6, 0.12);
-    } },
-    sea: { spb: 0.36, len: 32, mel: melody(11, 32, 5, 12), fn(s, t, tr) {
-      if (s % 8 === 0) drum(t, 'deong', 0.25); if (s % 8 === 5) drum(t, 'deok', 0.18);
-      if (s % 2 === 0) pluck(note([0, 2, 4, 2, 3, 1, 4, 2][(s / 2) % 8], -1), t, 0.12, 0.9);
-      const n = tr.mel[s]; if (n != null && s % 2 === 0) flute(note(n), t, tr.spb * 2.2, 0.1);
-    } },
-    town: { spb: 0.25, len: 48, mel: melody(21, 48, 5, 13), fn(s, t, tr) {
-      const p = s % 12; // semachi-like 12 beat cycle
-      if (p === 0) drum(t, 'deong', 0.35); if (p === 3) drum(t, 'deok', 0.22); if (p === 5) drum(t, 'deok', 0.15);
-      if (p === 6) drum(t, 'kung', 0.3); if (p === 9) drum(t, 'deok', 0.22);
-      if (s % 3 === 0) pluck(note(tr.mel[s] ?? tr.mel[(s + 1) % 48] ?? 5), t, 0.2, 0.6);
-      if (s % 6 === 0) pluck(note([0, 2, 0, 3][(s / 6) % 4], -1), t, 0.14, 1.2);
-    } },
-    eerie: { spb: 0.5, len: 32, mel: melody(31, 32, 2, 9), fn(s, t, tr) {
-      if (s % 16 === 0) gong(t, 0.14, 62);
-      if (s % 8 === 4) drum(t, 'kung', 0.18);
-      const n = tr.mel[s]; if (n != null && s % 3 === 0) flute(note(n) * 0.5, t, tr.spb * 3, 0.1);
-      if (s % 4 === 2) pluck(note(n ?? 3, 0) * 1.0, t, 0.08, 1.4);
-    } },
-    battle: { spb: 0.16, len: 32, mel: melody(41, 32, 6, 13), fn(s, t, tr) {
-      const p = s % 8;
-      if (p === 0 || p === 3) drum(t, 'deong', 0.38); if (p === 2 || p === 5 || p === 7) drum(t, 'deok', 0.25);
-      if (p === 4) drum(t, 'kung', 0.3);
-      if (s % 2 === 0) pluck(note([0, 0, 3, 2, 0, 0, 4, 3][(s / 2) % 8], -1), t, 0.2, 0.35);
-      const n = tr.mel[s]; if (n != null && s % 2 === 0) flute(note(n), t, tr.spb * 1.8, 0.11);
-    } },
-    boss: { spb: 0.15, len: 32, mel: melody(51, 32, 3, 12), fn(s, t, tr) {
-      const p = s % 8;
-      if (p === 0) { drum(t, 'deong', 0.45); } if (p === 2 || p === 3 || p === 6) drum(t, 'deok', 0.28);
-      if (p === 4) drum(t, 'kung', 0.4); if (s % 32 === 0) gong(t, 0.25, 55);
-      if (s % 2 === 0) pluck(note([0, 1, 0, 1, 0, 3, 2, 1][(s / 2) % 8], -2), t, 0.24, 0.3);
-      const n = tr.mel[s]; if (n != null && s % 2 === 1) flute(note(n), t, tr.spb * 1.6, 0.12);
-    } },
-    song: { spb: 0.4, len: 32, mel: [7, null, 9, 8, 7, null, 5, null, 4, null, 5, 7, 8, null, 7, null, 9, null, 10, 9, 8, null, 7, null, 5, 7, 8, null, 7, null, null, null], fn(s, t, tr) {
-      if (s % 8 === 0) drum(t, 'deong', 0.3); if (s % 8 === 4) drum(t, 'kung', 0.22);
-      if (s % 4 === 0) pluck(note([0, 3, 2, 0][(s / 4) % 4], -1), t, 0.16, 1.4);
-      const n = tr.mel[s]; if (n != null) flute(note(n), t, tr.spb * 1.9, 0.15);
-    } },
-  };
-  for (const k in TRACKS) TRACKS[k].mel2 = melody(k.length * 13, 8, 0, 5);
+const VOICES = {
+  kung: (t, v) => { tone('sine', 92, 58, t, 0.38, 0.95 * v); noise(t, 0.03, 0.12 * v, 'lowpass', 300); },
+  deok: (t, v) => { noise(t, 0.05, 0.55 * v, 'bandpass', 2000, 1.6); tone('triangle', 1700, 1200, t, 0.03, 0.08 * v); },
+  deong: (t, v) => { VOICES.kung(t, v); VOICES.deok(t, v * 0.9); },
+  roll: (t, v) => { for (let i = 0; i < 4; i++) VOICES.deok(t + i * 0.045, v * (0.5 + i * 0.1)); },
+  bak: (t, v) => { noise(t, 0.07, 0.8 * v, 'bandpass', 1200, 3); tone('triangle', 900, 700, t, 0.04, 0.2 * v); },
+  hit: (t, v) => { const f = pitch([0, 2, 4, 3, 1, 2][pluckN++ % 6] + 5); tone('triangle', f, f, t, 0.22, 0.28 * v, lp(2400)); },
+  miss: (t, v) => { tone('sine', 78, 48, t, 0.16, 0.8 * v); noise(t, 0.07, 0.18 * v, 'lowpass', 500); },
+  kneel: (t, v) => { [4, 2, 0].forEach((n, i) => tone('triangle', pitch(n + 5), pitch(n + 5), t + i * 0.2, 0.45, 0.3 * v, lp(2000))); },
+  mask: (t, v) => {
+    [0, 1, 2, 3, 4, 5, 7].forEach((n, i) => tone('triangle', pitch(n + 5), pitch(n + 5), t + i * 0.075, 0.5, 0.2 * v, lp(5000)));
+    for (let i = 0; i < 6; i++) tone('sine', 2093 + i * 80, 2093 + i * 80, t + 0.5 + i * 0.05, 0.4, 0.04 * v);
+  },
+  step: (t, v) => { tone('sine', 170, 110, t, 0.07, 0.5 * v); noise(t, 0.03, 0.1 * v, 'lowpass', 700); },
+  confirm: (t, v) => { tone('triangle', pitch(7), pitch(7), t, 0.16, 0.3 * v, lp(3000)); },
+  flee: (t, v) => { noise(t, 0.6, 0.35 * v, 'bandpass', 400, 2.5, 2600, 0.15); },
+};
+function lp(freq) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq; f.connect(master); return f; }
 
-  function startScheduler() {
-    if (!ctx || timer) return;
-    nextT = ctx.currentTime + 0.1; step = 0;
-    timer = setInterval(() => {
-      if (!track) return;
-      while (nextT < ctx.currentTime + 0.25) {
-        try { track.fn(step % track.len, nextT, track); } catch (e) { /* keep going */ }
-        nextT += track.spb; step++;
+function melodyNote(idx, t, dur) {
+  const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  const lfo = ctx.createOscillator(), lg = ctx.createGain();
+  o.type = 'square'; o.frequency.value = pitch(idx);
+  f.type = 'lowpass'; f.frequency.value = 1300; f.Q.value = 0.7;
+  lfo.frequency.value = 5.5; lg.gain.value = 5; lfo.connect(lg); lg.connect(o.frequency);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(0.07, t + 0.04);
+  g.gain.setValueAtTime(0.07, t + dur * 0.7);
+  g.gain.linearRampToValueAtTime(0.0001, t + dur);
+  o.connect(f); f.connect(g); g.connect(master);
+  startNode(o, t, t + dur + 0.02); startNode(lfo, t, t + dur + 0.02);
+}
+
+// ---------- 장단 ----------
+function seg(beat) { let s = jd.segs[0]; for (const x of jd.segs) if (x.beat <= beat) s = x; return s; }
+function tick() {
+  if (!jd) return;
+  try {
+    const now = Audio.now();
+    const horizon = now + LOOKAHEAD * (Audio.muted ? Math.max(1, speed) : 1);
+    let guard = 2000;
+    while (jd.pattern.length && guard--) {
+      const ev = jd.pattern[jd.i];
+      const t = Audio.timeAt(jd.bar * 4 + ev.beat);
+      if (t > horizon) break;
+      if (t >= now - 0.05) Audio.play(ev.name, t);
+      if (++jd.i >= jd.pattern.length) { jd.i = 0; jd.bar++; }
+    }
+    while (jd.melody && jd.melody.length && guard--) {
+      const t = Audio.timeAt(jd.mb);
+      if (t > horizon) break;
+      if (t >= now - 0.05 && useCtx()) {
+        const dur = (Audio.timeAt(jd.mb + 1) - t) * 0.85;
+        melodyNote(jd.melody[jd.mb % jd.melody.length], Math.max(ctx.currentTime, toRaw(t)), dur);
       }
-    }, 60);
-  }
-  A.music = (name) => {
-    if (current === name) return;
-    current = name;
-    track = TRACKS[name] || null;
-    if (!ctx) return;
-    // quick fade
-    const now = ctx.currentTime;
-    musicBus.gain.cancelScheduledValues(now);
-    musicBus.gain.setValueAtTime(0.0001, now);
-    musicBus.gain.linearRampToValueAtTime(0.42, now + 1.2);
-    step = 0; nextT = Math.max(nextT, now + 0.05);
-    startScheduler();
-  };
-  A.current = () => current;
-  A.toggle = () => {
-    if (!ctx) return;
-    A.off = !A.off;
-    master.gain.value = A.off ? 0 : 0.8;
-  };
+      jd.mb++;
+    }
+  } catch (e) { /* 소리 실패가 게임을 멈추지 않게 */ }
+}
 
-  // ambient: sea waves or wind
-  let ambNode = null, ambName = null;
-  A.ambient = (name) => {
-    if (!ctx || ambName === name) return;
-    ambName = name;
-    if (ambNode) { try { ambNode.stop(); } catch (e) {} ambNode = null; }
-    if (!name) return;
-    const n = ctx.createBufferSource(); n.buffer = A.noiseBuf; n.loop = true;
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = name === 'sea' ? 500 : 900;
-    const g = ctx.createGain(); g.gain.value = 0.5;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = name === 'sea' ? 0.12 : 0.07;
-    const lg = ctx.createGain(); lg.gain.value = 0.45; lfo.connect(lg); lg.connect(g.gain);
-    n.connect(f); f.connect(g); g.connect(ambBus); n.start(); lfo.start();
-    ambNode = { stop() { n.stop(); lfo.stop(); } };
-  };
+export const Audio = {
+  ready: false,
+  muted: false,
 
-  // ---------- sfx ----------
-  const S = {
-    swing: (t) => noiseHit(t, 1800, 0.12, 0.25, 'bandpass', sfxBus, 0.4),
-    hit: (t) => { noiseHit(t, 900, 0.08, 0.4, 'lowpass'); tone(t, 220, 90, 0.1, 0.25, 'square'); },
-    hurt: (t) => { tone(t, 300, 120, 0.2, 0.25, 'sawtooth'); noiseHit(t, 500, 0.15, 0.3, 'lowpass'); },
-    roll: (t) => noiseHit(t, 600, 0.22, 0.2, 'bandpass', sfxBus, 2.5),
-    purify: (t) => { [0, 2, 4, 7].forEach((d, i) => chime(t + i * 0.09, note(d + 10), 0.12)); },
-    coin: (t) => { chime(t, 1760, 0.08); chime(t + 0.06, 2350, 0.07); },
-    level: (t) => { [0, 2, 4, 5, 7].forEach((d, i) => pluck(note(d + 5), t + i * 0.1, 0.25, 0.9, sfxBus)); gong(t, 0.15, 110, sfxBus); },
-    skill1: (t) => { tone(t, 600, 1400, 0.25, 0.14, 'triangle'); flute(note(12), t, 0.3, 0.12, sfxBus); },
-    skill2: (t) => { for (let i = 0; i < 6; i++) noiseHit(t + i * 0.18, 1200, 0.15, 0.18, 'bandpass', sfxBus, 0.5); },
-    skill3: (t) => { noiseHit(t, 300, 0.6, 0.4, 'lowpass', sfxBus, 4); tone(t, 200, 500, 0.4, 0.15); },
-    ult: (t) => { gong(t, 0.4, 82, sfxBus); [7, 9, 8, 7, 5, 4].forEach((d, i) => flute(note(d), t + 0.3 + i * 0.32, 0.4, 0.16, sfxBus)); },
-    talk: (t) => tone(t, 520 + Math.random() * 80, 480, 0.04, 0.04, 'triangle'),
-    ui: (t) => pluck(note(9), t, 0.18, 0.4, sfxBus),
-    item: (t) => { pluck(note(7), t, 0.2, 0.5, sfxBus); pluck(note(9), t + 0.08, 0.2, 0.5, sfxBus); },
-    quest: (t) => { [5, 7, 9, 12].forEach((d, i) => chime(t + i * 0.12, note(d + 5), 0.14)); },
-    verse: (t) => { gong(t, 0.25, 98, sfxBus); [7, 9, 10, 12].forEach((d, i) => flute(note(d), t + 0.2 + i * 0.25, 0.35, 0.14, sfxBus)); },
-    slam: (t) => { tone(t, 120, 35, 0.5, 0.5); noiseHit(t, 400, 0.4, 0.45, 'lowpass'); },
-    fire: (t) => noiseHit(t, 2200, 0.3, 0.18, 'highpass', sfxBus, 0.3),
-    roar: (t) => { tone(t, 90, 60, 0.9, 0.35, 'sawtooth'); noiseHit(t, 300, 0.8, 0.3, 'bandpass', sfxBus, 0.6); },
-    tell: (t) => tone(t, 880, 880, 0.08, 0.08, 'square'),
-    death: (t) => { tone(t, 400, 60, 1.2, 0.3, 'triangle'); gong(t, 0.2, 65, sfxBus); },
-    door: (t) => { drum(t, 'kung', 0.3, sfxBus); noiseHit(t, 200, 0.3, 0.2, 'lowpass'); },
-  };
-  let lastSfx = {};
-  A.sfx = (name) => {
-    if (!ctx || !S[name]) return;
-    const now = ctx.currentTime;
-    if (lastSfx[name] && now - lastSfx[name] < 0.04) return;
-    lastSfx[name] = now;
-    S[name](now + 0.01);
-  };
-  return A;
-})();
+  // 사용자 제스처(keydown·pointerup·touchend·click) 안에서 호출. 여러 번 불러도 안전.
+  // ctx 가 running 이 아니면 매번 resume() 을 다시 부른다(대기 중인 promise 를 캐시하지 않는다).
+  async init() {
+    try {
+      if (!ctx) {
+        const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+        if (!AC) return;
+        ctx = new AC();
+        master = ctx.createGain();
+        master.gain.value = Audio.muted ? 0 : 0.6;
+        master.connect(ctx.destination);
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+        ctx.onstatechange = () => rebase(() => { Audio.ready = ctx.state === 'running'; if (Audio.ready) sampleLat(); });
+      }
+      let ok = ctx.state === 'running';
+      if (!ok && !paused) { try { await ctx.resume(); ok = true; } catch (e) { /* 자동재생 차단: 다음 제스처에서 다시 */ } }
+      rebase(() => { Audio.ready = ctx.state === 'running' || ok; if (Audio.ready) sampleLat(); });
+    } catch (e) { ctx = null; Audio.ready = false; }
+  },
+
+  now() { return srcT() + bias; },
+
+  // 사용자 보정(초). 양수 = 판정 기준을 소리보다 늦춘다. 저장은 호출자 몫. 춤 밖에서 바꿀 것.
+  get offset() { return userOff; },
+  setOffset(sec) { userOff = Math.max(-0.5, Math.min(0.5, +sec || 0)); },
+  get paused() { return paused; },
+
+  // 탭 숨김·포커스 잃음: ctx 를 멈춰 currentTime 이 서게 하고 가짜 시계도 세운다.
+  pause() {
+    if (paused) return;
+    rebase(() => { fakeBase = fakeT(); perfBase = perfNow(); frozen = true; paused = true; });
+    try { if (ctx && ctx.state === 'running') ctx.suspend(); } catch (e) { /* 무시 */ }
+  },
+  resume() {
+    if (!paused) return;
+    const go = () => { if (!paused) return; rebase(() => { perfBase = perfNow(); frozen = false; paused = false; }); };
+    // ctx 가 다시 돌기 시작한 뒤에 가짜 시계를 푼다(재개 도중 now() 가 앞서가지 않게)
+    try {
+      if (ctx && ctx.state !== 'running') ctx.resume().then(go, go); else go();
+    } catch (e) { go(); }
+  },
+
+  // 아직 시작 전인 예약음을 모두 끊고 장단을 지운다(춤 장면 퇴장 때 카운트인이 다음 장면으로 새지 않게).
+  cancelPending() {
+    Audio.stopJangdan();
+    if (!ctx) { pending.clear(); return; }
+    const cur = ctx.currentTime;
+    for (const [n, t] of [...pending]) {
+      if (t > cur) { try { n.stop(); n.disconnect(); } catch (e) { /* 무시 */ } pending.delete(n); }
+    }
+  },
+
+  setMuted(b) {
+    rebase(() => { Audio.muted = !!b; });
+    try { if (master) master.gain.value = Audio.muted ? 0 : 0.6; } catch (e) { /* 무시 */ }
+  },
+  setSpeed(k) {
+    const before = Audio.now();
+    fakeBase = fakeT(); perfBase = perfNow();
+    speed = Math.max(0.1, +k || 1);
+    bias += before - Audio.now();
+  },
+
+  play(name, at = Audio.now(), gain = 1) {
+    try {
+      if (!useCtx() || !VOICES[name]) return;
+      VOICES[name](Math.max(ctx.currentTime, toRaw(at)), gain);
+    } catch (e) { /* 무시 */ }
+  },
+
+  startJangdan({ bpm, startAt, pattern = [], melody = null }) {
+    Audio.stopJangdan();
+    if (ctx) rebase(sampleLat);
+    jd = { segs: [{ beat: 0, time: startAt, bpm }], pattern, melody, i: 0, bar: 0, mb: 0, timer: setInterval(tick, TICK_MS) };
+    tick();
+  },
+  stopJangdan() { if (jd) { clearInterval(jd.timer); jd = null; } },
+
+  // atBeat 이후 템포를 바꾼다. 오름차순으로, 가능하면 0.2초 이상 앞서 불러야 예약된 소리와 어긋나지 않는다.
+  setBpm(bpm, atBeat) {
+    if (!jd) return;
+    if (atBeat == null) atBeat = Math.ceil(Audio.beatAt(Audio.now()) + 0.5);
+    const t = Audio.timeAt(atBeat);
+    jd.segs = jd.segs.filter((s) => s.beat < atBeat);
+    jd.segs.push({ beat: atBeat, time: t, bpm });
+  },
+  beatAt(time) {
+    if (!jd) return 0;
+    let s = jd.segs[0];
+    for (const x of jd.segs) if (x.time <= time) s = x;
+    return s.beat + (time - s.time) * s.bpm / 60;
+  },
+  timeAt(beat) {
+    if (!jd) return 0;
+    const s = seg(beat);
+    return s.time + (beat - s.beat) * 60 / s.bpm;
+  },
+};
