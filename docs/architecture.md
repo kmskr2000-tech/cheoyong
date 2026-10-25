@@ -155,7 +155,7 @@ export function wrapText(ctx, str, maxW) → string[];
 - **title**: 큰 붓글씨 "처용무", 부제 "밤의 문", 처용 그림자가 천천히 춤, 메뉴 [새로 시작 / 이어하기(저장 있을 때)]. 확인으로 선택.
 - **story**: `params.lines`, `params.next`(다음 장면 이름과 params). 확인마다 다음 줄, 끝나면 next.
 - **night**: `G.night = { n, houses:[{x, w, haunted:type|null, masked, home}], spirits:[], cheoyongX, lastSpread }`. ←/→로 걷기(속도 260px/s), 집 앞(±40px)에서 확인 → `setScene('dance', {spirit, houseIdx})`. 전파 타이머. 역신 0 → `setScene('result')`. 상단에 "n째 밤 · 남은 역신 k" 표시. 터치: 집 탭 → 자동 이동 후 시작.
-- **dance**: 왼쪽에 처용(박점 x=240,y=430), 오른쪽에 역신(x=760). 네 줄 레인 y=300..420 간격 40, 음표는 오른쪽에서 왼쪽으로 `lead`박 동안 흘러온다. 상단에 흉 게이지(오른쪽), 덕 게이지(왼쪽). 판정 시 처용 포즈 교체 + fx. `Judge.outcome()` 나오면 kneel/flee 연출(1.5초) → 밤거리로 돌아가 결과 반영(`params.houseIdx`). `?dance=` 로 바로 들어오면 결과 후 title로.
+- **dance**: 왼쪽에 처용(x=150, 발밑 y=430), 박점 x=300, 오른쪽에 역신(x=760). 네 줄 레인 y=300..420 간격 40, 음표는 오른쪽에서 왼쪽으로 `lead`박 동안 흘러온다. 상단에 흉 게이지(오른쪽), 덕 게이지(왼쪽). 판정 시 처용 포즈 교체 + fx. `Judge.outcome()` 나오면 kneel/flee 연출(1.5초) → 밤거리로 돌아가 결과 반영(`params.houseIdx`). `?dance=` 로 바로 들어오면 결과 후 title로.
 - **result**: 그 밤 요약(굴복 수, 덕 평균, 등급 상/중/하) → 저장 → story(outro) → 다음 밤 intro → night. 5밤 뒤에는 ending.
 - **ending**: 모든 문에 탈이 걸린 새벽 거리를 옆으로 천천히 지나가며 처용가 여덟 구절이 세로쓰기로 뜬다. 마지막에 "처용무 — 끝". `G.reachedEnding = true; console.log('REACHED ENDING')`.
 

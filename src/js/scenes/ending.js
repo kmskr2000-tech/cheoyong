@@ -78,7 +78,7 @@ export default {
 
     // 걷는 처용
     const pose = Math.floor(tt / 0.3) % 2 === 0 ? 'step' : 'idle';
-    drawCheoyong(ctx, 480, 490, 0.95, pose, tt, { phase: (tt / 0.3) % 1 });
+    drawCheoyong(ctx, 480, 445, 0.95, pose, tt, { phase: (tt / 0.3) % 1 });
 
     if (phase === 'verses') {
       const k = tt - VERSE_START;
@@ -89,7 +89,7 @@ export default {
           const a = Math.min(clamp(local / 0.7, 0, 1), clamp((VERSE_EVERY - local) / 0.6, 0, 1));
           ctx.save();
           ctx.globalAlpha = a;
-          verticalText(ctx, STORY.verses[vi], 840, 60, 42, COLORS.black);
+          verticalText(ctx, STORY.verses[vi], 850, 40, 34, COLORS.black);
           ctx.restore();
           ctx.save();
           ctx.font = `18px ${FONT}`;

@@ -7,7 +7,7 @@ import { Save } from '../save.js';
 
 const SEQ = ['idle', 'armL', 'step', 'spin', 'armR', 'bow'].filter((p) => POSES.includes(p));
 const PERIOD = 1.6; // 포즈 하나당 초
-const MENU_X = 770, MENU_Y = 350, MENU_DY = 66;
+const MENU_X = 730, MENU_Y = 360, MENU_DY = 66;
 
 let api, items, sel, tt, last, lastC;
 
@@ -51,13 +51,13 @@ export default {
     drawLantern(ctx, 96, 96, 56, tt);
 
     // 제목
-    brushTitle(ctx, '처용무', 480, 190, 190, COLORS.black, { align: 'center', jitter: 1.2 });
-    brushTitle(ctx, '밤의 문', 480, 262, 44, COLORS.red, { align: 'center' });
+    brushTitle(ctx, '처용무', 500, 140, 160, COLORS.black, { align: 'center', jitter: 1.2 });
+    brushTitle(ctx, '밤의 문', 500, 245, 40, COLORS.red, { align: 'center' });
 
     // 느리게 춤추는 처용
     const k = tt / PERIOD;
     const i = Math.floor(k) % SEQ.length;
-    drawCheoyong(ctx, 480, 500, 1.0, SEQ[i], tt, { phase: ease(k - Math.floor(k)) });
+    drawCheoyong(ctx, 300, 500, 0.95, SEQ[i], tt, { phase: ease(k - Math.floor(k)) });
 
     // 메뉴
     items.forEach((it, j) => {
@@ -67,7 +67,7 @@ export default {
       ctx.globalAlpha = on ? 1 : 0.55;
       if (on) {
         ctx.fillStyle = COLORS.red;
-        ctx.beginPath(); ctx.arc(MENU_X - 100, y - 14, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(MENU_X - 135, y - 14, 6, 0, Math.PI * 2); ctx.fill();
       }
       brushTitle(ctx, it.label, MENU_X, y, on ? 50 : 42, on ? COLORS.red : COLORS.black, { align: 'center' });
       ctx.restore();

@@ -6,7 +6,8 @@ import { drawCheoyong, drawSpirit, drawHouse, drawMask, drawNote } from '../rend
 import { brushTitle, FONT } from '../render/text.js';
 import { STORY } from '../story.js';
 
-const CX = 240, SX = 760, BASE_Y = 430;       // 박점 x, 역신 x, 발밑 y
+const CX = 300, SX = 760, BASE_Y = 430;       // 박점 x, 역신 x, 발밑 y
+const CH_X = 150;                             // 처용 x(박점 왼쪽)
 const LY = [300, 340, 380, 420];              // 레인 y (0 위 … 3 아래)
 const TRAVEL = SX - CX;                       // 음표 이동 거리 520
 const LANE_POSE = ['armL', 'step', 'spin', 'armR'];
@@ -209,24 +210,24 @@ export default {
 
     // 레인 줄·박점
     ctx.save();
-    ctx.globalAlpha = inSong ? 0.18 : 0.35;
+    ctx.globalAlpha = inSong ? 0.12 : 0.22;
     ctx.strokeStyle = COLORS.black;
     ctx.lineWidth = 2;
     LY.forEach((y, i) => {
-      ctx.beginPath(); ctx.moveTo(CX, y); ctx.lineTo(SX, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(CX - 8, y); ctx.lineTo(SX - 30, y); ctx.stroke();
     });
     ctx.globalAlpha = inSong ? 0.3 : 0.7;
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(CX, LY[0] - 22); ctx.lineTo(CX, LY[3] + 22); ctx.stroke();
     ctx.fillStyle = COLORS.red;
-    LY.forEach((y) => { ctx.beginPath(); ctx.arc(CX, y, 5, 0, Math.PI * 2); ctx.fill(); });
+    LY.forEach((y) => { ctx.beginPath(); ctx.arc(CX, y, 14, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(CX, y, 4, 0, Math.PI * 2); ctx.fill(); });
     ctx.restore();
     ctx.save();
     ctx.font = `26px ${FONT}`;
     ctx.textAlign = 'center';
     ctx.fillStyle = COLORS.black;
     ctx.globalAlpha = inSong ? 0.3 : 0.75;
-    LY.forEach((y, i) => ctx.fillText(LANE_GLYPH[i], 200, y + 9));
+    LY.forEach((y, i) => ctx.fillText(LANE_GLYPH[i], CX - 36, y + 9));
     ctx.restore();
 
     // 역신
@@ -270,13 +271,13 @@ export default {
     // 처용
     const el = now - poseT;
     const p = el < POSE_DUR ? pose : (inSong ? 'sing' : 'idle');
-    drawCheoyong(ctx, CX, BASE_Y, 0.9, p, now, { phase: el < POSE_DUR ? clamp(el / POSE_DUR, 0, 1) : 0 });
+    drawCheoyong(ctx, CH_X, BASE_Y, 0.9, p, now, { phase: el < POSE_DUR ? clamp(el / POSE_DUR, 0, 1) : 0 });
 
 
     // HUD
     drawGauges(ctx, now);
     if (inSong && !ended) brushTitle(ctx, STORY.verses[verse], 480, 118, 54, COLORS.red, { align: 'center' });
-    if (judge.combo >= 5 && !ended) brushTitle(ctx, `${judge.combo} 이음`, CX, 478, 32, COLORS.black, { align: 'center' });
+    if (judge.combo >= 5 && !ended) brushTitle(ctx, `${judge.combo} 이음`, CH_X, 478, 32, COLORS.black, { align: 'center' });
     if (state === 'count' && now < startTime) {
       let ci = -1;
       countTimes.forEach((t, i) => { if (now >= t) ci = i; });
