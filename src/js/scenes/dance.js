@@ -205,7 +205,7 @@ export default {
     const home = spirit === 'yeoksin';
     drawPaper(ctx, W, H, now, { moon: 1, lantern: null, redMoon: !!(N && N.n === 4) });
     drawStreet(ctx, W, H, now, { houses: [], horizonY: 420 });
-    drawHouse(ctx, 830, BASE_Y, home ? 280 : 200, now, { lit: true, haunted: !ended || ended === 'flee', masked: ended === 'kneel' && maskDone, home });
+    drawHouse(ctx, home ? 900 : 830, BASE_Y, home ? 150 : 200, now, { lit: true, haunted: !ended || ended === 'flee', masked: ended === 'kneel' && maskDone, home });
 
     const { inSong, verse } = curPhase(now);
     const e = ended ? tt - endTT : 0;

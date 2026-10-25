@@ -63,13 +63,25 @@ export function setScene(name, params = {}) {
 Input.init(canvas, Audio);
 Input.onLane((lane, at) => { const s = G.scene; if (s && s.onLane) s.onLane(lane, at); });
 Input.onAction((name, at) => { const s = G.scene; if (s && s.onAction) s.onAction(name, at); });
-Input.onPointer((x, y, type) => { const s = G.scene; if (s && s.onPointer) s.onPointer(x, y, type); });
-
-// 첫 사용자 입력에서 오디오 시작(막히면 다음 입력에서 재시도)
-const unlock = () => Audio.init().then(() => {
-  if (Audio.ready) for (const ev of ['keydown', 'pointerdown', 'touchend', 'click']) window.removeEventListener(ev, unlock, true);
+// 포인터: 장면에 onPointer 가 있으면 그것만 부른다. 없으면 레인 영역 밖의 'up' 을 confirm 으로 바꿔 준다.
+Input.onPointer((x, y, type, at) => {
+  const s = G.scene;
+  if (!s) return;
+  if (s.onPointer) { s.onPointer(x, y, type); return; }
+  if (type === 'up' && !(Input.laneZone && y >= Input.BAND_Y) && s.onAction) s.onAction('confirm', at);
 });
-for (const ev of ['keydown', 'pointerdown', 'touchend', 'click']) window.addEventListener(ev, unlock, true);
+
+// 오디오 잠금 해제. 모바일에서 pointerdown 은 사용자 활성화가 아니므로 keydown·pointerup·touchend·click 에서만.
+// 막히면 다음 제스처에서 다시 시도(Audio.init 이 매번 resume 을 다시 부른다). 켜진 뒤에도 리스너는 둔다 — 중단됐다 돌아와도 풀 수 있게.
+const UNLOCK_EVENTS = ['keydown', 'pointerup', 'touchend', 'click'];
+const unlock = () => { if (!Audio.ready) Audio.init(); };
+for (const ev of UNLOCK_EVENTS) window.addEventListener(ev, unlock, true);
+// 탭이 숨겨지거나 창이 포커스를 잃으면 오디오 시계를 세운다(판정이 함께 멈춘다). 돌아오면 점프 없이 이어간다.
+let blurred = false;
+const syncPause = () => { if (document.hidden || blurred) Audio.pause(); else Audio.resume(); };
+document.addEventListener('visibilitychange', syncPause);
+window.addEventListener('blur', () => { blurred = true; syncPause(); });
+window.addEventListener('focus', () => { blurred = false; syncPause(); });
 // M: 소리 끄기/켜기
 window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && !e.repeat) { Audio.setMuted(!Audio.muted); G.muted = Audio.muted; }
@@ -91,7 +103,7 @@ function frame(ts) {
   requestAnimationFrame(frame);
   const real = last ? (ts - last) / 1000 : 1 / 60;
   last = ts;
-  const dt = Math.min(real, 0.05) * (Audio.muted ? G.speed : 1);   // 배속은 오디오 시계와 같은 비율로
+  const dt = Audio.paused ? 0 : Math.min(real, 0.05) * (Audio.muted ? G.speed : 1);   // 배속은 오디오 시계와 같은 비율로, 일시정지 중엔 0
   const now = Audio.now();
   const s = G.scene;
   if (AutoMod && AutoMod.update && G.auto) AutoMod.update(dt, now);

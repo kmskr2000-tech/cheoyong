@@ -41,7 +41,9 @@ export function ctxSize();                     // {w:960, h:540}
 - 장면 모듈은 `export default { enter(params, api), exit(), update(dt, now), draw(ctx, now), onLane(lane, at), onAction(name, at), onPointer(x, y, type) }`. `api = { setScene, G, Audio, Input, fx }`. 안 쓰는 메서드는 생략 가능.
 - `onAction` 이름: `'confirm'`, `'back'`, `'left'`, `'right'`(눌림), `'leftUp'`, `'rightUp'`.
 - `onPointer(x, y, type)` 논리 좌표, type `'down'|'up'|'move'`.
-- 부트 순서: URL 파싱 → `Save.load()` → `Input.init(canvas, Audio)` → 첫 장면(기본 `title`; `?night`·`?dance`·`?ending`이면 해당 장면) → 루프. 첫 사용자 입력(키/터치)에서 `Audio.init()`.
+- **포인터 라우팅(main.js)**: 장면에 `onPointer` 가 있으면 그것만 부른다. 없으면 레인 영역(춤 장면 아래 18%) 밖의 `'up'` 을 `scene.onAction('confirm', at)` 으로 바꿔 준다. Input 은 포인터로 `'confirm'` 을 직접 내지 않는다(둘 다 처리하는 장면에서 이중 발화하던 문제). 그러니 `onPointer` 를 정의한 장면은 탭 확인을 스스로 처리한다.
+- 탭이 숨겨지거나(`visibilitychange`) 창이 포커스를 잃으면(`blur`) `Audio.pause()`, 돌아오면 `Audio.resume()`. 일시정지 중 프레임 `dt` 는 0.
+- 부트 순서: URL 파싱 → `Save.load()` → `Input.init(canvas, Audio)` → 첫 장면(기본 `title`; `?night`·`?dance`·`?ending`이면 해당 장면) → 루프. 첫 사용자 제스처에서 `Audio.init()` — `keydown`·`pointerup`·`touchend`·`click` (모바일에서 `pointerdown` 은 사용자 활성화가 아니라 쓰지 않는다). 막히면 다음 제스처에서 다시.
 - `?auto`면 `Autopilot.attach(G)`. 준비되면 `window.__ready = true`.
 - `?speed=k`는 `G.muted`일 때만 적용(`Audio.setSpeed(k)`).
 - 전역 에러는 `window.__errors` 배열에 모은다(테스트가 읽음).
@@ -50,13 +52,17 @@ export function ctxSize();                     // {w:960, h:540}
 ```js
 export const Input = {
   init(canvas, Audio),                // 키·터치·포인터 리스너. 터치 레인 영역: 화면 아래 18%를 네 칸.
+  BAND_Y, laneZone,                   // 레인 영역 위 경계(논리 y) / 춤 장면에서만 true(main.js 가 설정)
   onLane(cb),                         // cb(lane, at)  at = Audio.now() (이벤트 시점에 기록)
   onAction(cb),                       // cb(name, at)
-  onPointer(cb),                      // cb(x, y, type) 논리 좌표
+  onPointer(cb),                      // cb(x, y, type, at) 논리 좌표. 포인터로 'confirm' 액션은 내지 않는다
   touchMode: false,                   // 터치 입력이 한 번이라도 있거나 ?touch 면 true
-  drawTouchLanes(ctx, activeLane)     // 네 칸 안내(춤 장면에서 호출). touchMode일 때만 그림.
+  drawTouchLanes(ctx, activeLane),    // 네 칸 안내. main.js 가 춤 장면에서 `Input.activeLane` 으로 호출(장면은 부르지 않는다). touchMode일 때만 그림.
+  get activeLane()                    // 눌려 있거나 누른 뒤 120ms(실시간) 이내인 레인, 없으면 -1
 };
 ```
+레인 영역(`laneZone && y >= BAND_Y`)은 **터치만** 잡는다(`pointerType === 'touch'` 또는 `touchMode`). 마우스 클릭은 영역 안에서도 보통 포인터 이벤트다.
+
 키 매핑: 레인 ← A / ↓ S / ↑ W / → D (화살표 포함). confirm = Space·Enter·J, back = Esc. 춤 장면이 아니어도 ←/→ 는 `'left'/'right'` 행동으로도 나간다(밤거리 걷기). 키 반복(keydown repeat)은 무시.
 
 ## audio.js
@@ -64,7 +70,10 @@ export const Input = {
 export const Audio = {
   async init(),                       // 사용자 제스처 안에서 호출. 두 번 불러도 안전.
   ready: false, muted: false,
-  now(),                              // 초. ctx.currentTime, 뮤트/미초기화면 performance.now()/1000*speed
+  now(),                              // 초. ctx.currentTime - 출력지연 - Audio.offset (뮤트/미초기화/일시정지 중엔 performance.now()/1000*speed 가짜 시계, 전환 때 점프 없음)
+  offset, setOffset(sec),             // 사용자 보정(기본 0, ±0.5초로 제한; 양수 = 판정 기준을 소리보다 늦춤). 저장은 호출자 몫, 춤 밖에서 바꿀 것
+  pause(), resume(), paused,          // ctx.suspend/resume + 가짜 시계 정지. 숨김 동안 now() 가 서므로 판정도 선다. main.js 가 visibilitychange·blur/focus 에서 호출
+  cancelPending(),                    // 아직 시작 안 한 예약음(시작 시각이 미래인 노드)을 모두 끊고 stopJangdan(). 춤 장면 exit 에서 호출 — 카운트인이 다음 장면으로 새지 않게
   setMuted(b), setSpeed(k),
   play(name, at = now(), gain = 1),   // name: 'deong'|'kung'|'deok'|'roll'|'bak'|'hit'|'miss'|'kneel'|'mask'|'step'|'confirm'|'flee'
   startJangdan({ bpm, startAt, pattern, melody }), // pattern: [{beat, name}] 한 마디(4박) 단위 반복 예약. melody: 음계 인덱스 배열(0~4) 또는 null
@@ -75,6 +84,8 @@ export const Audio = {
 };
 ```
 - 합성만 쓴다(오디오 파일 없음). 스케줄은 100ms 룩어헤드 타이머.
+- **시계 규칙**: `now()` 는 소리가 *들리는* 시각이다. `play(name, at)`·`startJangdan` 의 `at`/`startAt` 은 `now()` 기준이고, 내부에서 ctx 원시 시간으로 바꿔 예약한다(`raw = at + 출력지연 + offset - bias`). 출력지연은 `ctx.outputLatency || ctx.baseLatency || 0` 을 init·재개·장단 시작 때만 표본한다(now() 연속 유지).
+- `init()` 은 ctx 가 `running` 이 아니면 호출될 때마다 `resume()` 을 다시 부른다(대기 promise 를 캐시하지 않음). `ready` 는 state 가 running 이거나 resume 이 resolve 됐을 때만 true.
 - `hit`은 판정 등급별 소리가 아니고 하나다. 판정 소리는 장면이 `deok`(절) `kung`(장) `step`(박)으로 섞어 쓴다.
 
 ## chart.js (순수)
@@ -110,7 +121,7 @@ export class Judge {
 
 ## save.js
 ```js
-export const Save = { load() → {night:1, masks:{}, best:{}}, write(data), clear(), KEY:'cheoyongmu.save' };
+export const Save = { load() → {night:1, masks:{}, best:{}, cleared:false}, write(data), clear(), KEY:'cheoyongmu.save' };
 ```
 
 ## story.js
@@ -132,12 +143,13 @@ export const STORY = {
 ```js
 // paper.js
 export function drawPaper(ctx, w, h, t, { moon = 1, lantern = {x,y,r} | null, redMoon = false } = {});   // 한지 결·역광·달·비네트
-export function drawStreet(ctx, w, h, t, { houses:[{x, w}], horizonY });                                // 지평선·담장 실루엣·먼 산
+export function drawStreet(ctx, w, h, t, { houses:[{x, w}], horizonY });                                // 지평선·담장 실루엣·먼 산. 산·안개·땅만 캐시(집 x 와 무관), 담장은 매 프레임 단색으로 → x 가 바뀌어도 캔버스를 새로 만들지 않는다
 // puppet.js  (모두 발밑 기준 x,y, scale 1 = 처용 키 220px)
 export const POSES = ['idle','armL','step','spin','armR','bow','sing'];
 export function drawCheoyong(ctx, x, y, scale, pose, t, { phase = 0 /* 0..1 포즈 진행 */, mask = true } = {});
 export function drawSpirit(ctx, x, y, scale, type, state /* 'lurk'|'throw'|'flinch'|'kneel'|'flee' */, t, { phase = 0 } = {});
-export function drawHouse(ctx, x, y, w, t, { lit = true, haunted = false, masked = false, home = false } = {});
+export function drawHouse(ctx, x, y, w, t, { lit = true, haunted = false, masked = false, home = false, seed = null } = {});
+//   seed(정수): 주면 지붕 종류(초가/기와)·볏짚 결·창 불빛 위상이 모두 seed 에서 나온다 → x 가 스크롤돼도 안 깜빡임. 없으면 Math.round(x) 해시. 스크롤 장면은 집 인덱스를 seed 로 넘길 것.
 export function drawMask(ctx, x, y, size, t, { glow = 0 } = {});   // 처용탈(유일한 온색)
 export function drawLantern(ctx, x, y, size, t);
 export function drawNote(ctx, x, y, lane, size, t, { pair = false, alpha = 1 } = {});   // 흉 음표(레인별 오방색 글리프)
@@ -145,7 +157,7 @@ export function drawNote(ctx, x, y, lane, size, t, { pair = false, alpha = 1 } =
 export const fx = { burst(x, y, kind /* 'jeol'|'jang'|'bak'|'miss'|'mask'|'petal' */), text(x, y, str, color), flash(color, dur), ripple(x, y), update(dt), draw(ctx), clear() };
 // text.js
 export const FONT = "'Nanum Brush Script','Noto Serif KR',serif";
-export function brushTitle(ctx, str, x, y, size, color, { align = 'center', jitter = 0 } = {});
+export function brushTitle(ctx, str, x, y, size, color, { align = 'center', jitter = 0 } = {});   // (str,size,color,jitter,align) 별 2× 오프스크린 캐시(LRU 64). jitter 는 구울 때 고정. 호출자의 globalAlpha 가 적용된다
 export function verticalText(ctx, str, x, y, size, color);
 export function dialogBox(ctx, w, h, who, text, t, { progress = 1 } = {});   // 아래 letterbox 대사 상자, 타자 효과는 progress
 export function wrapText(ctx, str, maxW) → string[];

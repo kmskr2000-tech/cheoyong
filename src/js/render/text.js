@@ -26,33 +26,67 @@ export function wrapText(ctx, str, maxW) {
   return out;
 }
 
-// 큰 붓글씨 제목: 번짐 사본 2~3장 + 본체. jitter(0~1)는 글자별 흔들림.
-export function brushTitle(ctx, str, x, y, size, color, { align = 'center', jitter = 0 } = {}) {
-  ctx.save();
-  ctx.font = `${size}px ${FONT}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  const chars = [...String(str)], ws = chars.map((c) => ctx.measureText(c).width), gap = size * 0.04;
-  const total = ws.reduce((a, b) => a + b, 0) + gap * (chars.length - 1);
-  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+// 큰 붓글씨 제목: 번짐 사본 2~3장 + 본체. jitter(0~1)는 글자별 흔들림(한 번 구울 때 고정, 프레임마다 흔들리지 않는다).
+// 매 프레임 shadowBlur 패스를 돌리지 않도록 (문자열·크기·색·jitter·정렬) 별로 2배 해상도 오프스크린에 구워
+// LRU(64)에 두고 비트맵만 그린다. 크기는 정수로 올림 없이 반올림해 굽고 그릴 때 배율로 맞춘다.
+const BAKE_R = 2, TITLE_LRU = 64;
+const titleCache = new Map();
+let fontGen = 0, measureCtx = null;
+if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
+  document.fonts.addEventListener('loadingdone', () => { fontGen++; titleCache.clear(); }); // 웹폰트가 늦게 오면 다시 굽는다
+}
+const mkCv = (w, h) => {
+  if (typeof document !== 'undefined') { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+  return new OffscreenCanvas(w, h);
+};
+
+function bakeTitle(str, S, color, jit, align) {
+  if (!measureCtx) measureCtx = mkCv(1, 1).getContext('2d');
+  const m = measureCtx;
+  m.font = `${S}px ${FONT}`;
+  const chars = [...str], ws = chars.map((c) => m.measureText(c).width), gap = S * 0.04;
+  const total = ws.reduce((a, b) => a + b, 0) + gap * Math.max(0, chars.length - 1);
+  const pad = Math.ceil(S * 0.35), W = Math.ceil(total + pad * 2), H = Math.ceil(S * 1.7), cy = H / 2;
+  const cv = mkCv(W * BAKE_R, H * BAKE_R), c = cv.getContext('2d');
+  c.scale(BAKE_R, BAKE_R);
+  c.font = `${S}px ${FONT}`; c.textBaseline = 'middle'; c.textAlign = 'left';
   const offs = [[-0.018, 0.014, 0.16], [0.02, -0.012, 0.13], [0.006, 0.026, 0.1]];
   const pos = [];
+  let cx = pad;
   for (let i = 0; i < chars.length; i++) {
-    const j = jitter * size;
-    pos.push([cx + (hash(i * 3.1) - 0.5) * j * 0.06, y + (hash(i * 5.7) - 0.5) * j * 0.12, (hash(i * 9.3) - 0.5) * jitter * 0.1]);
+    const j = jit * S;
+    pos.push([cx + (hash(i * 3.1) - 0.5) * j * 0.06, cy + (hash(i * 5.7) - 0.5) * j * 0.12, (hash(i * 9.3) - 0.5) * jit * 0.1]);
     cx += ws[i] + gap;
   }
   const pass = (dx, dy, a, blur) => {
-    ctx.globalAlpha = a; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = blur;
+    c.globalAlpha = a; c.fillStyle = color; c.shadowColor = color; c.shadowBlur = blur * BAKE_R;   // shadowBlur 는 변환을 안 따른다
     for (let i = 0; i < chars.length; i++) {
-      ctx.save(); ctx.translate(pos[i][0] + dx * size, pos[i][1] + dy * size); ctx.rotate(pos[i][2]);
-      ctx.fillText(chars[i], 0, 0); ctx.restore();
+      c.save(); c.translate(pos[i][0] + dx * S, pos[i][1] + dy * S); c.rotate(pos[i][2]);
+      c.fillText(chars[i], 0, 0); c.restore();
     }
   };
-  for (const [dx, dy, a] of offs) pass(dx, dy, a, size * 0.05); // 먹 번짐
+  for (const [dx, dy, a] of offs) pass(dx, dy, a, S * 0.05); // 먹 번짐
   pass(0, 0, 1, 0);
   // 마른 붓 느낌: 얇은 윤곽선
-  ctx.shadowBlur = 0; ctx.globalAlpha = 0.5; ctx.strokeStyle = color; ctx.lineWidth = Math.max(0.6, size * 0.012);
-  for (let i = 0; i < chars.length; i++) { ctx.save(); ctx.translate(pos[i][0], pos[i][1]); ctx.rotate(pos[i][2]); ctx.strokeText(chars[i], 0, 0); ctx.restore(); }
-  ctx.restore();
+  c.shadowBlur = 0; c.globalAlpha = 0.5; c.strokeStyle = color; c.lineWidth = Math.max(0.6, S * 0.012);
+  for (let i = 0; i < chars.length; i++) { c.save(); c.translate(pos[i][0], pos[i][1]); c.rotate(pos[i][2]); c.strokeText(chars[i], 0, 0); c.restore(); }
+  return { cv, total, pad, W, H };
+}
+
+export function brushTitle(ctx, str, x, y, size, color, { align = 'center', jitter = 0 } = {}) {
+  str = String(str);
+  if (!str || !(size > 0)) return;
+  const S = Math.max(1, Math.round(size)), jit = Math.round(jitter * 20) / 20;
+  const key = `${fontGen}|${str}|${S}|${color}|${jit}|${align}`;
+  let e = titleCache.get(key);
+  if (e) { titleCache.delete(key); titleCache.set(key, e); }       // 최근 사용으로
+  else {
+    e = bakeTitle(str, S, color, jit, align);
+    titleCache.set(key, e);
+    if (titleCache.size > TITLE_LRU) titleCache.delete(titleCache.keys().next().value);
+  }
+  const sc = size / S, left = align === 'center' ? x - e.total * sc / 2 : align === 'right' ? x - e.total * sc : x;
+  ctx.drawImage(e.cv, left - e.pad * sc, y - e.H * sc / 2, e.W * sc, e.H * sc);
 }
 
 // 세로쓰기: x 가 글자 열의 가운데, y 는 맨 위. '\n' 은 왼쪽 새 열.

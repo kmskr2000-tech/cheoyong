@@ -174,12 +174,16 @@ function ridge(ctx, w, base, amp, f1, p1, color, step = 8) {
   ctx.fillStyle = color; ctx.fill();
 }
 
+// 구운 부분(산·안개·땅)은 집 위치와 무관해 한 번만 굽는다. 집 옆 담장 토막은 매 프레임 단색으로 직접 그린다
+// (집 x 가 매 프레임 바뀌는 스크롤 장면에서도 캔버스를 새로 만들지 않는다).
 export function drawStreet(ctx, w, h, t, { houses = [], horizonY = h * 0.72 } = {}) {
   const m = ctx.getTransform ? ctx.getTransform().a : 1, k = clamp(Math.round(m), 1, 2);
-  const key = `${w}x${h}@${k}|${horizonY}|${houses.map((q) => `${q.x}:${q.w}`).join(',')}`;
+  const key = `${w}x${h}@${k}|${horizonY}`;
   let S = streetCache.get(key);
-  if (!S) { if (streetCache.size > 24) streetCache.clear(); S = bakeStreet(w, h, k, horizonY, houses); streetCache.set(key, S); }
-  ctx.drawImage(S.c, 0, S.y0, w, h - S.y0);
+  if (!S) { if (streetCache.size > 8) streetCache.clear(); S = bakeStreet(w, h, k, horizonY); streetCache.set(key, S); }
+  ctx.drawImage(S.back, 0, S.y0, w, S.y1 - S.y0);
+  if (houses.length) drawWalls(ctx, w, horizonY, houses);
+  ctx.drawImage(S.front, 0, S.y2, w, h - S.y2);
   // 흐르는 안개 띠(움직이는 것만 실시간)
   ctx.save(); ctx.fillStyle = 'rgba(255,244,214,0.09)';
   for (let i = 0; i < 3; i++) {
@@ -190,43 +194,60 @@ export function drawStreet(ctx, w, h, t, { houses = [], horizonY = h * 0.72 } = 
 }
 const streetCache = new Map();
 
-function bakeStreet(w, h, k, horizonY, houses) {
-  const y0 = Math.max(0, Math.floor(horizonY - h * 0.34));
-  const cv = mkCanvas(Math.round(w * k), Math.round((h - y0) * k)), ctx = cv.getContext('2d');
-  ctx.scale(k, k); ctx.translate(0, -y0);
-  // 먼 산 두 겹 + 안개
-  ridge(ctx, w, horizonY - 6, h * 0.20, 0.0062, 0.7, 'rgba(70,48,30,0.10)');
-  ridge(ctx, w, horizonY - 2, h * 0.12, 0.0095, 2.4, 'rgba(60,40,26,0.17)');
-  const mist = ctx.createLinearGradient(0, horizonY - h * 0.12, 0, horizonY + 4);
-  mist.addColorStop(0, 'rgba(250,236,200,0)'); mist.addColorStop(1, 'rgba(250,236,200,0.34)');
-  ctx.fillStyle = mist; ctx.fillRect(0, horizonY - h * 0.12, w, h * 0.12 + 4);
-  // 담장(집 사이 · 양끝). 집이 없으면 그리지 않는다.
-  if (houses.length) {
-    const hs = [...houses].sort((a, b) => a.x - b.x), wallH = 30, segs = [], REACH = 240;
-    const gap = (a, b, edgeL, edgeR) => { // 집 사이는 메우고, 너무 먼 빈 터는 집 쪽 토막만 세운다
-      if (b - a <= REACH * 2.1 && !edgeL && !edgeR) segs.push([a, b]);
-      else { if (!edgeL) segs.push([a, Math.min(b, a + REACH)]); if (!edgeR) segs.push([Math.max(a, b - REACH), b]); }
-    };
-    let cur = -10;
-    hs.forEach((hh, i) => { gap(cur, hh.x - hh.w * 0.5, i === 0, false); cur = hh.x + hh.w * 0.5; });
-    gap(cur, w + 10, false, true);
-    ctx.fillStyle = COLORS.shadow; ctx.shadowColor = COLORS.shadow; ctx.shadowBlur = 2 * k;
-    ctx.globalAlpha = 0.93;
-    for (const [a, b] of segs) {
-      if (b - a < 6) continue;
-      ctx.beginPath();
-      ctx.rect(a, horizonY - wallH, b - a, wallH + 6);
-      ctx.rect(a - 3, horizonY - wallH - 6, b - a + 6, 7);
-      for (let x = a; x < b; x += 9) { ctx.moveTo(x + 4.5, horizonY - wallH + 1); ctx.arc(x + 4.5, horizonY - wallH + 1, 4.2, 0, Math.PI * 2); }
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(240,178,90,0.10)'; // 담장 흙벽 무늬
-    for (const [a, b] of segs) for (let x = a + 12; x < b - 6; x += 22) {
-      ctx.fillRect(x, horizonY - wallH * 0.55, 8, 2); ctx.fillRect(x + 8, horizonY - wallH * 0.22, 8, 2);
-    }
+// 담장(집 사이 · 양끝). 블러 없는 단색 채우기만.
+const WALL_H = 30, WALL_REACH = 240;
+function wallSeg(ctx, horizonY, a, b) {
+  if (b - a < 6) return;
+  ctx.beginPath();
+  ctx.rect(a, horizonY - WALL_H, b - a, WALL_H + 6);
+  ctx.rect(a - 3, horizonY - WALL_H - 6, b - a + 6, 7);
+  for (let x = a; x < b; x += 9) { ctx.moveTo(x + 4.5, horizonY - WALL_H + 1); ctx.arc(x + 4.5, horizonY - WALL_H + 1, 4.2, 0, Math.PI * 2); }
+  ctx.fill();
+}
+function wallMarks(ctx, horizonY, a, b) {
+  if (b - a < 6) return;
+  for (let x = a + 12; x < b - 6; x += 22) {
+    ctx.fillRect(x, horizonY - WALL_H * 0.55, 8, 2); ctx.fillRect(x + 8, horizonY - WALL_H * 0.22, 8, 2);
   }
+}
+// 집 사이는 메우고, 너무 먼 빈 터는 집 쪽 토막만 세운다. fn(a, b)로 토막마다 호출.
+function eachWall(houses, w, fn) {
+  let sorted = true;
+  for (let i = 1; i < houses.length; i++) if (houses[i].x < houses[i - 1].x) { sorted = false; break; }
+  const hs = sorted ? houses : [...houses].sort((a, b) => a.x - b.x);
+  const gap = (a, b, edgeL, edgeR) => {
+    if (b - a <= WALL_REACH * 2.1 && !edgeL && !edgeR) fn(a, b);
+    else { if (!edgeL) fn(a, Math.min(b, a + WALL_REACH)); if (!edgeR) fn(Math.max(a, b - WALL_REACH), b); }
+  };
+  let cur = -10;
+  for (let i = 0; i < hs.length; i++) { gap(cur, hs[i].x - hs[i].w * 0.5, i === 0, false); cur = hs[i].x + hs[i].w * 0.5; }
+  gap(cur, w + 10, false, true);
+}
+function drawWalls(ctx, w, horizonY, houses) {
+  ctx.save();
+  ctx.fillStyle = COLORS.shadow; ctx.globalAlpha = 0.93;
+  eachWall(houses, w, (a, b) => wallSeg(ctx, horizonY, a, b));
+  ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(240,178,90,0.10)'; // 담장 흙벽 무늬
+  eachWall(houses, w, (a, b) => wallMarks(ctx, horizonY, a, b));
+  ctx.restore();
+}
+
+// 뒤층(산·안개)과 앞층(땅·길)을 따로 구워 그 사이에 담장을 낀다.
+function bakeStreet(w, h, k, horizonY) {
+  const y0 = Math.max(0, Math.floor(horizonY - h * 0.34));
+  const y1 = Math.min(h, Math.ceil(horizonY + 8));
+  const y2 = Math.max(0, Math.floor(horizonY - 4));
+  const back = mkCanvas(Math.round(w * k), Math.round((y1 - y0) * k)), bc = back.getContext('2d');
+  bc.scale(k, k); bc.translate(0, -y0);
+  // 먼 산 두 겹 + 안개
+  ridge(bc, w, horizonY - 6, h * 0.20, 0.0062, 0.7, 'rgba(70,48,30,0.10)');
+  ridge(bc, w, horizonY - 2, h * 0.12, 0.0095, 2.4, 'rgba(60,40,26,0.17)');
+  const mist = bc.createLinearGradient(0, horizonY - h * 0.12, 0, horizonY + 4);
+  mist.addColorStop(0, 'rgba(250,236,200,0)'); mist.addColorStop(1, 'rgba(250,236,200,0.34)');
+  bc.fillStyle = mist; bc.fillRect(0, horizonY - h * 0.12, w, h * 0.12 + 4);
   // 땅: 지평선 아래를 먹빛으로
+  const front = mkCanvas(Math.round(w * k), Math.round((h - y2) * k)), ctx = front.getContext('2d');
+  ctx.scale(k, k); ctx.translate(0, -y2);
   const gnd = ctx.createLinearGradient(0, horizonY, 0, h);
   gnd.addColorStop(0, 'rgba(26,20,16,0.62)'); gnd.addColorStop(0.35, 'rgba(26,20,16,0.80)'); gnd.addColorStop(1, 'rgba(22,16,12,0.94)');
   ctx.fillStyle = gnd;
@@ -236,5 +257,5 @@ function bakeStreet(w, h, k, horizonY, houses) {
   const road = ctx.createLinearGradient(0, horizonY, 0, h); // 길 위의 옅은 등불빛
   road.addColorStop(0, 'rgba(240,178,90,0.0)'); road.addColorStop(0.3, 'rgba(240,178,90,0.10)'); road.addColorStop(1, 'rgba(240,178,90,0.0)');
   ctx.fillStyle = road; ctx.fillRect(0, horizonY, w, h - horizonY);
-  return { c: cv, y0 };
+  return { back, front, y0, y1, y2 };
 }

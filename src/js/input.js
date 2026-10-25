@@ -14,12 +14,12 @@ let canvasEl = null;
 const held = new Map();                        // 입력원(키 코드·포인터 id) → 레인
 const down = new Set();                        // 눌려 있는 키
 const ptrLane = new Map();                     // 포인터 id → 레인(레인 영역에서 시작한 것)
-let lastLane = -1, lastLaneAt = -1e9;
+let lastLane = -1, lastLaneMs = -1e9;          // 레인 빛남 시각은 실시간(performance.now) 기준 — 오디오 시계 정지·배속과 무관
 
 const nowT = () => (A ? A.now() : performance.now() / 1000);
-const emitLane = (lane, at) => { lastLane = lane; lastLaneAt = at; for (const f of cbLane) f(lane, at); };
+const emitLane = (lane, at) => { lastLane = lane; lastLaneMs = performance.now(); for (const f of cbLane) f(lane, at); };
 const emitAction = (name, at) => { for (const f of cbAction) f(name, at); };
-const emitPointer = (x, y, type) => { for (const f of cbPointer) f(x, y, type); };
+const emitPointer = (x, y, type, at) => { for (const f of cbPointer) f(x, y, type, at); };
 
 function toLogical(e) {
   const r = canvasEl.getBoundingClientRect();
@@ -65,28 +65,29 @@ function ptrDown(e) {
   if (e.pointerType === 'touch') Input.touchMode = true;
   const { x, y } = toLogical(e), at = nowT();
   try { canvasEl.setPointerCapture(e.pointerId); } catch (err) { /* 무시 */ }
-  if (Input.laneZone && y >= BAND_Y) {
+  // 레인 영역은 터치만 잡는다. 마우스 클릭은 밴드 안에서도 보통 포인터 이벤트.
+  if (Input.laneZone && y >= BAND_Y && (e.pointerType === 'touch' || Input.touchMode)) {
     const lane = Math.min(3, Math.max(0, Math.floor(x / (W / 4))));
     ptrLane.set(e.pointerId, lane); held.set('p' + e.pointerId, lane);
     emitLane(lane, at);
-  } else emitPointer(x, y, 'down');
+  } else emitPointer(x, y, 'down', at);
   e.preventDefault();
 }
 function ptrUp(e) {
   const { x, y } = toLogical(e), at = nowT();
   if (ptrLane.has(e.pointerId)) { ptrLane.delete(e.pointerId); held.delete('p' + e.pointerId); return; }
   if (e.type === 'pointercancel') return;
-  emitPointer(x, y, 'up');
-  emitAction('confirm', at);
+  emitPointer(x, y, 'up', at);   // 'confirm' 은 여기서 내지 않는다 — main.js 가 onPointer 없는 장면에만 대신 보낸다
 }
 function ptrMove(e) {
   if (ptrLane.has(e.pointerId)) return;
   const { x, y } = toLogical(e);
-  emitPointer(x, y, 'move');
+  emitPointer(x, y, 'move', nowT());
 }
 
 export const Input = {
   touchMode: false,
+  BAND_Y,                                      // 터치 레인 영역 위쪽 경계(논리 y)
   laneZone: false,                             // main.js가 춤 장면에서만 true (터치 레인 영역 활성)
 
   init(canvas, Audio) {
@@ -103,12 +104,12 @@ export const Input = {
   },
   onLane(cb) { cbLane.push(cb); },
   onAction(cb) { cbAction.push(cb); },
-  onPointer(cb) { cbPointer.push(cb); },
+  onPointer(cb) { cbPointer.push(cb); },          // cb(x, y, type, at)
 
   // 지금 눌려 있거나 막 눌린 레인(없으면 -1). drawTouchLanes에 넘긴다.
   get activeLane() {
     for (const l of held.values()) return l;
-    return nowT() - lastLaneAt < 0.12 ? lastLane : -1;
+    return performance.now() - lastLaneMs < 120 ? lastLane : -1;
   },
 
   // 화면 아래 네 칸 안내. touchMode일 때만 그린다.

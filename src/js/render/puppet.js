@@ -709,15 +709,18 @@ function thatchRoof(w, bh, seed) { // 초가: 둥근 볏짚 지붕 + 너덜한 �
   return P;
 }
 
-export function drawHouse(ctx, x, y, w, t, { lit = true, haunted = false, masked = false, home = false } = {}) {
+// seed(정수): 주면 지붕 종류·볏짚 결·창 불빛 위상이 모두 seed 에서 나온다(스크롤해도 안 깜빡임).
+// 없으면 x 해시로 대신한다(x 가 고정인 장면용).
+export function drawHouse(ctx, x, y, w, t, { lit = true, haunted = false, masked = false, home = false, seed = null } = {}) {
   if (home) w *= 1.22;
-  const thatch = !home && hash(Math.round(x) * 0.37) < 0.42;
+  const sd = seed == null ? Math.round(x) : Math.round(seed);   // 집마다 고정된 값
+  const thatch = !home && hash(sd * 0.37) < 0.42;
   const bw = (thatch ? 0.7 : 0.8) * w, bh = (thatch ? 0.27 : home ? 0.36 : 0.31) * w;
   // 창 · 문 불빛 세기와 색
   let I = lit ? 0.9 : 0.12, cold = false;
   if (masked) I = 1.15;
   else if (haunted) { cold = true; const n = Math.sin(t * 21) * Math.sin(t * 13.7 + 1.3); I = 0.22 + 0.2 * (n > 0.3 ? 1 : n > -0.2 ? 0.45 : 0.1) + 0.06 * Math.sin(t * 3); }
-  else if (lit) I = 0.88 + 0.07 * Math.sin(t * 9 + x) + 0.05 * Math.sin(t * 15.7 + x * 0.1);
+  else if (lit) I = 0.88 + 0.07 * Math.sin(t * 9 + sd) + 0.05 * Math.sin(t * 15.7 + sd * 0.1);
   const winC = cold ? [150, 168, 224] : [255, 206, 120];
   const wx = bw * 0.29, wy = -bh * 0.56, ww = w * 0.075, wh = w * 0.085;
 
@@ -743,7 +746,7 @@ export function drawHouse(ctx, x, y, w, t, { lit = true, haunted = false, masked
   }
   ctx.rect(-bw / 2, -bh, bw, bh);
   ctx.rect(-bw * 0.56, -0.025 * w, bw * 1.12, 0.025 * w); // 기단
-  if (thatch) poly(ctx, thatchRoof(w, bh, Math.round(x)));
+  if (thatch) poly(ctx, thatchRoof(w, bh, sd));
   else poly(ctx, tiledRoof(w, bh, home ? 0.5 * w : 0.4 * w));
   if (!thatch) { // 용마루 끝 치미
     const ry = -bh - (home ? 0.5 : 0.4) * w;
