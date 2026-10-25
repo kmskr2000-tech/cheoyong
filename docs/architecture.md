@@ -49,7 +49,7 @@ export function ctxSize();                     // {w:960, h:540}
 ## input.js
 ```js
 export const Input = {
-  init(canvas, Audio),                // 키·터치·포인터 리스너. 터치 레인 영역: 화면 아래 22%를 네 칸.
+  init(canvas, Audio),                // 키·터치·포인터 리스너. 터치 레인 영역: 화면 아래 18%를 네 칸.
   onLane(cb),                         // cb(lane, at)  at = Audio.now() (이벤트 시점에 기록)
   onAction(cb),                       // cb(name, at)
   onPointer(cb),                      // cb(x, y, type) 논리 좌표

@@ -1,11 +1,11 @@
 // 키보드·터치·마우스 → 레인/행동/포인터 이벤트. 이벤트 시점의 Audio.now()를 같이 넘긴다.
 const W = 960, H = 540;
-const BAND_Y = H * 0.78;                       // 아래 22% = 터치 레인 영역
+const BAND_Y = H * 0.82;                       // 아래 18% = 터치 레인 영역
 const LANE_KEYS = {
   ArrowLeft: 0, KeyA: 0, ArrowDown: 1, KeyS: 1, ArrowUp: 2, KeyW: 2, ArrowRight: 3, KeyD: 3,
 };
 const CONFIRM_KEYS = new Set(['Space', 'Enter', 'NumpadEnter', 'KeyJ']);
-const LANE_COLORS = ['#1f4e79', '#b5342c', '#d9a441', '#f3e9d2'];
+const LANE_COLORS = ['#1f4e79', '#d9a441', '#f3e9d2', '#b5342c']; // 레인 오방색(청·황·백·적)
 const LANE_LABELS = ['왼소매', '발', '돌기', '오른소매'];
 
 const cbLane = [], cbAction = [], cbPointer = [];
@@ -124,7 +124,7 @@ export const Input = {
       ctx.fillRect(x, BAND_Y, cw, h);
       ctx.globalAlpha = 0.5; ctx.strokeStyle = '#f3e9d2'; ctx.lineWidth = 2;
       ctx.strokeRect(x + 3, BAND_Y + 3, cw - 6, h - 6);
-      ctx.globalAlpha = on ? 1 : 0.75; ctx.fillStyle = '#f3e9d2';
+      ctx.globalAlpha = on ? 1 : 0.75; ctx.fillStyle = i === 2 ? '#15110f' : '#f3e9d2';
       ctx.fillText(LANE_LABELS[i], x + cw / 2, BAND_Y + h / 2);
     }
     ctx.restore();

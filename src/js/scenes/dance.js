@@ -8,8 +8,8 @@ import { STORY } from '../story.js';
 
 const CX = 300, SX = 760, BASE_Y = 430;       // 박점 x, 역신 x, 발밑 y
 const CH_X = 150;                             // 처용 x(박점 왼쪽)
-const LY = [300, 340, 380, 420];              // 레인 y (0 위 … 3 아래)
-const TRAVEL = SX - CX;                       // 음표 이동 거리 520
+const LY = [290, 330, 370, 410];              // 레인 y (0 위 … 3 아래)
+const TRAVEL = SX - CX;                       // 음표 이동 거리 460
 const LANE_POSE = ['armL', 'step', 'spin', 'armR'];
 const LANE_GLYPH = ['左', '足', '回', '右'];
 const POSE_DUR = 0.35;
@@ -145,8 +145,8 @@ export default {
   enter(params, a) {
     api = a; G = a.G;
     spirit = params.spirit || 'fever';
-    houseIdx = params.houseIdx;
     N = G.night || null;
+    houseIdx = (params.direct || !N) ? undefined : params.houseIdx; // ?dance= 로 바로 온 경우엔 결과 후 타이틀로
     const n = (N && N.n) || params.n || 1;
     chart = makeChart(spirit, n, G.seed != null ? G.seed : 1);
     const beatSec = 60 / chart.bpm;
